@@ -1,41 +1,75 @@
-# Backend Laravel — Desa Watuagung
+﻿# API Laravel Desa Watuagung
 
-Backend ini terpisah dari frontend Next.js/React di direktori induk. Laravel 13, Sanctum, dan SQLite untuk pengembangan. Tidak ada data warga contoh yang di-seed.
+Backend ini melayani formulir administrasi dan panel petugas dari frontend Next.js pada direktori induk. Teknologi: PHP 8.3+, Laravel 13, Sanctum, dan SQLite untuk pengembangan. Tidak ada data warga contoh yang otomatis dimasukkan ke database.
 
-## Menjalankan
+## Persiapan lokal
 
-Dari folder `backend`: `composer install` (jika Composer tersedia), salin `.env.example` menjadi `.env`, jalankan `php artisan key:generate`, buat file `database/database.sqlite`, lalu `php artisan migrate` dan `php artisan serve --host=127.0.0.1 --port=8000`. Untuk pengujian: `php artisan test`. Jika Composer belum ada di PATH, gunakan `php ../composer.phar install` jika file lokal Composer tersedia. Jangan bagikan `.env`, database SQLite, atau kredensial petugas.
+Buka terminal PowerShell di folder `backend/`. Jika Composer tersedia global, jalankan `composer install`. Jika tidak, gunakan Composer lokal di induk proyek (`php ..\composer.phar install`) bila file tersebut tersedia. Lanjutkan dengan:
 
-Buat akun petugas secara manual, **jangan** melalui endpoint registrasi publik. Misalnya `php artisan tinker`, lalu `App\Models\User::create(['name'=>'Petugas','email'=>'petugas@example.test','password'=>'password-kuat-unik','role'=>'staff']);`. Ganti email dan kata sandi contoh sebelum menjalankannya. Saat produksi gunakan HTTPS, `APP_DEBUG=false`, database server dengan backup terenkripsi, dan pengelolaan kunci aplikasi yang aman; perubahan APP_KEY setelah ada data akan membuat field terenkripsi tidak bisa dibaca.
+```powershell
+php ..\composer.phar install
+Copy-Item .env.example .env
+php artisan key:generate
+New-Item database/database.sqlite -ItemType File -Force
+php artisan migrate
+php artisan serve --host=127.0.0.1 --port=8000
+```
 
-## API v1
+Ganti baris pertama dengan `composer install` jika sudah terpasang global. `composer.phar`, `.env`, dan database SQLite lokal tidak masuk Git. Jangan menimpa `.env` yang sudah digunakan, atau mengganti `APP_KEY` setelah ada data: field terenkripsi tidak dapat dibaca dengan kunci baru. URL pemeriksaan kesehatan: http://127.0.0.1:8000/up.
 
-Kirim `Accept: application/json` dan `Content-Type: application/json`. Endpoint berada di `/api/v1`.
+Perintah yang berguna (dijalankan dari folder `backend/`):
 
-| Metode | Path | Akses | Keterangan |
+```powershell
+php artisan test
+php artisan route:list --path=api
+php artisan config:clear
+```
+
+### Akun petugas
+
+Tidak ada endpoint pendaftaran publik. Untuk mencoba panel petugas secara lokal, jalankan `php artisan tinker`, lalu masukkan perintah berikut dengan email dan kata sandi kuat milik Anda sendiri:
+
+```php
+App\Models\User::create([
+    'name' => 'Petugas Desa',
+    'email' => 'petugas@example.test',
+    'password' => 'ganti-dengan-kata-sandi-kuat',
+    'role' => 'staff',
+]);
+```
+
+Ketik `exit` untuk keluar dari Tinker. Kredensial contoh di atas **bukan** akun bawaan; ubah sebelum dijalankan. Jangan simpan kata sandi pada repositori.
+
+## Integrasi frontend
+
+Di `.env.local` pada direktori induk, isi `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1`. Jalankan frontend dengan `npm run dev` dari direktori induk dan buka http://127.0.0.1:3000. Gunakan dua terminal supaya Laravel dan Next.js berjalan bersamaan.
+
+`FRONTEND_ORIGINS` di `.env` backend mengatur origin yang boleh memanggil API dari browser. Nilai lokal default adalah `http://localhost:3000,http://127.0.0.1:3000`. Untuk deployment, ganti dengan origin HTTPS frontend yang benar, lalu jalankan `php artisan config:clear` bila konfigurasi sudah di-cache. Tidak ada cookie lintas-origin pada integrasi ini.
+
+## Endpoint API v1
+
+Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: application/json` dan `Content-Type: application/json`.
+
+| Metode | Path | Akses | Kegunaan |
 | --- | --- | --- | --- |
-| POST | `/applications` | Publik, rate limit 5/menit | Buat pengajuan; respons 201 `{success,request_id,status,lookup_secret}` |
-| POST | `/applications/status` | Publik, rate limit 10/menit | Body `{request_id,lookup_secret}`; respons metadata status dan catatan |
-| POST | `/staff/login` | Publik, rate limit 5/menit | Body `{email,password}`; respons bearer token |
-| POST | `/staff/logout` | Bearer token | Cabut token saat ini |
-| GET | `/staff/applications?status=SUBMITTED` | Bearer token | Daftar paginasi tanpa NIK/KK/alamat |
-| PATCH | `/staff/applications/{request_id}/status` | Bearer token | Body `{status,catatan?}`; audit perubahan |
+| POST | `/applications` | Publik, 5 permintaan/menit | Mengajukan layanan; mengembalikan `request_id`, `status`, dan `lookup_secret` (HTTP 201) |
+| POST | `/applications/status` | Publik, 10 permintaan/menit | Body: `request_id` dan `lookup_secret`; mengembalikan status dan catatan |
+| POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `email` dan `password`; mengembalikan bearer token |
+| POST | `/staff/logout` | Token petugas | Mencabut token aktif |
+| GET | `/staff/applications` | Token petugas | Daftar paginasi; filter opsional `?status=SUBMITTED` |
+| PATCH | `/staff/applications/{request_id}/status` | Token petugas | Mengubah status dengan `status` dan `catatan` opsional |
 
-Form submit memakai field dalam `types/pelayanan.ts`. `nama_usaha`, `jenis_usaha`, dan `alamat_usaha` wajib untuk `SKU`. Respons validasi adalah HTTP 422 dengan `errors`. Status: `SUBMITTED → VERIFIED → PROCESSING → WAITING_APPROVAL → APPROVED`, dengan cabang `REJECTED` dan `NEED_REVISION` yang mewajibkan catatan. `APPROVED` saat ini **belum** menghasilkan surat atau PDF; jangan dipakai sebagai bukti dokumen siap tanpa menambahkan proses dokumen.
+Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Untuk SKU, `nama_usaha`, `jenis_usaha`, dan `alamat_usaha` wajib diisi. Validasi yang gagal mengembalikan HTTP 422 dengan objek `errors`.
 
-`lookup_secret` hanya ditampilkan sekali pada submit. Pengguna harus menyimpannya bersama `request_id`; jangan simpan token akses petugas di localStorage atau memasukkan kode rahasia ke URL/log. NIK, KK, nomor telepon, dan alamat tersimpan terenkripsi oleh APP_KEY; endpoint publik tidak mengembalikannya. Endpoint admin saat ini hanya memberi daftar ringkas, bukan akses detail PII.
+Alur normal status: `SUBMITTED` → `VERIFIED` → `PROCESSING` → `WAITING_APPROVAL` → `APPROVED`. Status `NEED_REVISION` dan `REJECTED` memerlukan catatan petugas; setiap perubahan status dicatat. `APPROVED` **belum** berarti surat/PDF telah dibuat.
 
-## Integrasi frontend saat ini
+## Penanganan data dan batas saat ini
 
-Frontend sudah menggunakan JSON REST ketika `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1` disetel di `.env.local` pada direktori induk. Jalankan Laravel di port 8000 dan Next.js di port 3000. Kosongkan variabel itu untuk tetap menggunakan mode demo publik; panel petugas tidak aktif dalam mode demo. `FRONTEND_ORIGINS` di `.env` backend membatasi asal browser yang diizinkan (default `localhost:3000` dan `127.0.0.1:3000`); jalankan `php artisan config:clear` bila konfigurasi sebelumnya di-cache.
+- `lookup_secret` diberikan sekali setelah pengajuan. Warga harus menyimpan kode itu bersama nomor pengajuan; saat ini belum tersedia pemulihan kode.
+- NIK, nomor KK, telepon, dan alamat disimpan terenkripsi memakai `APP_KEY`. Endpoint publik hanya mengembalikan metadata status; daftar petugas tidak menampilkan field sensitif itu.
+- Token petugas di frontend hanya disimpan dalam memori halaman. Refresh atau pindah route meminta login ulang. Jangan simpan token dalam URL atau localStorage.
+- Belum ada PDF, unggah dokumen, OTP, pengelolaan konten, atau otorisasi petugas yang lebih terperinci. Jangan menguji dengan data pribadi nyata.
 
-Halaman sukses menampilkan `lookup_secret` dari sessionStorage tab saat submit, tanpa menaruhnya di URL. Pengguna harus menyalin dan menyimpan nomor serta kode tersebut; bila tab ditutup, kode tidak dapat dipulihkan. Cek status meminta kedua nilai. Dashboard `/admin` meminta login petugas, memuat daftar paginasi, memperbarui status, dan mencabut token saat logout. Token petugas hanya disimpan di memori halaman: refresh atau pindah route mengharuskan login ulang.
+## Sebelum produksi
 
-## Tahap migrasi berikutnya
-
-1. Pindahkan autentikasi petugas ke sesi cookie HttpOnly melalui deployment satu origin/BFF, tambah otorisasi granular dan detail yang dibutuhkan petugas. Hindari penyimpanan bearer token di browser secara permanen.
-2. Migrasikan konten publik (profil, berita, agenda, statistik, transparansi) setelah data resmi diverifikasi. Bangun endpoint publik, editor, dan izin petugas secara terpisah.
-3. Tambahkan alur dokumen/PDF dan persetujuan sebelum menganggap status `APPROVED` sebagai surat siap; tambahkan unggah privat, notifikasi, audit, backup dan retensi data.
-4. Rancang pemulihan kode akses dengan verifikasi kepemilikan (misalnya OTP) sebelum menggunakan data warga sungguhan.
-
-**Batas saat ini:** belum ada pemulihan kode, OTP, dokumen, PDF, role granular, maupun autentikasi cookie HttpOnly. Jangan memakai data pribadi nyata untuk pengujian.
+Gunakan HTTPS, `APP_DEBUG=false`, database persisten dengan backup, dan kelola `APP_KEY` secara aman. Deploy Laravel terpisah dari Vercel frontend; atur `APP_URL` dan `FRONTEND_ORIGINS` ke domain sebenarnya, jalankan migrasi, lalu tes ulang pengajuan sampai perubahan status. Prioritas pengembangan selanjutnya adalah sesi petugas berbasis cookie HttpOnly, penerbitan dokumen/PDF, verifikasi kepemilikan untuk pemulihan kode akses, dan migrasi konten publik yang telah diverifikasi.
