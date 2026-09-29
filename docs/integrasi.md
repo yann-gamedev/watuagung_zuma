@@ -1,41 +1,78 @@
-# Integrasi pelayanan Watuagung
+﻿# Integrasi pelayanan Watuagung
 
-## Arsitektur
+## Arsitektur saat ini
 
-Next.js App Router + React + TypeScript + Tailwind CSS. Form menggunakan React Hook Form dan Zod. `components/` berisi komponen reusable, `features/` berisi alur aplikasi, `services/pelayanan.ts` berisi adapter transport, `lib/` berisi data contoh dan validasi, `types/` berisi kontrak.
+Frontend menggunakan Next.js App Router, React, TypeScript, dan Tailwind CSS. Form menggunakan React Hook Form dan Zod. Backend pelayanan menggunakan Laravel 13 dan Sanctum. Petunjuk Google Apps Script sebelumnya sudah tidak berlaku; tidak ada migrasi backend dalam pembaruan layout ini.
 
-Tanpa `NEXT_PUBLIC_API_URL`, frontend memakai simulasi. Hanya nomor dan status pengajuan disimpan pada localStorage browser, maksimal 50 receipt. Data identitas formulir tidak disimpan. Data admin terpisah, berada di memori sesi, dan kembali ke kondisi awal setelah reload. Jangan masukkan data pribadi asli ke prototipe.
+- `components/`: komponen bersama.
+- `features/`: formulir, hasil pengajuan, cek status, dan panel petugas.
+- `services/pelayanan.ts`: transport JSON API dan simulasi browser.
+- `lib/validation.ts` dan `types/pelayanan.ts`: validasi dan kontrak frontend.
+- `backend/routes/api.php`: endpoint Laravel.
+
+## Mode simulasi dan API
+
+Tanpa `NEXT_PUBLIC_API_URL`, pelayanan publik memakai simulasi. localStorage menyimpan maksimal 50 receipt (nomor, status, penanda sukses), bukan identitas formulir. Contoh status tersedia di adapter pelayanan. Panel petugas tidak aktif dalam mode ini. Gunakan data fiktif.
+
+Untuk API lokal, isi `.env.local` dengan:
+
+```dotenv
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1
+```
+
+Jangan menimpa konfigurasi lokal yang sudah digunakan. Variabel NEXT_PUBLIC disertakan dalam bundle browser dan tidak boleh berisi kredensial. Restart server frontend setelah perubahan konfigurasi, atau build ulang untuk hosting statis.
+
+Jalankan Laravel sesuai [README backend](../backend/README.md). Atur `FRONTEND_ORIGINS` backend sesuai origin frontend. Integrasi memakai bearer token, bukan cookie lintas-origin.
 
 ## Kontrak API
 
-Set `NEXT_PUBLIC_API_URL=https://script.google.com/macros/s/DEPLOYMENT_ID/exec`, lalu build ulang. Gunakan deployment `/exec`, bukan `/dev`. Environment berawalan NEXT_PUBLIC dikompilasi ke browser; tidak boleh mengandung credential/token. Untuk Laravel ubah URL dan implementasikan kontrak yang sama, atau sesuaikan transport di service tanpa mengubah komponen.
+Path berikut relatif terhadap `/api/v1`. Transport menggunakan `Accept: application/json` dan `Content-Type: application/json`, tanpa field `action`.
 
-Submit: POST text/plain;charset=utf-8 dengan JSON `{ "action":"submit", "jenis_surat":"SKU", "nama":"Pemohon Contoh", "nik":"0000000000000000", "no_kk":"0000000000000000", "tempat_lahir":"Contoh", "tanggal_lahir":"2000-01-01", "jenis_kelamin":"Laki-laki", "alamat":"Alamat fiktif", "rt":"01", "rw":"01", "telepon":"08000000000", "nama_usaha":"Usaha Contoh", "jenis_usaha":"Perdagangan", "alamat_usaha":"Alamat fiktif", "keperluan":"Administrasi contoh" }`.
+| Metode | Path | Permintaan / kegunaan |
+| --- | --- | --- |
+| POST | `/applications` | Field sesuai [Submission](../types/pelayanan.ts); SKU memerlukan informasi usaha |
+| POST | `/applications/status` | `request_id` dan `lookup_secret` |
+| POST | `/staff/login` | `email` dan `password`; respons bearer token |
+| POST | `/staff/logout` | Mencabut token petugas aktif |
+| GET | `/staff/applications` | Daftar paginasi; parameter `page` dan filter `status` opsional |
+| PATCH | `/staff/applications/{request_id}/status` | `status` dan `catatan` |
 
-Respons: `{ "success":true, "request_id":"REQ-2026-000001", "status":"SUBMITTED" }`.
+Pengajuan berhasil mengembalikan HTTP 201 dengan `success`, `request_id`, `status`, dan `lookup_secret`. Cek status mengembalikan metadata status serta catatan, bukan identitas sensitif. Respons validasi gagal menggunakan HTTP 422. Frontend membatasi waktu tunggu API menjadi 20 detik dan memvalidasi respons pelayanan dengan Zod.
 
-Cek status: POST dengan `{ "action":"status", "request_id":"REQ-2026-000001" }`. Respons sama, dengan `catatan` opsional. Error: `{ "success":false, "message":"Permohonan tidak ditemukan." }`. Service memvalidasi respons dengan Zod dan membatasi waktu tunggu 20 detik. `text/plain` menghindari preflight JSON untuk Apps Script; perilaku redirect dan CORS tetap harus diuji pada deployment nyata. Jika kebijakan akun menghalangi browser, gunakan proxy backend yang mengimplementasikan kontrak ini. Jangan menggunakan mode no-cors karena respons tidak dapat dibaca.
+## Kode akses dan autentikasi
 
-Status yang diizinkan: SUBMITTED, VERIFIED, PROCESSING, WAITING_APPROVAL, APPROVED, REJECTED, NEED_REVISION. Alur normal: SUBMITTED → VERIFIED → PROCESSING → WAITING_APPROVAL → APPROVED. Status perbaikan dan penolakan menampilkan alasan tersendiri. Makna APPROVED pada prototipe adalah selesai/disetujui; backend produksi harus menetapkan status tersebut hanya setelah dokumen final siap.
+- Kode akses diberikan setelah pengajuan API dan disimpan pada sessionStorage tab untuk halaman berhasil. Simpan nomor serta kode di tempat aman; pemulihan belum tersedia.
+- Kode akses dikirim pada body POST untuk cek status, tidak dimasukkan ke URL.
+- Backend menyimpan hash kode akses; NIK, KK, telepon, dan alamat dienkripsi dengan APP_KEY.
+- Token petugas hanya berada di memori halaman. Refresh atau perpindahan route dapat meminta login ulang. Jangan memindahkan token ke URL atau localStorage.
+- Jangan mengganti APP_KEY pada database berisi data terenkripsi tanpa prosedur migrasi yang benar.
 
-## Rencana Google Apps Script
+## Status dan batas fitur
 
-1. `doPost(e)` membaca JSON dari `e.postData.contents`, memvalidasi semua field ulang di server, dan membatasi ukuran request. Validasi frontend bukan pengamanan server.
-2. Untuk submit, buat request ID unik, simpan baris ke Sheets dengan status SUBMITTED. Gunakan LockService untuk pembuatan ID berurutan serta pencegahan race. Lindungi dari formula injection pada input yang diawali =, +, -, atau @; simpan NIK/KK sebagai teks agar nol di depan terjaga.
-3. Simpan ID spreadsheet, folder Drive, dan template per jenis surat di Script Properties, bukan frontend. Tulis tanggal server dan audit perubahan status.
-4. Setelah petugas memverifikasi, salin template Google Docs. Ganti placeholder `{{nama}}`, `{{nik}}`, `{{no_kk}}`, `{{alamat}}`, `{{jenis_usaha}}`, `{{tanggal}}` beserta field lain yang diperlukan. Escape kurung kurawal saat memakai replaceText yang menerima regex.
-5. Simpan dan tutup dokumen, ekspor sebagai PDF, simpan di folder Drive terbatas. Simpan ID file internal di Sheets. Jangan mengembalikan URL Drive publik yang membuka data pribadi.
-6. Kirim untuk persetujuan. Saat disetujui dan PDF final siap, ubah status menjadi APPROVED. Kegagalan pembuatan dokumen harus dicatat; jangan menandai sukses bila ekspor gagal.
-7. Endpoint status hanya mengembalikan metadata minimum. Tambahkan bukti kepemilikan/OTP pada produksi; request ID berurutan saja tidak cukup melindungi akses data pribadi. Endpoint admin harus memiliki autentikasi, role, dan audit log.
+Alur normal: `SUBMITTED` -> `VERIFIED` -> `PROCESSING` -> `WAITING_APPROVAL` -> `APPROVED`.
 
-Pembuatan PDF, koneksi Google, unggah dokumen, login admin, dan pengiriman notifikasi belum diimplementasikan pada fase frontend ini. Tidak ada backend Laravel. API eksternal adalah sumber kebenaran setelah endpoint disetel.
+`NEED_REVISION` dan `REJECTED` memerlukan catatan. Backend membatasi transisi status dan mencatat perubahan. `APPROVED` berarti disetujui, **bukan PDF tersedia**.
 
-## Menjalankan dan memverifikasi
+Login, daftar permohonan, filter, pagination, perubahan status, dan logout sudah diimplementasikan. PDF, unggah dokumen/revisi, pemulihan kode akses, OTP, notifikasi, dan pengelolaan konten publik belum tersedia. Menu konten admin masih prototipe.
 
-`npm ci`, salin `.env.example` menjadi `.env.local`, lalu `npm run dev`. `npm run build` menghasilkan static export pada `out/`. Rute dinamis publik dibangkitkan melalui generateStaticParams. Hosting statis perlu mendukung direktori index.html dan 404.html. Pada hosting Next server, hapus `output: 'export'` bila menambahkan endpoint server.
+## Menjalankan dan memeriksa
 
-Uji submit kosong, NIK/KK bukan 16 digit, tanggal masa depan, SKU tanpa data usaha, pengajuan valid, salin ID, lookup ID baru, ID tidak dikenal, semua status contoh, filter admin kosong, perubahan status berurutan, dan alasan penolakan/perbaikan. Pastikan mobile, keyboard, dan label input tetap berfungsi.
+```powershell
+npm ci
+npm run dev
+npm run lint
+npx tsc --noEmit
+npm run build
+```
 
-## Sebelum produksi
+Build menghasilkan static export pada `out/`; hosting harus mendukung direktori index.html dan halaman 404. Rute dinamis publik menggunakan generateStaticParams. Laravel dijalankan terpisah.
 
-Ganti semua angka, berita, struktur, alamat dan jadwal contoh dengan data resmi. Konfirmasi kecamatan/kabupaten Watuagung sebelum memasang peta. Ganti ilustrasi dengan foto desa berizin dan lambang resmi. Metadata publik sudah tersedia; robots sengaja noindex untuk prototipe berisi data fiktif. Setelah verifikasi, atur metadataBase/canonical sesuai domain, ubah robots menjadi index, dan tambahkan sitemap untuk rute publik. Jangan indeks admin dan hasil pengajuan. Foto ilustrasi: Thomas Fuhrmann, Rice terraces in Java – Indonesia, Wikimedia Commons, CC BY-SA 4.0; gambar dipotong pada tampilan, kredit di footer.
+ESLint mengecualikan dependensi Composer dan output/cache generasi secara spesifik; kode aplikasi tetap diperiksa. Pengujian PHP terpisah dijelaskan pada README backend.
+
+Uji menggunakan data fiktif: formulir kosong, NIK/KK tidak valid, tanggal masa depan, SKU tanpa informasi usaha, pengajuan valid, salin receipt, kode akses salah, perubahan status, filter dan pagination, serta logout. Jangan mengklaim alur API lulus hanya berdasarkan build frontend.
+
+## Konten publik dan produksi
+
+Konten, statistik, anggaran, jadwal, dan informasi BUMDES masih prototipe atau menunggu verifikasi. Foto persawahan adalah ilustrasi Thomas Fuhrmann dari Wikimedia Commons, CC BY-SA 4.0, dipotong pada tampilan; atribusi di footer. Jangan mengklaimnya sebagai dokumentasi desa.
+
+Noindex prototipe dipertahankan. Sebelum produksi, verifikasi data resmi, domain, HTTPS, CORS, backup, retensi data, dan keamanan backend. Jangan mengaktifkan indeks pencarian sebelum konten dan kesiapan layanan disetujui.

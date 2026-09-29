@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "dist/**",
+    // Composer dependencies and generated Laravel caches/assets are not application source.
+    "vendor/**",
+    "backend/vendor/**",
+    "backend/bootstrap/cache/**",
+    "backend/storage/framework/**",
+    "backend/public/build/**",
   ]),
   {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],

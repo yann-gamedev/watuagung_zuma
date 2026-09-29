@@ -1,14 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   ArrowRight,
   Menu,
   X,
-
+  Sprout,
   Clock3,
-
+  FileText,
   ChevronDown,
   Building2,
   House,
@@ -17,74 +17,156 @@ import {
 } from "lucide-react";
 import { services, news } from "@/lib/data";
 import type { Status } from "@/types/pelayanan";
-const profileLinks = [["Profil Desa", "profil"], ["Sejarah Desa", "sejarah"], ["Visi dan Misi", "visi-misi"], ["Struktur Pemerintahan", "struktur-pemerintahan"]];
-const informationLinks = [["Berita Desa", "berita"], ["Pengumuman", "pengumuman"], ["Agenda", "agenda"], ["Potensi Desa", "potensi"], ["Statistik Desa", "statistik"], ["Transparansi", "transparansi"]];
-export function Wordmark({ subtitle = "Informasi & pelayanan desa" }: { subtitle?: string }) {
-  return <span className="wordmark">Watuagung<small>{subtitle}</small></span>;
-}
 export function Navbar() {
   const [open, setOpen] = useState(false);
-  const path = usePathname().replace(/\/$/, "") || "/";
-  const header = useRef<HTMLElement>(null);
-  const toggle = useRef<HTMLButtonElement>(null);
-  const active = (href: string) => path === href;
-  function close() {
-    setOpen(false);
-    header.current?.querySelectorAll("details[open]").forEach((item) => item.removeAttribute("open"));
-  }
-  function group(label: string, links: string[][], id: string) {
-    return <details name="main-navigation-dropdown" className={links.some(([, slug]) => path === "/" + slug || path.startsWith("/" + slug + "/")) ? "active-group" : ""}>
-      <summary id={id}>{label}<ChevronDown size={16} aria-hidden="true" /></summary>
-      <div className="dropdown">{links.map(([title, slug]) => <Link key={slug} href={"/" + slug} aria-current={active("/" + slug) ? "page" : undefined} onClick={close}>{title}</Link>)}</div>
-    </details>;
-  }
-  return <>
-    <a href="#main" className="skip">Lewati ke konten</a>
-    <header className="header site-header" ref={header}
-      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) close(); }}
-      onKeyDown={(event) => {
-        if (event.key !== "Escape") return;
-        const details = (event.target as HTMLElement).closest("details");
-        if (details?.open) { details.open = false; details.querySelector("summary")?.focus(); }
-        else { close(); toggle.current?.focus(); }
-      }}>
-      <div className="container site-nav">
-        <Link className="brand" href="/" onClick={close} aria-label="Watuagung, beranda"><Wordmark /></Link>
-        <div className="nav-actions">
-          <Link id="nav-status" className="nav-status" href="/pelayanan/status" aria-current={active("/pelayanan/status") ? "page" : undefined} onClick={close}>Cek Status</Link>
-          <Link id="nav-apply" className="btn" href="/pelayanan" aria-current={active("/pelayanan") ? "page" : undefined} onClick={close}>Ajukan Surat</Link>
+  const path = usePathname();
+  return (
+    <>
+      <a href="#main" className="skip">
+        Lewati ke konten
+      </a>
+      <div className="topbar">
+        <div className="container">
+          <span>Portal Informasi & Pelayanan Desa Watuagung</span>
+          <span>Gotong royong untuk desa yang lebih baik</span>
         </div>
-        <button id="navigation-toggle" ref={toggle} className="navigation-toggle" aria-label={open ? "Tutup navigasi" : "Buka navigasi"} aria-expanded={open} aria-controls="public-navigation" onClick={() => { if (open) close(); else setOpen(true); }}>
-          {open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}<span>Menu</span>
-        </button>
-        <nav id="public-navigation" className={"public-navigation" + (open ? " is-open" : "")} aria-label="Navigasi utama">
-          <Link href="/" aria-current={active("/") ? "page" : undefined} onClick={close}>Beranda</Link>
-          {group("Profil Desa", profileLinks, "nav-profile")}
-          {group("Informasi", informationLinks, "nav-information")}
-          <Link href="/kontak" aria-current={active("/kontak") ? "page" : undefined} onClick={close}>Kontak</Link>
-        </nav>
       </div>
-    </header>
-  </>;
+      <header className="header">
+        <div className="container nav">
+          <Link className="brand" href="/" onClick={() => setOpen(false)}>
+            <span className="brand-icon">
+              <Sprout size={27} />
+            </span>
+            <span>
+              WATUAGUNG<small>PEMERINTAH DESA</small>
+            </span>
+          </Link>
+          <button
+            className="menu-toggle"
+            aria-label={open ? "Tutup navigasi" : "Buka navigasi"}
+            aria-expanded={open}
+            onClick={() => setOpen(!open)}
+          >
+            {open ? <X /> : <Menu />}
+          </button>
+          <nav
+            className={open ? "navlinks open" : "navlinks"}
+            aria-label="Navigasi utama"
+          >
+            <Link
+              className={path === "/" ? "active" : ""}
+              href="/"
+              onClick={() => setOpen(false)}
+            >
+              Beranda
+            </Link>
+            <details name="main-navigation-dropdown">
+              <summary>
+                Profil Desa <ChevronDown size={14} />
+              </summary>
+              <div className="dropdown">
+                {[
+                  ["Profil Desa", "profil"],
+                  ["Sejarah Desa", "sejarah"],
+                  ["Visi dan Misi", "visi-misi"],
+                  ["Struktur Pemerintahan", "struktur-pemerintahan"],
+                ].map(([label, slug]) => (
+                  <Link
+                    onClick={() => setOpen(false)}
+                    key={slug}
+                    href={"/" + slug}
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            </details>
+            <Link id="nav-bumdes" href="/bumdes" aria-current={path.replace(/\/$/, "") === "/bumdes" ? "page" : undefined} onClick={() => setOpen(false)}>
+              BUMDES
+            </Link>
+            <Link href="/transparansi" onClick={() => setOpen(false)}>
+              Transparansi
+            </Link>
+            <Link href="/kontak" onClick={() => setOpen(false)}>
+              Kontak
+            </Link>
+            <Link
+              className="btn btn-small"
+              href="/pelayanan"
+              onClick={() => setOpen(false)}
+            >
+              <FileText size={16} /> Pelayanan Desa
+            </Link>
+          </nav>
+        </div>
+      </header>
+    </>
+  );
 }
 export function Footer() {
-  return <footer className="site-footer">
-    <div className="container footer-content">
-      <div className="footer-identity">
-        <Link className="brand" href="/"><Wordmark /></Link>
-        <p>Prototipe website. Konten dan data publik masih berupa contoh, bukan informasi resmi desa.</p>
-        <Link className="footer-contact" href="/kontak">Kontak dan jam pelayanan</Link>
-        <p className="footer-note">Alamat, kontak, dan jam pelayanan resmi menunggu verifikasi.</p>
+  return (
+    <footer>
+      <div className="container footer-grid">
+        <div>
+          <Link className="brand" href="/">
+            <span className="brand-icon">
+              <Sprout />
+            </span>
+            <span>
+              WATUAGUNG<small>PEMERINTAH DESA</small>
+            </span>
+          </Link>
+          <p>
+            Bersama membangun desa.
+            <br />
+            Lebih dekat melayani warga.
+          </p>
+          <small>
+            Prototipe website • Seluruh konten dan data adalah contoh.
+          </small>
+        </div>
+        <div>
+          <h3>Jelajahi Desa</h3>
+          <Link href="/profil">Profil Desa</Link>
+          <Link href="/potensi">Potensi Desa</Link>
+          <Link href="/berita">Berita Desa</Link>
+          <Link href="/agenda">Agenda Desa</Link>
+        </div>
+        <div>
+          <h3>Informasi Publik</h3>
+          <Link href="/pengumuman">Pengumuman</Link>
+          <Link href="/statistik">Statistik Desa</Link>
+          <Link href="/transparansi">Transparansi</Link>
+          <Link href="/kontak">Kontak Desa</Link>
+        </div>
+        <div>
+          <h3>Pelayanan Warga</h3>
+          <Link href="/pelayanan">Ajukan Layanan</Link>
+          <Link href="/pelayanan/status">Cek Status Permohonan</Link>
+          <Link href="/admin">Prototipe Admin</Link>
+          <p>
+            Senin–Jumat
+            <br />
+            Jam pelayanan masih berupa contoh.
+          </p>
+        </div>
       </div>
-      <nav aria-label="Profil desa di footer"><h2>Profil Desa</h2>{profileLinks.map(([title, slug]) => <Link key={slug} href={"/" + slug}>{title}</Link>)}</nav>
-      <nav aria-label="Informasi di footer"><h2>Informasi</h2>{informationLinks.map(([title, slug]) => <Link key={slug} href={"/" + slug}>{title}</Link>)}</nav>
-      <nav aria-label="Pelayanan di footer"><h2>Pelayanan</h2><Link href="/pelayanan">Ajukan Surat</Link><Link href="/pelayanan/status">Cek Status Pengajuan</Link><Link href="/admin">Panel Petugas</Link></nav>
-    </div>
-    <div className="container footer-credits">
-      <span>© 2026 Watuagung · Website prototipe</span>
-      <span>Foto ilustrasi: <a href="https://commons.wikimedia.org/wiki/File:Rice_terraces_in_Java_-_Indonesia.jpg">Thomas Fuhrmann</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a> · dipotong pada tampilan.</span>
-    </div>
-  </footer>;
+      <div className="container footer-bottom">
+        <span>© 2026 Pemerintah Desa Watuagung</span>
+        <span>
+          Foto:{" "}
+          <a href="https://commons.wikimedia.org/wiki/File:Rice_terraces_in_Java_-_Indonesia.jpg">
+            Thomas Fuhrmann
+          </a>{" "}
+          ·{" "}
+          <a href="https://creativecommons.org/licenses/by-sa/4.0/">
+            CC BY-SA 4.0
+          </a>{" "}
+          · dipotong
+        </span>
+      </div>
+    </footer>
+  );
 }
 export function PublicShell({ children }: { children: ReactNode }) {
   return (
