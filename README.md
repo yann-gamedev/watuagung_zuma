@@ -68,10 +68,11 @@ Untuk menjalankan tes API, gunakan `php artisan test` dari folder `backend/`. Un
 
 ## Preview dan deployment Vercel (demo tanpa backend)
 
-Target deployment saat ini adalah **prototipe statis**, bukan layanan administrasi produksi. Konfigurasi `vercel.json` menjalankan `npm run build:demo` dan menerbitkan folder `out`. Script ini memaksa mode demo serta mengabaikan URL API lama, termasuk URL localhost yang mungkin masih ada di dashboard Vercel.
+Target deployment saat ini adalah **prototipe statis**, bukan layanan administrasi produksi. Konfigurasi `vercel.json` menjalankan `npm run build:demo`; preset Next.js menangani hasil static export secara otomatis. Script ini memaksa mode demo serta mengabaikan URL API lama, termasuk URL localhost yang mungkin masih ada di dashboard Vercel.
 
 - Root Directory: root repositori (bukan `backend`).
-- Framework Preset: Next.js; Build Command: `npm run build:demo`; Output Directory: `out`.
+- Framework Preset: Next.js; Build Command: `npm run build:demo`.
+- Output Directory: **default, Override nonaktif**. Jangan isi `out`: adapter Next.js perlu membaca manifest internal dari `.next`, meskipun hasil export statis tersedia di `out`.
 - Gunakan Node.js 22.x atau 24.x yang didukung Vercel. Install dengan `npm ci`.
 - Hapus override build/output lama di dashboard jika berbeda dengan konfigurasi repo.
 - Tidak perlu PHP, Composer, database, atau API Laravel untuk deployment ini.
