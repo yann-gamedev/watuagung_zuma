@@ -20,6 +20,7 @@ export const submissionSchema = z
         (v) =>
           /^\d{4}-\d{2}-\d{2}$/.test(v) &&
           !isNaN(Date.parse(v)) &&
+          new Date(v).toISOString().slice(0, 10) === v &&
           v <= new Date().toISOString().slice(0, 10) &&
           v >= "1900-01-01",
         "Tanggal lahir tidak valid.",

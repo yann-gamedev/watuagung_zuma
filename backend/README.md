@@ -73,3 +73,19 @@ Alur normal status: `SUBMITTED` → `VERIFIED` → `PROCESSING` → `WAITING_APP
 ## Sebelum produksi
 
 Gunakan HTTPS, `APP_DEBUG=false`, database persisten dengan backup, dan kelola `APP_KEY` secara aman. Deploy Laravel terpisah dari Vercel frontend; atur `APP_URL` dan `FRONTEND_ORIGINS` ke domain sebenarnya, jalankan migrasi, lalu tes ulang pengajuan sampai perubahan status. Prioritas pengembangan selanjutnya adalah sesi petugas berbasis cookie HttpOnly, penerbitan dokumen/PDF, verifikasi kepemilikan untuk pemulihan kode akses, dan migrasi konten publik yang telah diverifikasi.
+
+## Fondasi penduduk dummy
+
+Tabel `residents` menyimpan NIK, nama, tempat lahir, dan tanggal lahir dengan encrypted casts. Identitas disembunyikan dari serialisasi JSON. `dummy_reference` adalah penanda fixture unik, bukan indeks NIK. Jangan mengganti APP_KEY setelah ada data terenkripsi.
+
+Seeder hanya berjalan di local/testing, aman diulang, dan menolak menimpa record non-dummy. Tidak dipanggil otomatis oleh DatabaseSeeder. Jalankan dari folder backend:
+
+```powershell
+php artisan migrate --path=database/migrations/2026_09_29_160000_create_residents_table.php
+php artisan db:seed --class=DummyResidentSeeder
+php artisan test --filter=ResidentsFoundationTest
+```
+
+Tiga NIK fiktif: `0000000000000001`, `0000000000000002`, `0000000000000003`. Awalan wilayah sengaja tidak valid. Jangan masukkan data asli pada tahap ini.
+
+Belum ada endpoint pencarian penduduk atau integrasi autofill API: frontend tetap memakai fixture lokal. Mode coba pada frontend dengan API aktif memblokir pengiriman ke server. Sebelum data asli, siapkan verifikasi kepemilikan, otorisasi, audit akses, retensi, indeks pencarian aman, dan deduplikasi NIK. Kolom terenkripsi tidak dapat dicari langsung dengan query NIK. Jangan membuka lookup publik hanya berdasarkan NIK.

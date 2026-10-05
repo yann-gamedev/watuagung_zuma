@@ -1,10 +1,14 @@
 import { z } from "zod";
 import { statuses, type Submission, type Receipt } from "@/types/pelayanan";
-export const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+// An explicit demo build must never contact an API, even with a stale API URL.
+export const apiBase = process.env.NEXT_PUBLIC_DEMO_MODE === "true"
+  ? undefined
+  : process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "");
 export const isDemo = !apiBase;
 const receiptSchema = z.object({ success: z.literal(true), request_id: z.string().min(1), status: z.enum(statuses), lookup_secret: z.string().optional() });
 const key = "watuagung-demo-receipts-v1";
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  if (!apiBase) throw new Error("API tidak tersedia dalam mode simulasi.");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
   try {
@@ -21,7 +25,10 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   } finally { clearTimeout(timeout); }
 }
 function demoRecords(): Receipt[] {
-  try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch { return []; }
+  try {
+    const parsed = z.array(receiptSchema).safeParse(JSON.parse(localStorage.getItem(key) || "[]"));
+    return parsed.success ? parsed.data : [];
+  } catch { return []; }
 }
 export const pelayananService = {
   async submit(data: Submission): Promise<Receipt> {

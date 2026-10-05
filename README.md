@@ -1,4 +1,4 @@
-﻿# Sistem Informasi dan Pelayanan Digital Desa Watuagung
+# Sistem Informasi dan Pelayanan Digital Desa Watuagung
 
 Website desa dan prototipe pelayanan administrasi. Proyek ini terdiri dari frontend Next.js/React dan API Laravel dalam satu repositori. Konten, angka statistik, dan contoh layanan saat ini belum merupakan data resmi desa.
 
@@ -31,7 +31,7 @@ Di folder `backend/`, pasang dependensi. Jika Composer belum ada di PATH, gunaka
 php ..\composer.phar install
 Copy-Item .env.example .env
 php artisan key:generate
-New-Item database/database.sqlite -ItemType File -Force
+if (!(Test-Path database/database.sqlite)) { New-Item database/database.sqlite -ItemType File }
 php artisan migrate
 php artisan serve --host=127.0.0.1 --port=8000
 ```
@@ -66,11 +66,38 @@ Jika `NEXT_PUBLIC_API_URL` dibiarkan kosong, formulir publik memakai mode simula
 
 Untuk menjalankan tes API, gunakan `php artisan test` dari folder `backend/`. Untuk memeriksa frontend dari folder utama, gunakan `npx tsc --noEmit` dan `npm run build`.
 
-## Preview dan deployment
+## Preview dan deployment Vercel (demo tanpa backend)
 
-Frontend dapat dipreview di Vercel dengan root directory repositori ini. Laravel **tidak** otomatis ikut berjalan di Vercel: alur API memerlukan backend HTTPS dan database persisten yang di-host terpisah. Set `NEXT_PUBLIC_API_URL` pada environment Preview di Vercel ke `https://alamat-backend/api/v1`, lalu redeploy. Izinkan domain preview frontend melalui `FRONTEND_ORIGINS` di backend.
+Target deployment saat ini adalah **prototipe statis**, bukan layanan administrasi produksi. Konfigurasi `vercel.json` menjalankan `npm run build:demo` dan menerbitkan folder `out`. Script ini memaksa mode demo serta mengabaikan URL API lama, termasuk URL localhost yang mungkin masih ada di dashboard Vercel.
 
-Tanpa backend publik, kosongkan `NEXT_PUBLIC_API_URL` pada Vercel agar halaman publik tetap dapat didemokan. Panel petugas tidak tersedia pada mode tersebut. Jangan memakai URL `127.0.0.1` untuk preview online karena hanya merujuk ke perangkat pengunjung.
+- Root Directory: root repositori (bukan `backend`).
+- Framework Preset: Next.js; Build Command: `npm run build:demo`; Output Directory: `out`.
+- Gunakan Node.js 22.x atau 24.x yang didukung Vercel. Install dengan `npm ci`.
+- Hapus override build/output lama di dashboard jika berbeda dengan konfigurasi repo.
+- Tidak perlu PHP, Composer, database, atau API Laravel untuk deployment ini.
+- Panel petugas sengaja nonaktif. Pengajuan hanya menyimpan nomor/status simulasi di browser, bukan identitas pemohon.
+- Gunakan data fiktif. Simulasi tidak menerbitkan surat dan tidak diproses pemerintah desa.
+- Maksimal 50 bukti simulasi disimpan pada browser/origin yang sama; penghapusan storage menghapus riwayat. Status simulasi baru tetap diterima, tidak bergerak otomatis.
+
+Verifikasi sebelum push:
+
+```powershell
+npm run lint
+npm run test:demo
+npx tsc --noEmit
+npm run build:demo
+```
+
+Untuk mencoba demo lokal dengan dev server:
+
+```powershell
+$env:NEXT_PUBLIC_DEMO_MODE="true"
+npm run dev
+```
+
+Setelah deploy, uji empat formulir, autofill NIK dummy, halaman sukses, cek status, refresh URL bertingkat, tampilan mobile, dan halaman admin pada **URL Vercel sebenarnya**. Build lokal yang berhasil belum membuktikan konfigurasi hosting remote benar.
+
+Mode API lokal tetap tersedia melalui `npm run dev`/`npm run build` jika `NEXT_PUBLIC_DEMO_MODE` bukan `true` dan `NEXT_PUBLIC_API_URL` terisi. Backend tidak termasuk cakupan kesiapan demo Vercel; jangan mengaktifkan mode API untuk warga tanpa menyelesaikan review backend dan integrasi terpisah.
 
 ## Batas prototipe dan langkah berikutnya
 

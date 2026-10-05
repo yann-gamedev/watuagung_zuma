@@ -9,6 +9,8 @@ export function FormField({
   wide = false,
   options,
   placeholder,
+  onValueChange,
+  hint,
 }: {
   name: keyof SubmissionValues;
   label: string;
@@ -18,14 +20,16 @@ export function FormField({
   wide?: boolean;
   options?: string[];
   placeholder?: string;
+  onValueChange?: (value: string) => void;
+  hint?: string;
 }) {
   const error = errors[name]?.message;
   const props = {
     id: name,
     required: true,
     "aria-invalid": !!error,
-    "aria-describedby": error ? `${name}-error` : undefined,
-    ...register(name),
+    "aria-describedby": [hint ? `${name}-hint` : "", error ? `${name}-error` : ""].filter(Boolean).join(" ") || undefined,
+    ...register(name, { onChange: (event) => onValueChange?.(event.target.value) }),
   };
   return (
     <div className={"field" + (wide ? " wide" : "")}>
@@ -55,6 +59,7 @@ export function FormField({
           }
         />
       )}{" "}
+      {hint && <p id={`${name}-hint`} className="text-sm mt-2">{hint}</p>}
       {error && (
         <p id={`${name}-error`} className="field-error">
           {error}
