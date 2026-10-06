@@ -6,7 +6,6 @@ import {
   ArrowRight,
   Menu,
   X,
-  Sprout,
   Clock3,
   FileText,
   ChevronDown,
@@ -34,9 +33,6 @@ export function Navbar() {
       <header className="header">
         <div className="container nav">
           <Link className="brand" href="/" onClick={() => setOpen(false)}>
-            <span className="brand-icon">
-              <Sprout size={27} />
-            </span>
             <span>
               WATUAGUNG<small>PEMERINTAH DESA</small>
             </span>
@@ -109,9 +105,6 @@ export function Footer() {
       <div className="container footer-grid">
         <div>
           <Link className="brand" href="/">
-            <span className="brand-icon">
-              <Sprout />
-            </span>
             <span>
               WATUAGUNG<small>PEMERINTAH DESA</small>
             </span>

@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Sprout,
   LayoutDashboard,
   ClipboardList,
   Files,
@@ -27,9 +26,6 @@ export function AdminSidebar() {
   return (
     <aside className="admin-sidebar">
       <Link href="/" className="brand">
-        <span className="brand-icon">
-          <Sprout />
-        </span>
         <span>
           WATUAGUNG<small>ADMINISTRASI DESA</small>
         </span>

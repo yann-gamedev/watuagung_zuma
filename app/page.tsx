@@ -2,10 +2,6 @@ import { Hero } from '@/components/hero';
 import Link from "next/link";
 import {
   ArrowRight,
-  UsersRound,
-  House,
-  MapPinned,
-  Store,
   ShieldCheck,
   Search,
   MapPin,
@@ -16,7 +12,6 @@ import {
   PublicShell,
   SectionTitle,
   ServiceCard,
-  StatisticCard,
   NewsCard,
 } from "@/components/site";
 import { services, news } from "@/lib/data";
@@ -24,29 +19,6 @@ export default function Home() {
   return (
     <PublicShell>
       <Hero />
-      <div className="container stats-wrap">
-        <div className="stats-grid">
-          <StatisticCard
-            value="4.286"
-            label="Jumlah Penduduk"
-            icon={<UsersRound />}
-          />
-          <StatisticCard
-            value="1.342"
-            label="Kepala Keluarga"
-            icon={<House />}
-          />
-          <StatisticCard
-            value="24 / 6"
-            label="Jumlah RT / RW"
-            icon={<MapPinned />}
-          />
-          <StatisticCard value="86" label="UMKM Desa" icon={<Store />} />
-        </div>
-        <div className="data-note">
-          Data ilustrasi untuk prototipe · bukan data resmi desa
-        </div>
-      </div>
       <section className="section container">
         <SectionTitle
           eyebrow="PELAYANAN DESA"
