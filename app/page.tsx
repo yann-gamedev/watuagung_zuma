@@ -1,9 +1,10 @@
-import { Hero } from '@/components/hero';
+import { Hero } from "@/components/hero";
+import { TaskPanel } from "@/components/task-panel";
+import { ServiceList } from "@/components/service-list";
 import Link from "next/link";
 import {
   ArrowRight,
   ShieldCheck,
-  Search,
   MapPin,
   Sprout,
   ChevronRight,
@@ -11,39 +12,43 @@ import {
 import {
   PublicShell,
   SectionTitle,
-  ServiceCard,
   NewsCard,
 } from "@/components/site";
-import { services, news } from "@/lib/data";
+import { news } from "@/lib/data";
 export default function Home() {
   return (
     <PublicShell>
       <Hero />
-      <section className="section container">
-        <SectionTitle
-          eyebrow="PELAYANAN DESA"
-          title="Urus keperluan, lebih mudah."
-          description="Mulai pengajuan dari rumah. Kami bantu langkah selanjutnya."
-          href="/pelayanan"
-          link="Semua layanan"
-        />
-        <div className="services-grid">
-          {services.map((s) => (
-            <ServiceCard key={s.slug} service={s} />
+      <TaskPanel />
+      <ServiceList />
+      <section className="container home-steps" aria-labelledby="steps-title">
+        <h2 id="steps-title">Cara mengajukan surat</h2>
+        <ol className="home-steps-list">
+          {[
+            [
+              "Pilih jenis surat",
+              "Baca persyaratannya, lalu isi formulir data diri.",
+            ],
+            [
+              "Simpan nomor dan kode akses",
+              "Keduanya dipakai untuk mengecek proses surat. Kode akses tidak bisa dipulihkan.",
+            ],
+            [
+              "Ambil di kantor desa",
+              "Datang setelah petugas menyatakan surat Anda siap.",
+            ],
+          ].map(([title, description], index) => (
+            <li key={title}>
+              <span className="home-step-number" aria-hidden="true">
+                {index + 1}
+              </span>
+              <div>
+                <h3>{title}</h3>
+                <p>{description}</p>
+              </div>
+            </li>
           ))}
-        </div>
-        <div className="status-strip">
-          <span className="icon-box">
-            <Search size={22} />
-          </span>
-          <div>
-            <strong>Sudah mengajukan permohonan?</strong>
-            <p>Pantau proses pelayanan menggunakan nomor pengajuan Anda.</p>
-          </div>
-          <Link href="/pelayanan/status" className="text-link">
-            Cek status permohonan <ArrowRight size={18} />
-          </Link>
-        </div>
+        </ol>
       </section>
       <section className="about-section">
         <div className="container about-grid">
