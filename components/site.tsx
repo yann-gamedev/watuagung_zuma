@@ -61,7 +61,7 @@ export function Footer() {
       <div className="container footer-bottom">
         <span>© 2026 Pemerintah Desa Watuagung</span>
         <span>
-          Foto:{" "}
+          Foto hero:{" "}
           <a href="https://commons.wikimedia.org/wiki/File:Rice_terraces_in_Java_-_Indonesia.jpg">
             Thomas Fuhrmann
           </a>{" "}

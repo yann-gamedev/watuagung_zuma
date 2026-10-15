@@ -1156,6 +1156,7 @@ p {
   outline-color: var(--gold);
 }
 .site-footer a:hover {
+  color: var(--cream);
   text-decoration: underline;
   text-underline-offset: 4px;
 }
@@ -1167,9 +1168,10 @@ p {
 .footer-brand {
   display: inline-flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   font-size: 18px;
   font-weight: 800;
+  line-height: 1.35;
   letter-spacing: 0.08em;
 }
 .footer-brand img {
@@ -1188,14 +1190,14 @@ p {
   color: var(--on-dark-muted);
   font-size: 16px;
   line-height: 1.55;
-  margin-top: 24px;
+  margin-top: 16px;
   max-width: 36rem;
 }
 .footer-links h3 {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 .footer-links > a {
   display: flex;
@@ -1206,8 +1208,11 @@ p {
   min-width: 48px;
   min-height: 48px;
   padding-block: 8px;
+  color: var(--on-dark-muted);
   font-size: 16px;
   line-height: 1.55;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 .footer-badge {
   border-radius: 999px;
@@ -1219,14 +1224,14 @@ p {
   white-space: nowrap;
 }
 .footer-bottom {
-  border-top: 1px solid var(--on-dark-muted);
+  border-top: 1px solid color-mix(in srgb, var(--on-dark-muted) 20%, transparent);
   margin-top: 48px;
-  padding-block: 24px;
+  padding-block: 16px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 16px 32px;
+  gap: 8px 32px;
   font-size: 15px;
   line-height: 1.55;
   color: var(--on-dark-muted);
@@ -1249,7 +1254,7 @@ p {
 }
 @media (min-width: 901px) {
   .footer-grid {
-    grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1.9fr) repeat(3, minmax(0, 1fr));
   }
 }
 .page-heading {
