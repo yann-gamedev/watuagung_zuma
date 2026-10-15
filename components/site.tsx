@@ -91,35 +91,6 @@ export function PublicShell({ children }: { children: ReactNode }) {
     </>
   );
 }
-export function SectionTitle({
-  eyebrow,
-  title,
-  description,
-  href,
-  link = "Lihat semua",
-}: {
-  eyebrow: string;
-  title: string;
-  description?: string;
-  href?: string;
-  link?: string;
-}) {
-  return (
-    <div className="section-heading">
-      <div>
-        <div className="eyebrow">{eyebrow}</div>
-        <h2>{title}</h2>
-        {description && <p>{description}</p>}
-      </div>
-      {href && (
-        <Link className="text-link" href={href}>
-          {link}
-          <ArrowRight size={17} />
-        </Link>
-      )}
-    </div>
-  );
-}
 export function ServiceCard({
   service,
 }: {
