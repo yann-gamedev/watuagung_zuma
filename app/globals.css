@@ -1,27 +1,60 @@
 @import "tailwindcss";
 @theme inline {
-  --color-primary: #184d3b;
-  --font-sans: Arial, Helvetica, sans-serif;
+  --color-primary: var(--leaf);
+  --color-forest: var(--forest);
+  --color-forest-deep: var(--forest-deep);
+  --color-leaf: var(--leaf);
+  --color-olive: var(--olive);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-earth: var(--earth);
+  --color-cream: var(--cream);
+  --color-sand: var(--sand);
+  --color-sage: var(--sage);
+  --color-white: var(--white);
+  --color-ink: var(--ink);
+  /* --color-muted dipakai komponen shadcn (bg-muted); jangan ditimpa. */
+  --color-muted-text: var(--muted);
+  --color-line: var(--line);
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
 }
 :root {
-  --green: #184d3b;
-  --deep: #103b2e;
-  --gold: #efc97e;
-  --ink: #23382e;
-  --muted: #65716b;
-  --line: #e0e7e1;
-  --soft: #f4f7f3;
+  /* Token warna — DESIGN.md bagian 2 */
+  --forest: #17361a;
+  --forest-deep: #10260f;
+  --leaf: #2f5a27;
+  --olive: #6b7a3a;
+  --gold: #e3b04b;
+  --gold-soft: #f1d58e;
+  --earth: #8a5a1e;
+  --cream: #faf6ec;
+  --sand: #fbf1db;
+  --sage: #f3f6ee;
+  --white: #ffffff;
+  --ink: #1b2619;
+  --muted: #4e5a4b;
+  --line: #e3dccb;
+
+  /* Alias lama — dipertahankan agar CSS yang ada tetap jalan */
+  --green: var(--leaf);
+  --deep: var(--forest);
+  --soft: var(--sage);
 }
 * {
   box-sizing: border-box;
 }
 body {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-jakarta), system-ui, sans-serif;
   color: var(--ink);
-  background: #fff;
-  font-size: 16px;
-  line-height: 1.65;
+  background: var(--cream);
+  font-size: 18px;
+  line-height: 1.6;
+}
+@media (max-width: 900px) {
+  body {
+    font-size: 17px;
+  }
 }
 a {
   color: inherit;
@@ -276,7 +309,7 @@ p {
   font-weight: 700;
 }
 .hero h1 em {
-  font-family: Georgia, serif;
+  font-family: inherit;
   font-weight: 400;
   color: var(--gold);
 }
@@ -564,7 +597,7 @@ p {
   max-width: 120px;
 }
 .news-number {
-  font-family: Georgia, serif;
+  font-family: inherit;
   font-size: 85px;
   line-height: 1;
   opacity: 0.25;
