@@ -15,6 +15,7 @@
   --color-ink: var(--ink);
   /* --color-muted dipakai komponen shadcn (bg-muted); jangan ditimpa. */
   --color-muted-text: var(--muted);
+  --color-on-dark-muted: var(--on-dark-muted);
   --color-line: var(--line);
   --font-sans: var(--font-jakarta), system-ui, sans-serif;
 }
@@ -33,6 +34,7 @@
   --white: #ffffff;
   --ink: #1b2619;
   --muted: #4e5a4b;
+  --on-dark-muted: #b9c4ae;
   --line: #e3dccb;
 
   /* Alias lama — dipertahankan agar CSS yang ada tetap jalan */
@@ -1145,53 +1147,110 @@ p {
   margin-top: 12px;
   font-size: 14px;
 }
-footer {
-  background: #113629;
-  color: #d2dfd5;
-  padding-top: 55px;
+.site-footer {
+  background: var(--forest-deep);
+  color: var(--cream);
+  padding-top: 48px;
+}
+.site-footer a:focus-visible {
+  outline-color: var(--gold);
+}
+.site-footer a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 .footer-grid {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr 1.2fr;
-  gap: 50px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 32px;
 }
-.footer-grid .brand {
-  color: white;
+.footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
   font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
 }
-.footer-grid p {
-  color: #aebfb2;
-  font-size: 13px;
-  margin: 18px 0;
+.footer-brand img {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
 }
-.footer-grid small {
-  font-size: 11px;
-  color: #aebfb2;
+.footer-brand small {
   display: block;
-  max-width: 260px;
+  color: var(--on-dark-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
 }
-.footer-grid h3 {
-  color: white;
+.footer-contact {
+  color: var(--on-dark-muted);
+  font-size: 16px;
+  line-height: 1.55;
+  margin-top: 24px;
+  max-width: 36rem;
+}
+.footer-links h3 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+}
+.footer-links > a {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: fit-content;
+  min-width: 48px;
+  min-height: 48px;
+  padding-block: 8px;
+  font-size: 16px;
+  line-height: 1.55;
+}
+.footer-badge {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: var(--sand);
+  color: var(--earth);
   font-size: 14px;
-  margin-bottom: 19px;
-}
-.footer-grid > div > a:not(.brand) {
-  display: block;
-  font-size: 13px;
-  margin: 9px 0;
+  font-weight: 700;
+  white-space: nowrap;
 }
 .footer-bottom {
-  border-top: 1px solid #ffffff20;
-  margin-top: 36px;
-  padding-block: 20px;
+  border-top: 1px solid var(--on-dark-muted);
+  margin-top: 48px;
+  padding-block: 24px;
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  font-size: 11px;
-  color: #aebfb2;
+  gap: 16px 32px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--on-dark-muted);
 }
 .footer-bottom a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
   text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.footer-disclaimer {
+  flex-basis: 100%;
+  color: inherit;
+}
+@media (min-width: 521px) {
+  .footer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 901px) {
+  .footer-grid {
+    grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+  }
 }
 .page-heading {
   background: #f1f5ef;
@@ -1762,10 +1821,6 @@ td {
   .about-mark {
     right: 15px;
   }
-  .footer-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-  }
   .form-layout {
     grid-template-columns: 1fr;
   }
@@ -1961,17 +2016,6 @@ td {
   }
   .cta-section h2 {
     font-size: 27px;
-  }
-  .footer-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 32px 20px;
-  }
-  .footer-grid > div:first-child {
-    grid-column: 1/-1;
-  }
-  .footer-bottom {
-    flex-direction: column;
-    gap: 10px;
   }
   .fields {
     grid-template-columns: 1fr;
