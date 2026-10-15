@@ -2,18 +2,8 @@ import { Hero } from "@/components/hero";
 import { TaskPanel } from "@/components/task-panel";
 import { ServiceList } from "@/components/service-list";
 import Link from "next/link";
-import {
-  ArrowRight,
-  ShieldCheck,
-  MapPin,
-  Sprout,
-  ChevronRight,
-} from "lucide-react";
-import {
-  PublicShell,
-  SectionTitle,
-  NewsCard,
-} from "@/components/site";
+import { ArrowRight } from "lucide-react";
+import { PublicShell } from "@/components/site";
 import { news } from "@/lib/data";
 export default function Home() {
   return (
@@ -50,180 +40,93 @@ export default function Home() {
           ))}
         </ol>
       </section>
-      <section className="about-section">
-        <div className="container about-grid">
-          <div className="about-visual">
-            <div className="about-photo" />
-            <span className="photo-label">
-              ALAM YANG TERJAGA, WARGA YANG BERDAYA
-            </span>
-            <div className="about-mark">
-              <Sprout size={28} />
-              <span>
-                Tumbuh bersama,
-                <br />
-                <strong>maju bersama.</strong>
-              </span>
-            </div>
+      <section className="home-profile home-bottom" aria-labelledby="profile-title">
+        <div className="container home-bottom-container home-profile-grid">
+          <div className="home-profile-photo">
+            [FOTO KEPALA DESA / BALAI DESA]
           </div>
           <div>
-            <div className="eyebrow">TENTANG WATUAGUNG</div>
-            <h2>
-              Berakar pada tradisi.
-              <br />
-              Bertumbuh untuk masa depan.
-            </h2>
-            <p>
-              Di Watuagung, kebersamaan adalah kekuatan. Semangat gotong royong
-              menghubungkan warga, menjaga alam, dan menggerakkan pembangunan
-              desa.
+            <div className="home-bottom-label">PROFIL DESA</div>
+            <h2 id="profile-title">Mengenal Desa Watuagung</h2>
+            <p className="home-profile-summary">
+              [RINGKASAN PROFIL DESA — 2–3 kalimat dari dokumen resmi desa]
             </p>
-            <p>
-              Kami menghadirkan pelayanan yang lebih dekat dan informasi yang
-              lebih terbuka, agar setiap warga dapat ikut mengambil bagian.
-            </p>
-            <Link href="/profil" className="text-link">
-              Kenali desa kami <ArrowRight size={18} />
-            </Link>
-          </div>
-        </div>
-      </section>
-      <section className="section container">
-        <SectionTitle
-          eyebrow="KABAR WATUAGUNG"
-          title="Cerita dan kabar dari desa."
-          description="Ikuti kegiatan, perkembangan, dan cerita kebersamaan warga."
-          href="/berita"
-          link="Semua berita"
-        />
-        <div className="news-grid">
-          {news.map((n, i) => (
-            <NewsCard key={n.slug} item={n} index={i} />
-          ))}
-        </div>
-        <p className="data-note">Berita contoh untuk pratinjau website.</p>
-      </section>
-      <section className="potential-section">
-        <div className="container potential-grid">
-          <div>
-            <div className="eyebrow light">POTENSI DESA</div>
-            <h2>
-              Kekayaan desa.
-              <br />
-              Kebanggaan bersama.
-            </h2>
-            <p>
-              Dari hasil bumi hingga karya tangan warga, temukan potensi yang
-              tumbuh di Watuagung.
-            </p>
-            <Link className="btn btn-gold" href="/potensi">
-              Jelajahi potensi desa <ArrowRight size={17} />
-            </Link>
-          </div>
-          <div className="potential-list">
-            {[
-              ["01", "Pertanian", "Mengolah tanah, menjaga keberlanjutan."],
-              ["02", "UMKM Lokal", "Karya warga, penggerak ekonomi desa."],
-              [
-                "03",
-                "Alam & Budaya",
-                "Merawat warisan untuk generasi mendatang.",
-              ],
-            ].map(([n, t, d]) => (
-              <Link href="/potensi" key={n}>
-                <span>{n}</span>
-                <div>
-                  <h3>{t}</h3>
-                  <p>{d}</p>
-                </div>
-                <ArrowRight size={20} />
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-      <section className="section container civic-grid">
-        <div>
-          <SectionTitle
-            eyebrow="AGENDA DESA"
-            title="Mari ambil bagian."
-            href="/agenda"
-            link="Semua agenda"
-          />
-          {[
-            ["20", "SEP", "Kerja bakti lingkungan", "07.00 WIB · Balai desa"],
-            ["24", "SEP", "Pelatihan UMKM desa", "09.00 WIB · Balai desa"],
-            ["28", "SEP", "Musyawarah warga", "19.30 WIB · Balai desa"],
-          ].map(([d, m, t, s]) => (
-            <Link className="agenda-row" href="/agenda" key={d}>
-              <div className="date-box">
-                <strong>{d}</strong>
-                <span>{m}</span>
+            <dl className="home-profile-stats">
+              <div>
+                <dt>Penduduk</dt>
+                <dd>[JML]</dd>
               </div>
               <div>
-                <h3>{t}</h3>
-                <p>{s}</p>
+                <dt>Dusun</dt>
+                <dd>[JML]</dd>
               </div>
-              <ChevronRight size={20} />
+              <div>
+                <dt>Luas wilayah</dt>
+                <dd>[LUAS]</dd>
+              </div>
+            </dl>
+            <div className="home-profile-actions">
+              <Link href="/visi-misi" className="home-bottom-button home-bottom-gold">
+                Visi &amp; Misi
+              </Link>
+              <Link href="/struktur-pemerintahan" className="home-bottom-button home-bottom-outline">
+                Perangkat Desa
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section className="container home-bottom-container home-bottom home-news" aria-labelledby="news-title">
+        <div className="home-news-heading">
+          <h2 id="news-title">Kabar desa</h2>
+          <Link href="/berita" className="home-bottom-link">
+            Semua berita <ArrowRight size={22} aria-hidden="true" />
+          </Link>
+        </div>
+        <div className="home-news-grid">
+          {news.map((item) => (
+            <Link className="home-news-card" href={"/berita/" + item.slug} key={item.slug}>
+              <div className="home-news-photo">[FOTO KEGIATAN]</div>
+              <div className="home-news-body">
+                <p className="home-news-meta">{item.category} · {item.date}</p>
+                <h3>{item.title}</h3>
+              </div>
             </Link>
           ))}
-          <p className="data-note">Jadwal kegiatan contoh.</p>
         </div>
-        <div className="transparency-card">
-          <span className="icon-box">
-            <ShieldCheck />
-          </span>
-          <div className="eyebrow">TRANSPARANSI DESA</div>
-          <h2>
-            Terbuka dalam anggaran.
-            <br />
-            Bersama dalam pembangunan.
-          </h2>
-          <p>
-            Kenali arah pembangunan dan penggunaan anggaran desa melalui
-            informasi publik yang mudah dipahami.
-          </p>
-          <Link href="/transparansi" className="text-link">
-            Lihat informasi anggaran <ArrowRight size={18} />
-          </Link>
-          <div className="budget-bars">
-            <span style={{ width: "40%" }} />
-            <span style={{ width: "25%" }} />
-            <span style={{ width: "20%" }} />
-            <span style={{ width: "15%" }} />
-          </div>
-          <small>Ilustrasi alokasi anggaran desa</small>
-        </div>
+        <p className="home-news-note">Berita contoh untuk pratinjau website.</p>
       </section>
-      <section className="location-section">
-        <div className="container location-grid">
+      <section className="container home-bottom-container home-bottom home-economy" aria-label="BUMDes dan UMKM">
+        <article className="home-economy-card home-bumdes">
+          <div className="home-bottom-label">EKONOMI DESA</div>
+          <h2>BUMDes [NAMA BUMDES]</h2>
+          <p>[RINGKASAN BUMDES DAN UNIT USAHA — dari dokumen resmi desa]</p>
+          <Link href="/bumdes" className="home-bottom-link">
+            Lihat unit usaha <ArrowRight size={22} aria-hidden="true" />
+          </Link>
+        </article>
+        <article className="home-economy-card home-umkm">
+          <div className="home-bottom-label">PRODUK WARGA</div>
+          <h2>UMKM Watuagung</h2>
+          <p>Daftar produk warga sedang disiapkan.</p>
+          <span className="home-bottom-badge">Segera hadir</span>
+          <Link href="/potensi" className="home-bottom-link">
+            Lihat potensi desa <ArrowRight size={22} aria-hidden="true" />
+          </Link>
+        </article>
+      </section>
+      <section className="container home-bottom-container home-bottom home-contact" aria-labelledby="contact-title">
+        <div className="home-contact-card">
           <div>
-            <div className="eyebrow">LOKASI KANTOR DESA</div>
-            <h2>Selalu dekat dengan warga.</h2>
-            <p>
-              Kantor Desa Watuagung menjadi pusat informasi dan pelayanan
-              masyarakat.
-            </p>
-            <Link className="text-link" href="/kontak">
-              Informasi kontak & jam pelayanan <ArrowRight size={18} />
+            <h2 id="contact-title">Kantor Desa Watuagung</h2>
+            <p>[ALAMAT LENGKAP KANTOR DESA]</p>
+            <p>Buka [HARI &amp; JAM LAYANAN]</p>
+            <Link href="/kontak" className="home-bottom-button">
+              Lihat Kontak Kantor
             </Link>
           </div>
-          <div className="location-placeholder">
-            <MapPin size={34} />
-            <strong>Kantor Desa Watuagung</strong>
-            <span>Alamat dan titik peta menunggu verifikasi desa.</span>
-          </div>
+          <div className="home-contact-map">[PETA LOKASI KANTOR DESA]</div>
         </div>
-      </section>
-      <section className="container cta-section">
-        <div>
-          <div className="eyebrow">PELAYANAN DALAM GENGGAMAN</div>
-          <h2>Langkah kecil, pelayanan lebih dekat.</h2>
-          <p>Mulai pengajuan administrasi Anda melalui layanan digital desa.</p>
-        </div>
-        <Link className="btn" href="/pelayanan">
-          Ajukan Layanan <ArrowRight size={18} />
-        </Link>
       </section>
     </PublicShell>
   );
