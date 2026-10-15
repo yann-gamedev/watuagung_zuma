@@ -1,14 +1,10 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
   ArrowRight,
-  Menu,
-  X,
   Clock3,
-  FileText,
-  ChevronDown,
   Building2,
   House,
   HeartHandshake,
@@ -16,89 +12,7 @@ import {
 } from "lucide-react";
 import { services, news } from "@/lib/data";
 import type { Status } from "@/types/pelayanan";
-export function Navbar() {
-  const [open, setOpen] = useState(false);
-  const path = usePathname();
-  return (
-    <>
-      <a href="#main" className="skip">
-        Lewati ke konten
-      </a>
-      <div className="topbar">
-        <div className="container">
-          <span>Portal Informasi & Pelayanan Desa Watuagung</span>
-          <span>Gotong royong untuk desa yang lebih baik</span>
-        </div>
-      </div>
-      <header className="header">
-        <div className="container nav">
-          <Link className="brand" href="/" onClick={() => setOpen(false)}>
-            <span>
-              WATUAGUNG<small>PEMERINTAH DESA</small>
-            </span>
-          </Link>
-          <button
-            className="menu-toggle"
-            aria-label={open ? "Tutup navigasi" : "Buka navigasi"}
-            aria-expanded={open}
-            onClick={() => setOpen(!open)}
-          >
-            {open ? <X /> : <Menu />}
-          </button>
-          <nav
-            className={open ? "navlinks open" : "navlinks"}
-            aria-label="Navigasi utama"
-          >
-            <Link
-              className={path === "/" ? "active" : ""}
-              href="/"
-              onClick={() => setOpen(false)}
-            >
-              Beranda
-            </Link>
-            <details name="main-navigation-dropdown">
-              <summary>
-                Profil Desa <ChevronDown size={14} />
-              </summary>
-              <div className="dropdown">
-                {[
-                  ["Profil Desa", "profil"],
-                  ["Sejarah Desa", "sejarah"],
-                  ["Visi dan Misi", "visi-misi"],
-                  ["Struktur Pemerintahan", "struktur-pemerintahan"],
-                ].map(([label, slug]) => (
-                  <Link
-                    onClick={() => setOpen(false)}
-                    key={slug}
-                    href={"/" + slug}
-                  >
-                    {label}
-                  </Link>
-                ))}
-              </div>
-            </details>
-            <Link id="nav-bumdes" href="/bumdes" aria-current={path.replace(/\/$/, "") === "/bumdes" ? "page" : undefined} onClick={() => setOpen(false)}>
-              BUMDES
-            </Link>
-            <Link href="/transparansi" onClick={() => setOpen(false)}>
-              Transparansi
-            </Link>
-            <Link href="/kontak" onClick={() => setOpen(false)}>
-              Kontak
-            </Link>
-            <Link
-              className="btn btn-small"
-              href="/pelayanan"
-              onClick={() => setOpen(false)}
-            >
-              <FileText size={16} /> Pelayanan Desa
-            </Link>
-          </nav>
-        </div>
-      </header>
-    </>
-  );
-}
+import { SiteHeader, normalizePath } from "@/components/site-header";
 export function Footer() {
   return (
     <footer>
@@ -162,10 +76,14 @@ export function Footer() {
   );
 }
 export function PublicShell({ children }: { children: ReactNode }) {
+  const isHome = normalizePath(usePathname()) === "/";
   return (
     <>
-      <Navbar />
-      <main id="main">{children}</main>
+      <SiteHeader />
+      {/* Beranda: ruang header diberikan oleh .hero; halaman lain 72px. */}
+      <main id="main" className={isHome ? undefined : "main-offset"}>
+        {children}
+      </main>
       <Footer />
     </>
   );
