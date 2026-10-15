@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -15,53 +16,52 @@ import type { Status } from "@/types/pelayanan";
 import { SiteHeader, normalizePath } from "@/components/site-header";
 export function Footer() {
   return (
-    <footer>
+    <footer className="site-footer">
       <div className="container footer-grid">
         <div>
-          <Link className="brand" href="/">
+          <Link className="footer-brand" href="/">
+            <Image
+              src="/brand/logo-watuagung-128.png"
+              width={64}
+              height={64}
+              alt=""
+            />
             <span>
               WATUAGUNG<small>PEMERINTAH DESA</small>
             </span>
           </Link>
-          <p>
-            Bersama membangun desa.
-            <br />
-            Lebih dekat melayani warga.
+          <p className="footer-contact">
+            [ALAMAT KANTOR] · [TELEPON/WA] · [EMAIL]
           </p>
-          <small>
-            Prototipe website • Seluruh konten dan data adalah contoh.
-          </small>
         </div>
-        <div>
-          <h3>Jelajahi Desa</h3>
+        <nav className="footer-links" aria-label="Layanan di footer">
+          <h3>Layanan</h3>
+          <Link href="/pelayanan">Ajukan Surat</Link>
+          <Link href="/pelayanan/status">Cek Status Surat</Link>
+          <Link href="/kontak">
+            Pengaduan <span className="footer-badge">Segera hadir</span>
+          </Link>
+        </nav>
+        <nav className="footer-links" aria-label="Profil di footer">
+          <h3>Profil</h3>
           <Link href="/profil">Profil Desa</Link>
-          <Link href="/potensi">Potensi Desa</Link>
-          <Link href="/berita">Berita Desa</Link>
-          <Link href="/agenda">Agenda Desa</Link>
-        </div>
-        <div>
-          <h3>Informasi Publik</h3>
-          <Link href="/pengumuman">Pengumuman</Link>
-          <Link href="/statistik">Statistik Desa</Link>
+          <Link href="/visi-misi">Visi &amp; Misi</Link>
+          <Link href="/struktur-pemerintahan">Perangkat Desa</Link>
           <Link href="/transparansi">Transparansi</Link>
-          <Link href="/kontak">Kontak Desa</Link>
-        </div>
-        <div>
-          <h3>Pelayanan Warga</h3>
-          <Link href="/pelayanan">Ajukan Layanan</Link>
-          <Link href="/pelayanan/status">Cek Status Permohonan</Link>
-          <Link href="/admin">Prototipe Admin</Link>
-          <p>
-            Senin–Jumat
-            <br />
-            Jam pelayanan masih berupa contoh.
-          </p>
-        </div>
+        </nav>
+        <nav className="footer-links" aria-label="Info di footer">
+          <h3>Info</h3>
+          <Link href="/bumdes">BUMDes</Link>
+          <Link href="/berita">Berita</Link>
+          <Link href="/agenda">Agenda</Link>
+          <Link href="/pengumuman">Pengumuman</Link>
+          <Link href="/statistik">Statistik</Link>
+        </nav>
       </div>
       <div className="container footer-bottom">
         <span>© 2026 Pemerintah Desa Watuagung</span>
         <span>
-          Foto:{" "}
+          Foto hero:{" "}
           <a href="https://commons.wikimedia.org/wiki/File:Rice_terraces_in_Java_-_Indonesia.jpg">
             Thomas Fuhrmann
           </a>{" "}
@@ -71,6 +71,9 @@ export function Footer() {
           </a>{" "}
           · dipotong
         </span>
+        <p className="footer-disclaimer">
+          Konten masih contoh, menunggu verifikasi desa.
+        </p>
       </div>
     </footer>
   );
