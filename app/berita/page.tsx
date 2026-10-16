@@ -1,5 +1,6 @@
 import { news } from "@/lib/data";
 import { PublicShell, PageHeading, NewsCard } from "@/components/site";
+import { Newspaper } from "lucide-react";
 export const metadata = { title: "Berita Desa" };
 export default function Page() {
   return (
@@ -8,10 +9,22 @@ export default function Page() {
         eyebrow="KABAR WATUAGUNG"
         title="Berita Desa"
         intro="Cerita kegiatan, pembangunan, dan kebersamaan warga."
+        visual={
+          <div className="news-heading-illustration">
+            <span className="news-heading-icon"><Newspaper size={54} strokeWidth={1.35} /></span>
+            <span className="news-heading-label">KABAR &amp; CERITA</span>
+            <span className="news-heading-dot" />
+          </div>
+        }
       />
       <section className="section container">
-        <div className="notice">
-          Seluruh berita pada prototipe adalah contoh.
+        <div className="news-intro-row">
+          <p className="news-intro-copy">Ikuti kabar kegiatan warga, perkembangan desa, layanan, dan inisiatif ekonomi lokal.</p>
+          <span className="news-count">{news.length} cerita contoh</span>
+        </div>
+        <div className="notice news-sample-notice">
+          <strong>Konten contoh</strong>
+          <span>Seluruh berita di halaman ini adalah materi ilustrasi untuk pratinjau desain, bukan informasi resmi yang telah diverifikasi.</span>
         </div>
         <div className="news-grid">
           {news.map((n, i) => (

@@ -152,21 +152,13 @@ export function NewsCard({
 }) {
   return (
     <Link className="news-card" href={"/berita/" + item.slug}>
-      <div className={"news-art art-" + index}>
-        <span>
-          {index === 0
-            ? "WARGA & LINGKUNGAN"
-            : index === 1
-              ? "KARYA DARI DESA"
-              : "RUANG ASPIRASI"}
-        </span>
-        <span className="news-number">0{index + 1}</span>
-      </div>
+      <div className={"news-art art-" + (index % 3)} aria-hidden="true" />
       <div className="news-body">
         <div className="news-meta">
           {item.category} <span>{item.date}</span>
         </div>
         <h3>{item.title}</h3>
+        <p className="news-summary">{item.summary}</p>
         <span className="text-link">
           Baca selengkapnya <ArrowRight size={16} />
         </span>
@@ -194,10 +186,14 @@ export function PageHeading({
   eyebrow,
   title,
   intro,
+  visual,
+  parent,
 }: {
   eyebrow: string;
   title: string;
   intro: string;
+  visual?: ReactNode;
+  parent?: { label: string; href: string };
 }) {
   return (
     <div className="page-heading">
@@ -205,11 +201,22 @@ export function PageHeading({
         <div className="breadcrumb">
           <Link href="/">Beranda</Link>
           <span>/</span>
+          {parent && (
+            <>
+              <Link href={parent.href}>{parent.label}</Link>
+              <span>/</span>
+            </>
+          )}
           <span>{title}</span>
         </div>
-        <div className="eyebrow">{eyebrow}</div>
-        <h1>{title}</h1>
-        <p>{intro}</p>
+        <div className={visual ? "page-heading-layout has-visual" : "page-heading-layout"}>
+          <div className="page-heading-copy">
+            <div className="eyebrow">{eyebrow}</div>
+            <h1>{title}</h1>
+            <p>{intro}</p>
+          </div>
+          {visual && <div className="page-heading-visual" aria-hidden="true">{visual}</div>}
+        </div>
       </div>
     </div>
   );
