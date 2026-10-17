@@ -9,7 +9,7 @@ export default function Page() {
         title="Statistik Desa"
         intro="Mengenal desa melalui data kependudukan dan kegiatan ekonomi."
       />
-      <section className="section container">
+      <section className="section container info-page statistics-page">
         <div className="notice">
           Semua angka adalah data contoh, bukan statistik resmi desa.
         </div>

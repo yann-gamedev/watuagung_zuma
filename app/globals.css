@@ -1860,6 +1860,105 @@ p {
 .info-mission-list p {
   margin-top: 12px;
 }
+/* BUMDes: memakai pola .info-page; tata letak dua kolom khusus halaman. */
+.bumdes-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.bumdes-article,
+.bumdes-contact {
+  min-width: 0;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--white);
+  overflow-wrap: anywhere;
+}
+.bumdes-contact {
+  background: var(--sage);
+}
+.bumdes-page .notice {
+  max-width: none;
+}
+.bumdes-page p + p,
+.bumdes-page p + h2 {
+  margin-top: 16px;
+}
+.bumdes-article p + h2 {
+  margin-top: 32px;
+}
+/* Statistik: angka 32px, label 16px, warna dari token. */
+.statistics-page .stats-grid {
+  gap: 24px 0;
+  padding: 28px 8px;
+  border-radius: 14px;
+  background: var(--white);
+  box-shadow: none;
+}
+.statistics-page .statistic {
+  gap: 16px;
+  padding-inline: 12px;
+}
+.statistics-page .stat-icon {
+  padding: 12px;
+  background: var(--sage);
+  color: var(--leaf);
+}
+.statistics-page .stat-icon svg {
+  width: 24px;
+  height: 24px;
+}
+.statistics-page .statistic strong {
+  color: var(--ink);
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.statistics-page .statistic div > span {
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.55;
+}
+.statistics-page .bar-row div:first-child {
+  gap: 16px;
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.55;
+}
+.statistics-page .bar-track {
+  height: 12px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: var(--sage);
+}
+.statistics-page .bar-track span {
+  background: var(--leaf);
+}
+@media (max-width: 850px) {
+  .bumdes-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .bumdes-article,
+  .bumdes-contact {
+    padding: 20px;
+  }
+  .statistics-page .stats-grid {
+    padding: 20px 0;
+  }
+  .statistics-page .statistic {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 8px;
+    padding-inline: 16px;
+  }
+}
 .form-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
