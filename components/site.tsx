@@ -3,15 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import {
-  ArrowRight,
-  Clock3,
-  Building2,
-  House,
-  HeartHandshake,
-  ContactRound,
-} from "lucide-react";
-import { services, news } from "@/lib/data";
+import { ArrowRight } from "lucide-react";
+import { news } from "@/lib/data";
 import type { Status } from "@/types/pelayanan";
 import { SiteHeader, normalizePath } from "@/components/site-header";
 export function Footer() {
@@ -89,39 +82,6 @@ export function PublicShell({ children }: { children: ReactNode }) {
       </main>
       <Footer />
     </>
-  );
-}
-export function ServiceCard({
-  service,
-}: {
-  service: (typeof services)[number];
-}) {
-  const Icon = { Building2, House, HeartHandshake, ContactRound }[service.icon];
-  return (
-    <article className="service-card">
-      <span className="icon-box">
-        <Icon size={25} />
-      </span>
-      <h3>{service.title}</h3>
-      <p>{service.description}</p>
-      <div className="requirements">
-        <strong>Persyaratan</strong>
-        <ul>
-          {service.requirements.map((x) => (
-            <li key={x}>{x}</li>
-          ))}
-        </ul>
-      </div>
-      <div className="service-bottom">
-        <span>
-          <Clock3 size={14} />
-          {service.time}
-        </span>
-        <Link href={"/pelayanan/" + service.slug}>
-          Ajukan <ArrowRight size={16} />
-        </Link>
-      </div>
-    </article>
   );
 }
 export function StatisticCard({

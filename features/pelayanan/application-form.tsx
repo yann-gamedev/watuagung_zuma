@@ -4,7 +4,7 @@ import { dummyResidents, findDummyResident } from "@/lib/dummy-residents";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { Send, LoaderCircle } from "lucide-react";
+import { Send, LoaderCircle, CircleAlert } from "lucide-react";
 import { FormField } from "@/components/form-field";
 import { submissionSchema, type SubmissionValues } from "@/lib/validation";
 import { pelayananService, isDemo } from "@/services/pelayanan";
@@ -83,7 +83,7 @@ export function ApplicationForm({ code }: { code: ServiceCode }) {
     }
   }
   return (
-    <div className="form-layout">
+    <div className="form-layout application-form">
       <div>
         <div className="notice">
           {isDemo
@@ -97,9 +97,9 @@ export function ApplicationForm({ code }: { code: ServiceCode }) {
           aria-busy={isSubmitting}
         >
           <h2>Formulir permohonan</h2>
-          <p className="mt-2 text-sm">Semua kolom bertanda * wajib diisi.</p>
+          <p className="mt-2 form-help">Semua kolom bertanda * wajib diisi.</p>
           {!isDemo && <div className="notice mt-4">
-            <label htmlFor="dummy-preview" className="flex items-center gap-3" style={{ minHeight: 44 }}>
+            <label htmlFor="dummy-preview" className="dummy-preview-toggle">
               <input id="dummy-preview" type="checkbox" checked={dummyPreview} disabled={isSubmitting}
                 onChange={(event) => {
                   setDummyPreview(event.target.checked);
@@ -110,25 +110,25 @@ export function ApplicationForm({ code }: { code: ServiceCode }) {
                 }} />
               Coba autofill dummy (tanpa mengirim ke server)
             </label>
-            <p className="text-sm mt-2">Mengubah pilihan ini mengosongkan NIK, nama, tempat lahir, dan tanggal lahir. Saat aktif, pengiriman permohonan dinonaktifkan.</p>
+            <p className="form-help mt-2">Mengubah pilihan ini mengosongkan NIK, nama, tempat lahir, dan tanggal lahir. Saat aktif, pengiriman permohonan dinonaktifkan.</p>
           </div>}
           <fieldset disabled={isSubmitting}>
-            <legend>01 · Identitas pemohon</legend>
+            <legend>Data diri</legend>
             <div className="fields">
               <FormField name="nik" label="NIK" wide register={register} errors={errors}
                 onValueChange={dummyPreview ? autofill : undefined}
                 hint={dummyPreview ? "Gunakan NIK dummy di bawah. Mengganti NIK akan menghapus identitas hasil autofill sebelumnya, termasuk perubahan Anda pada ketiga kolom tersebut." : "Masukkan 16 digit NIK. Untuk mencoba pengisian otomatis, aktifkan pilihan Coba autofill dummy di atas."} />
               {dummyPreview && <div className="field wide">
                 <details>
-                  <summary className="text-link" style={{ minHeight: 44, cursor: "pointer" }}>Lihat 3 contoh NIK dummy</summary>
+                  <summary className="text-link dummy-examples-toggle">Lihat 3 contoh NIK dummy</summary>
                   <ul className="mt-2 space-y-2">
                     {dummyResidents.map((resident) => <li key={resident.nik}>
                       <code>{resident.nik}</code> — {resident.nama}, {resident.tempat_lahir}, {resident.tanggal_lahir}
                     </li>)}
                   </ul>
-                  <p className="text-sm mt-2">Seluruh identitas ini fiktif, bukan data Dukcapil. Kolom lainnya tetap diisi manual.</p>
+                  <p className="form-help mt-2">Seluruh identitas ini fiktif, bukan data Dukcapil. Kolom lainnya tetap diisi manual.</p>
                 </details>
-                <p id="nik-autofill-status" role="status" aria-live="polite" className="text-sm mt-2">{autofillMessage}</p>
+                <p id="nik-autofill-status" role="status" aria-live="polite" className="form-help mt-2">{autofillMessage}</p>
               </div>}
               {field("nama", "Nama lengkap", "text", true)}
               {field("no_kk", "Nomor KK")}
@@ -142,6 +142,11 @@ export function ApplicationForm({ code }: { code: ServiceCode }) {
                 options={["Laki-laki", "Perempuan"]}
               />
               {field("telepon", "Nomor telepon", "tel")}
+            </div>
+          </fieldset>
+          <fieldset disabled={isSubmitting}>
+            <legend>Alamat</legend>
+            <div className="fields">
               {field("alamat", "Alamat lengkap", "textarea", true)}
               {field("rt", "RT")}
               {field("rw", "RW")}
@@ -149,7 +154,7 @@ export function ApplicationForm({ code }: { code: ServiceCode }) {
           </fieldset>
           {code === "SKU" && (
             <fieldset disabled={isSubmitting}>
-              <legend>02 · Informasi usaha</legend>
+              <legend>Informasi usaha</legend>
               <div className="fields">
                 {field("nama_usaha", "Nama usaha")}
                 {field("jenis_usaha", "Jenis usaha")}
@@ -158,14 +163,15 @@ export function ApplicationForm({ code }: { code: ServiceCode }) {
             </fieldset>
           )}
           <fieldset disabled={isSubmitting}>
-            <legend>{code === "SKU" ? "03" : "02"} · Keperluan surat</legend>
+            <legend>Keperluan</legend>
             <div className="fields">
               {field("keperluan", "Keperluan surat", "textarea", true)}
             </div>
           </fieldset>
           {error && (
             <div className="error-box" role="alert">
-              {error}
+              <CircleAlert size={22} aria-hidden="true" />
+              <span>{error}</span>
             </div>
           )}
           <div className="form-footer">
@@ -173,11 +179,11 @@ export function ApplicationForm({ code }: { code: ServiceCode }) {
               Pastikan data yang Anda isikan sudah benar. Simpan nomor
               permohonan setelah pengajuan berhasil.
             </p>
-            <button className="btn" type="submit" disabled={isSubmitting || (dummyPreview && !isDemo)}>
+            <button className="btn application-submit" type="submit" disabled={isSubmitting || (dummyPreview && !isDemo)}>
               {isSubmitting ? (
-                <LoaderCircle className="spin" size={17} />
+                <LoaderCircle className="spin" size={22} aria-hidden="true" />
               ) : (
-                <Send size={17} />
+                <Send size={22} aria-hidden="true" />
               )}{" "}
               {isSubmitting
                 ? "Mengirim…"
