@@ -146,6 +146,8 @@ p {
 }
 .btn:hover {
   background: #226348;
+  color: #ffffff;
+  border-color: #226348;
 }
 .btn-small {
   padding: 11px 16px;
@@ -1793,29 +1795,41 @@ p {
 }
 .content-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 25px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: stretch;
 }
 .content-card {
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 30px;
+  border-radius: 14px;
+  padding: 28px;
+  background: #fffdf8;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
 }
 .content-card h2 {
   font-size: 23px;
-  margin-bottom: 16px;
+  line-height: 1.4;
+  margin: 10px 0 12px;
+  color: #203b27;
 }
 .content-card p {
   font-size: 15px;
+  line-height: 1.8;
+  color: #5e695e;
+  margin: 0;
 }
 .notice {
-  padding: 16px 20px;
+  padding: 18px 22px;
   background: #fff8e7;
   border: 1px solid #eddeb6;
   color: #72571e;
-  border-radius: 6px;
+  border-radius: 12px;
   font-size: 14px;
-  margin-bottom: 25px;
+  line-height: 1.7;
+  margin-bottom: 28px;
 }
 .form-layout {
   display: grid;
@@ -1959,9 +1973,10 @@ p {
 }
 .button-row {
   display: flex;
-  gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
+  gap: 12px;
+  margin-top: 32px;
 }
 .lookup-form {
   display: flex;
