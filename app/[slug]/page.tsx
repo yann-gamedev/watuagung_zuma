@@ -81,6 +81,7 @@ export default async function Page({
               ["Sejarah Desa", "sejarah"],
               ["Visi dan Misi", "visi-misi"],
               ["Struktur Pemerintahan", "struktur-pemerintahan"],
+              ["Statistik Desa", "statistik"],
             ].map(([title, target]) => (
               <Link className="btn btn-secondary" href={"/" + target} key={target}>
                 {title}
