@@ -1431,25 +1431,6 @@ p {
 .text-link:hover {
   text-decoration: underline;
 }
-.services-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
-}
-.service-card {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 25px 23px 0;
-  display: flex;
-  flex-direction: column;
-  transition:
-    border-color 0.15s,
-    box-shadow 0.15s;
-}
-.service-card:hover {
-  border-color: #aac4b0;
-  box-shadow: 0 6px 20px #123f3008;
-}
 .icon-box {
   width: 49px;
   height: 49px;
@@ -1460,50 +1441,6 @@ p {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-}
-.service-card h3 {
-  margin-top: 23px;
-  min-height: 44px;
-}
-.service-card p {
-  font-size: 14px;
-  margin-top: 12px;
-  line-height: 1.65;
-}
-.requirements {
-  font-size: 12px;
-  margin-top: 19px;
-  color: var(--muted);
-  flex: 1;
-}
-.requirements strong {
-  color: #435649;
-  font-weight: 600;
-}
-.requirements ul {
-  padding-left: 17px;
-  margin: 6px 0 20px;
-}
-.service-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 0;
-  border-top: 1px solid var(--line);
-  font-size: 11px;
-  gap: 6px;
-}
-.service-bottom span,
-.service-bottom a {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.service-bottom a {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--green);
-  padding: 4px 0;
 }
 .status-strip {
   margin-top: 25px;
@@ -1699,8 +1636,8 @@ p {
   }
 }
 .page-heading {
-  background: #f1f5ef;
-  padding: 28px 0 50px;
+  background: var(--sage);
+  padding: 24px 0 32px;
   border-bottom: 1px solid var(--line);
 }
 .page-heading-layout {
@@ -1781,17 +1718,41 @@ p {
 }
 .breadcrumb {
   display: flex;
-  gap: 12px;
-  font-size: 12px;
-  color: #66756a;
-  margin-bottom: 30px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 15px;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+.breadcrumb a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 .page-heading h1 {
-  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 .page-heading p {
-  margin-top: 18px;
-  max-width: 700px;
+  margin-top: 16px;
+  max-width: 36rem;
+  font-size: 18px;
+}
+.page-heading .eyebrow {
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+@media (max-width: 900px) {
+  .page-heading h1 {
+    font-size: 30px;
+  }
+  .page-heading .eyebrow {
+    font-size: 14px;
+  }
 }
 .content-grid {
   display: grid;
@@ -1937,6 +1898,262 @@ p {
 .form-footer p {
   font-size: 12px;
   max-width: 340px;
+}
+/* Pelayanan: varian lengkap dari daftar beranda; logika form tetap. */
+.container.service-page {
+  --form-error: #8e2a1e;
+  width: min(1200px, calc(100% - 32px));
+  padding-block: 48px;
+}
+.service-page :focus-visible {
+  outline: 3px solid var(--leaf);
+  outline-offset: 4px;
+}
+.service-page .notice {
+  padding: 20px;
+  border-color: var(--line);
+  border-radius: 14px;
+  background: var(--sand);
+  color: var(--ink);
+  font-size: 16px;
+  margin-bottom: 24px;
+}
+.service-catalog .home-section-heading h2 {
+  font-size: 26px;
+}
+.service-full-requirements {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 17px;
+}
+.service-full-requirements p {
+  font-weight: 600;
+}
+.service-full-requirements ul,
+.service-preparation ul {
+  list-style: disc;
+  margin: 8px 0 0;
+  padding-left: 24px;
+}
+.service-full-requirements li + li,
+.service-preparation li + li {
+  margin-top: 8px;
+}
+.service-page .status-strip {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-top: 32px;
+  padding: 24px;
+  border-radius: 18px;
+  background: var(--sage);
+}
+.service-page .status-strip strong {
+  font-size: 18px;
+}
+.service-page .status-strip p {
+  margin-top: 8px;
+  font-size: 17px;
+}
+.service-page .status-strip .text-link {
+  min-height: 48px;
+  margin: 0;
+  font-size: 17px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.service-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 32px;
+}
+.service-preparation {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--sage);
+}
+.service-preparation h2 {
+  font-size: 26px;
+  font-weight: 800;
+}
+.service-preparation ul {
+  margin-top: 20px;
+}
+.service-preparation .service-estimate {
+  margin-top: 24px;
+  color: var(--leaf);
+}
+.service-preparation .service-example {
+  margin-top: 16px;
+  font-size: 16px;
+}
+.application-form.form-layout {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+.application-form .form-card {
+  padding: 24px 16px;
+  border-radius: 18px;
+  background: var(--white);
+}
+.application-form .form-card h2 {
+  font-size: 26px;
+  font-weight: 800;
+}
+.application-form .form-card fieldset {
+  min-width: 0;
+  margin-block: 32px;
+}
+.application-form .form-card legend {
+  font-size: 18px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+}
+.application-form .fields {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+.application-form .field {
+  min-width: 0;
+}
+.application-form .field label {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.application-form .field label span {
+  color: var(--form-error);
+}
+.application-form .field input,
+.application-form .field textarea,
+.application-form .field select {
+  min-width: 0;
+  min-height: 52px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  font-size: 18px;
+  scroll-margin-top: 96px;
+}
+.application-form .field textarea {
+  min-height: 128px;
+}
+.application-form .field [aria-invalid="true"] {
+  border-color: var(--form-error);
+}
+.application-form .field-error,
+.application-form .error-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 16px;
+  color: var(--form-error);
+}
+.application-form .field-error svg,
+.application-form .error-box svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.application-form .error-box {
+  padding: 16px;
+  border: 1px solid var(--form-error);
+  border-radius: 14px;
+  background: var(--white);
+}
+.application-form .form-help,
+.application-form .field > p:not(.field-error),
+.application-form .form-footer p {
+  font-size: 16px;
+  line-height: 1.55;
+}
+.application-form .dummy-preview-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.application-form .dummy-examples-toggle {
+  min-height: 48px;
+  font-size: 16px;
+  cursor: pointer;
+}
+.application-form details li {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.application-form .form-footer {
+  flex-direction: column;
+  align-items: stretch;
+  padding-top: 24px;
+  gap: 24px;
+}
+.application-form .application-submit {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 24px;
+  border-radius: 10px;
+  background: var(--leaf);
+  color: var(--white);
+  font-size: 17px;
+  font-weight: 700;
+}
+.application-form .application-submit:hover {
+  border-color: transparent;
+  background: var(--forest);
+}
+.application-form .form-aside {
+  order: initial;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--sage);
+}
+.application-form .form-aside ol {
+  display: block;
+  list-style: decimal;
+  margin: 0;
+  padding-left: 24px;
+}
+.application-form .form-aside li,
+.application-form .form-aside p {
+  font-size: 16px;
+}
+@media (min-width: 601px) {
+  .application-form .fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .application-form .form-card {
+    padding: 32px;
+  }
+  .application-form .application-submit {
+    width: auto;
+    align-self: flex-start;
+  }
+}
+@media (min-width: 901px) {
+  .container.service-page {
+    width: min(1200px, calc(100% - 64px));
+    padding-block: 96px;
+  }
+  .service-catalog .home-section-heading h2 {
+    font-size: 38px;
+  }
+  .service-full-requirements {
+    font-size: 18px;
+  }
+  .service-detail {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+  .service-preparation {
+    position: sticky;
+    top: 96px;
+  }
 }
 .center-card {
   max-width: 730px;
@@ -2283,18 +2500,6 @@ td {
   .container {
     width: calc(100% - 48px);
   }
-  .services-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .service-card h3 {
-    min-height: 0;
-  }
-  .requirements {
-    font-size: 13px;
-  }
-  .service-bottom {
-    font-size: 12px;
-  }
   .admin-sidebar {
     width: 205px;
   }
@@ -2402,29 +2607,6 @@ td {
   .section {
     padding-block: 48px;
   }
-  .services-grid {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-  .service-card {
-    padding: 23px 23px 0;
-  }
-  .service-card h3 {
-    margin-top: 17px;
-    font-size: 19px;
-  }
-  .service-card p {
-    font-size: 15px;
-  }
-  .requirements {
-    font-size: 14px;
-  }
-  .service-bottom {
-    font-size: 13px;
-  }
-  .service-bottom a {
-    font-size: 14px;
-  }
   .status-strip {
     padding: 19px;
     gap: 12px;
@@ -2468,16 +2650,6 @@ td {
   }
   .lookup-form {
     flex-direction: column;
-  }
-  .page-heading {
-    padding-bottom: 33px;
-  }
-  .page-heading p {
-    font-size: 15px;
-  }
-  .breadcrumb {
-    font-size: 11px;
-    flex-wrap: wrap;
   }
   .admin-main {
     padding: 22px 15px;

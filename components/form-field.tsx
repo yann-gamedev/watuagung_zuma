@@ -1,3 +1,4 @@
+import { CircleAlert } from "lucide-react";
 import type { UseFormRegister, FieldErrors } from "react-hook-form";
 import type { SubmissionValues } from "@/lib/validation";
 export function FormField({
@@ -62,7 +63,8 @@ export function FormField({
       {hint && <p id={`${name}-hint`} className="text-sm mt-2">{hint}</p>}
       {error && (
         <p id={`${name}-error`} className="field-error">
-          {error}
+          <CircleAlert size={22} aria-hidden="true" />
+          <span>{error}</span>
         </p>
       )}
     </div>
