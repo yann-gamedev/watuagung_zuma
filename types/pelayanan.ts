@@ -13,9 +13,16 @@ export type StaffLoginRequest = { password: string } & (
   | { username: string; email?: never }
   | { email: string; username?: never }
 );
+export type StaffRole = "staff" | "admin";
 export interface StaffLoginResponse {
   token: string;
-  user: { name: string; role: "staff" | "admin" };
+  user: { name: string; role: StaffRole };
+}
+/** GET /staff/me. Akun lama boleh belum punya username. */
+export interface StaffProfile {
+  name: string;
+  username: string | null;
+  role: StaffRole;
 }
 export interface Submission {
   jenis_surat: ServiceCode;

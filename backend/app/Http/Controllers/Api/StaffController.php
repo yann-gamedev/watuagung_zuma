@@ -26,6 +26,12 @@ class StaffController extends Controller {
         $request->user()->currentAccessToken()->delete();
         return response()->json(['message'=>'Berhasil keluar.']);
     }
+    public function me(Request $request): JsonResponse {
+        $user = $request->user();
+        // Role can change after a token is issued; re-check on every call.
+        if (! in_array($user->role, ['staff', 'admin'], true)) return response()->json(['message'=>'Akses ditolak.'], 403);
+        return response()->json(['name'=>$user->name,'username'=>$user->username,'role'=>$user->role]);
+    }
     public function index(Request $request): JsonResponse {
         $data = $request->validate(['status'=>['sometimes',Rule::in(['SUBMITTED','VERIFIED','PROCESSING','WAITING_APPROVAL','APPROVED','REJECTED','NEED_REVISION'])]]);
         $query = Application::query()->select(['id','request_id','nama','jenis_surat','status','catatan','created_at']);

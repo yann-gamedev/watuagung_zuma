@@ -59,6 +59,7 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | POST | `/applications/status` | Publik, 10 permintaan/menit | Body: `request_id` dan `lookup_secret`; mengembalikan status dan catatan |
 | POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `username` dan `password` (atau `email` untuk klien lama); mengembalikan bearer token |
 | POST | `/staff/logout` | Token petugas | Mencabut token aktif |
+| GET | `/staff/me` | Token petugas | Mengembalikan `{ name, username, role }`; `username` bisa `null` untuk akun lama. Peran selain `staff`/`admin` mendapat 403 |
 | GET | `/staff/applications` | Token petugas | Daftar paginasi; filter opsional `?status=SUBMITTED` |
 | PATCH | `/staff/applications/{request_id}/status` | Token petugas | Mengubah status dengan `status` dan `catatan` opsional |
 
@@ -70,7 +71,9 @@ Alur normal status: `SUBMITTED` → `VERIFIED` → `PROCESSING` → `WAITING_APP
 
 - `lookup_secret` diberikan sekali setelah pengajuan. Warga harus menyimpan kode itu bersama nomor pengajuan; saat ini belum tersedia pemulihan kode.
 - NIK, nomor KK, telepon, dan alamat disimpan terenkripsi memakai `APP_KEY`. Endpoint publik hanya mengembalikan metadata status; daftar petugas tidak menampilkan field sensitif itu.
-- Token petugas di frontend hanya disimpan dalam memori halaman. Refresh atau pindah route meminta login ulang. Jangan simpan token dalam URL atau localStorage.
+- Token petugas berlaku `SANCTUM_EXPIRATION` menit sejak login (bawaan 480 menit = 8 jam kerja; atur di `.env`, lalu `php artisan config:clear` bila konfigurasi di-cache). Token kedaluwarsa atau dicabut menghasilkan 401.
+- Frontend menyimpan token di `sessionStorage` tab dan memvalidasinya lewat `/staff/me`; menutup tab menghapus sesi. Jangan simpan token dalam URL atau localStorage.
+- Token kedaluwarsa dihapus dari database oleh `sanctum:prune-expired --hours=24` yang dijadwalkan harian di `routes/console.php`. Scheduler harus dijalankan: di server tambahkan cron `* * * * * php artisan schedule:run`; secara lokal gunakan `php artisan schedule:work`. Cek jadwal dengan `php artisan schedule:list`.
 - Belum ada PDF, unggah dokumen, OTP, pengelolaan konten, atau otorisasi petugas yang lebih terperinci. Jangan menguji dengan data pribadi nyata.
 
 ## Sebelum produksi

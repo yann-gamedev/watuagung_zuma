@@ -1,15 +1,18 @@
-import { AdminSidebar } from "@/components/admin-sidebar";
-import { apiBase } from "@/services/pelayanan";
+import { AdminSessionProvider } from "@/features/admin/session";
+import { AdminShell } from "@/features/admin/shell";
 export const metadata = {
   title: "Panel Petugas Desa",
   robots: { index: false, follow: false },
 };
+// Layout tetap terpasang saat berpindah route admin, sehingga sesi tidak hilang.
+// Mode demo, pemeriksaan sesi, dan login tampil tanpa sidebar (lihat AdminShell).
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <a className="skip" href="#main">Lewati ke konten</a>
-      {/* Navigasi petugas hanya tampil bila API aktif; demo tidak boleh terlihat operasional. */}
-      <div className="admin-layout">{apiBase && <AdminSidebar />}<main id="main" className="admin-main">{children}</main></div>
+      <AdminSessionProvider>
+        <AdminShell>{children}</AdminShell>
+      </AdminSessionProvider>
     </>
   );
 }

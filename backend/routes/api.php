@@ -7,6 +7,7 @@ Route::post('/v1/applications/status', [ApplicationController::class, 'status'])
 Route::post('/v1/staff/login', [StaffController::class, 'login'])->middleware('throttle:5,1');
 Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/staff')->group(function () {
     Route::post('/logout', [StaffController::class, 'logout']);
+    Route::get('/me', [StaffController::class, 'me']);
     Route::get('/applications', [StaffController::class, 'index']);
     Route::patch('/applications/{application:request_id}/status', [StaffController::class, 'update']);
 });

@@ -2572,17 +2572,184 @@ p {
   color: var(--muted);
 }
 /* Panel petugas: warna dan huruf dari token DESIGN.md; logika tidak berubah. */
+/* ---------- Panel admin: sidebar + bilah atas + area isi ----------
+   ≤ 900px: sidebar menjadi panel geser dengan tombol "Menu". */
+.admin-center {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+  background: var(--cream);
+}
+.admin-center .center-card {
+  width: 100%;
+}
+.admin-center h1 {
+  color: var(--ink);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.admin-center p {
+  font-size: 17px;
+}
+.admin-login {
+  max-width: 480px;
+}
+.admin-login > p {
+  margin: 12px 0 24px;
+  color: var(--muted);
+}
+.admin-login .fields {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.admin-login label {
+  font-size: 16px;
+  font-weight: 700;
+}
+.admin-login .btn {
+  margin-top: 12px;
+}
+.admin-session-notice {
+  margin-bottom: 20px;
+  border-color: var(--line);
+  background: var(--sand);
+  color: var(--ink);
+  font-size: 16px;
+}
 .admin-layout {
   display: flex;
   min-height: 100vh;
   background: var(--cream);
 }
 .admin-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
   width: 256px;
   flex-shrink: 0;
   background: var(--forest);
   color: var(--on-dark-muted);
   padding: 28px 20px;
+}
+.admin-sidebar-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.admin-sidebar-close,
+.admin-menu-btn,
+.admin-backdrop {
+  display: none;
+}
+.admin-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 20px 40px;
+  background: var(--white);
+  border-bottom: 1px solid var(--line);
+}
+.admin-topbar :focus-visible {
+  outline-color: var(--leaf);
+}
+.admin-topbar h1 {
+  color: var(--ink);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.admin-topbar-user {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.admin-topbar-user p {
+  display: flex;
+  flex-direction: column;
+  font-size: 16px;
+  line-height: 1.3;
+  text-align: right;
+}
+.admin-topbar-user strong {
+  color: var(--ink);
+}
+.admin-topbar-user span {
+  color: var(--muted);
+}
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.admin-page-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.admin-page-intro p {
+  max-width: 36rem;
+  color: var(--muted);
+  font-size: 17px;
+}
+.admin-card {
+  max-width: 760px;
+  padding: 32px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--white);
+}
+.admin-welcome h2 {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.admin-welcome p {
+  max-width: 36rem;
+  margin: 12px 0 24px;
+  font-size: 18px;
+  color: var(--muted);
+}
+.table-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.table-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  font-size: 16px;
+}
+.detail-panel label {
+  display: block;
+  margin: 20px 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.detail-panel p {
+  font-size: 17px;
 }
 .admin-sidebar :focus-visible {
   outline-color: var(--gold);
@@ -2643,7 +2810,7 @@ p {
 .admin-main {
   flex: 1;
   min-width: 0;
-  padding: 35px 40px;
+  padding: 32px 40px;
 }
 .admin-main :focus-visible {
   outline-color: var(--leaf);
@@ -2658,20 +2825,6 @@ p {
   background: var(--sand);
   color: var(--ink);
   font-size: 16px;
-}
-.admin-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 30px;
-}
-.admin-header h1 {
-  font-size: 30px;
-}
-.admin-header p {
-  font-size: 16px;
-  margin-top: 8px;
 }
 .table-card {
   background: var(--white);
@@ -2703,7 +2856,7 @@ table {
   white-space: nowrap;
 }
 th {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--muted);
   background: var(--sage);
@@ -2781,6 +2934,67 @@ td {
     padding: 25px;
   }
 }
+@media (max-width: 900px) {
+  .admin-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 60;
+    width: min(320px, 86vw);
+    transform: translateX(-100%);
+    visibility: hidden;
+    /* Saat menutup, sembunyikan setelah animasi geser selesai. */
+    transition: transform 200ms ease, visibility 0s linear 200ms;
+  }
+  /* Saat membuka, langsung terlihat agar fokus bisa masuk ke panel. */
+  .admin-sidebar[data-open="true"] {
+    transform: none;
+    visibility: visible;
+    transition: transform 200ms ease, visibility 0s;
+  }
+  .admin-sidebar-close {
+    display: inline-grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    border: 1px solid color-mix(in srgb, var(--white) 30%, transparent);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--white);
+  }
+  .admin-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: color-mix(in srgb, var(--forest) 55%, transparent);
+  }
+  .admin-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 8px 16px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--white);
+    color: var(--leaf);
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .admin-topbar {
+    justify-content: flex-start;
+    padding: 16px 24px;
+  }
+  .admin-topbar h1 {
+    flex: 1;
+    min-width: 0;
+  }
+  .admin-topbar-user {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
 @media (max-width: 850px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -2796,25 +3010,6 @@ td {
   }
   .news-card h3 {
     font-size: 16px;
-  }
-  .admin-layout {
-    display: block;
-  }
-  .admin-sidebar {
-    width: 100%;
-    padding: 16px;
-  }
-  .admin-brand {
-    margin-bottom: 16px;
-  }
-  .admin-sidebar nav {
-    display: flex;
-    gap: 4px;
-    overflow: auto;
-  }
-  .admin-sidebar nav a {
-    flex-shrink: 0;
-    margin: 0;
   }
   .content-grid {
     grid-template-columns: 1fr;
@@ -2861,20 +3056,31 @@ td {
   .admin-main {
     padding: 24px 16px;
   }
-  .admin-header {
-    flex-direction: column;
-    align-items: flex-start;
+  .admin-topbar {
+    padding: 12px 16px;
   }
-  .admin-header h1 {
-    font-size: 26px;
+  .admin-topbar h1 {
+    font-size: 24px;
   }
-  .admin-header .button-row {
-    justify-content: flex-start;
-    margin-top: 0;
+  .admin-topbar-user,
+  .admin-actions,
+  .admin-actions .btn {
+    width: 100%;
+  }
+  .admin-topbar-user p {
+    text-align: left;
+  }
+  .admin-card {
+    padding: 24px 16px;
   }
   .table-toolbar {
     flex-direction: column;
     align-items: stretch;
+  }
+  .table-filter {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
   .table-toolbar .search-input {
     max-width: none;

@@ -34,6 +34,7 @@ Path berikut relatif terhadap `/api/v1`. Transport menggunakan `Accept: applicat
 | POST | `/applications/status` | `request_id` dan `lookup_secret` |
 | POST | `/staff/login` | `username` dan `password`; kompatibilitas klien lama: `email` dan `password`; respons bearer token |
 | POST | `/staff/logout` | Mencabut token petugas aktif |
+| GET | `/staff/me` | Profil petugas pemilik token: `{ name, username, role }`; dipakai untuk memvalidasi sesi |
 | GET | `/staff/applications` | Daftar paginasi; parameter `page` dan filter `status` opsional |
 | PATCH | `/staff/applications/{request_id}/status` | `status` dan `catatan` |
 
@@ -50,7 +51,10 @@ Jalankan migration penambahan username sebelum memakai frontend baru. Akun lama 
 - Kode akses diberikan setelah pengajuan API dan disimpan pada sessionStorage tab untuk halaman berhasil. Simpan nomor serta kode di tempat aman; pemulihan belum tersedia.
 - Kode akses dikirim pada body POST untuk cek status, tidak dimasukkan ke URL.
 - Backend menyimpan hash kode akses; NIK, KK, telepon, dan alamat dienkripsi dengan APP_KEY.
-- Token petugas hanya berada di memori halaman. Refresh atau perpindahan route dapat meminta login ulang. Jangan memindahkan token ke URL atau localStorage.
+- Token petugas disimpan di `sessionStorage` tab (`watuagung-staff-token`) oleh `features/admin/session.tsx`. Pindah route admin dan reload tetap login; menutup tab menghapus sesi. Fitur browser "pulihkan tab" atau "duplikat tab" dapat ikut menyalin sessionStorage. Jangan memindahkan token ke URL atau localStorage.
+- Saat dibuka atau di-reload, panel memvalidasi token lewat `GET /staff/me` sebelum menampilkan isi. Gangguan jaringan menampilkan pesan "Server belum dapat dihubungi" dengan tombol coba lagi, bukan logout.
+- Semua permintaan panel melewati `adminRequest()` (`features/admin/api.ts`). Respons 401 menghapus sesi lalu menampilkan login dengan pesan "Sesi berakhir, silakan masuk lagi."
+- Token kedaluwarsa setelah `SANCTUM_EXPIRATION` menit (bawaan 480 = 8 jam kerja), dihitung sejak login, bukan sejak aktivitas terakhir. Tipe frontend: `StaffProfile` di `types/pelayanan.ts`.
 - Jangan mengganti APP_KEY pada database berisi data terenkripsi tanpa prosedur migrasi yang benar.
 
 ## Status dan batas fitur
@@ -59,7 +63,9 @@ Alur normal: `SUBMITTED` -> `VERIFIED` -> `PROCESSING` -> `WAITING_APPROVAL` -> 
 
 `NEED_REVISION` dan `REJECTED` memerlukan catatan. Backend membatasi transisi status dan mencatat perubahan. `APPROVED` berarti disetujui, **bukan PDF tersedia**.
 
-Login, daftar permohonan, filter, pagination, perubahan status, dan logout sudah diimplementasikan. PDF, unggah dokumen/revisi, pemulihan kode akses, OTP, notifikasi, dan pengelolaan konten publik belum tersedia. Menu konten admin masih prototipe.
+Login, sesi persisten per tab, daftar permohonan, filter, pagination, perubahan status, dan logout sudah diimplementasikan. Menu admin hanya berisi Dashboard (`/admin`), Permohonan (`/admin/permohonan`), dan Surat disetujui (`/admin/surat`); halaman konten (berita, pengumuman, potensi, statistik, pengaturan) dihapus dan dibuat ulang saat modulnya dikerjakan. PDF, unggah dokumen/revisi, pemulihan kode akses, OTP, notifikasi, dan pengelolaan konten publik belum tersedia.
+
+Frontend adalah static export: route admin baru tidak boleh bergantung pada ID dari database. Gunakan query string, misalnya `/admin/permohonan/detail/?id=REQ-...`.
 
 ## Menjalankan dan memeriksa
 
