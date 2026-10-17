@@ -176,7 +176,7 @@ export const pages: Record<
     ],
   },
   "struktur-pemerintahan": {
-    title: "Struktur Pemerintahan",
+    title: "Perangkat Desa",
     eyebrow: "PEMERINTAH DESA",
     intro: "Bekerja bersama untuk pelayanan yang lebih dekat dengan warga.",
     blocks: [
