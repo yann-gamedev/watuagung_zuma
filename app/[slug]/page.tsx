@@ -3,13 +3,6 @@ import { notFound } from "next/navigation";
 import { pages } from "@/lib/data";
 import { PublicShell, PageHeading } from "@/components/site";
 
-const profileLinks = [
-  { slug: "profil", label: "Profil" },
-  { slug: "sejarah", label: "Sejarah" },
-  { slug: "visi-misi", label: "Visi & Misi" },
-  { slug: "struktur-pemerintahan", label: "Perangkat Desa" },
-];
-
 export function generateStaticParams() {
   return Object.keys(pages).map((slug) => ({ slug }));
 }
@@ -32,19 +25,6 @@ export default async function Page({
   return (
     <PublicShell>
       <PageHeading {...page} />
-      {profileLinks.some((link) => link.slug === slug) && (
-        <nav className="container info-profile-nav" aria-label="Halaman profil desa">
-          {profileLinks.map((link) => (
-            <Link
-              href={"/" + link.slug}
-              key={link.slug}
-              aria-current={slug === link.slug ? "page" : undefined}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-      )}
       <section className="section container info-page">
         <div className="notice">
           Konten contoh · Informasi resmi desa akan diperbarui setelah
@@ -92,6 +72,19 @@ export default async function Page({
                 <h2>{block.title}</h2>
                 <p>{block.text}</p>
               </article>
+            ))}
+          </div>
+        )}
+        {slug === "profil" && (
+          <div className="button-row mt-8">
+            {[
+              ["Sejarah Desa", "sejarah"],
+              ["Visi dan Misi", "visi-misi"],
+              ["Struktur Pemerintahan", "struktur-pemerintahan"],
+            ].map(([title, target]) => (
+              <Link className="btn btn-secondary" href={"/" + target} key={target}>
+                {title}
+              </Link>
             ))}
           </div>
         )}

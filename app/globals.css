@@ -1797,30 +1797,6 @@ p {
   margin-bottom: 28px;
 }
 /* Information pages: scoped to keep the existing profile layout and news styles. */
-.info-profile-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 24px;
-  padding-block: 16px;
-  border-bottom: 1px solid var(--line);
-}
-.info-profile-nav a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 48px;
-  border-bottom: 3px solid transparent;
-  color: var(--leaf);
-  font-size: 18px;
-  font-weight: 700;
-}
-.info-profile-nav a[aria-current="page"],
-.info-profile-nav a:hover {
-  border-bottom-color: var(--leaf);
-}
-.info-profile-nav a:focus-visible {
-  outline: 3px solid var(--leaf);
-  outline-offset: 4px;
-}
 .info-page .notice,
 .info-page .info-complaint {
   padding: 24px;
