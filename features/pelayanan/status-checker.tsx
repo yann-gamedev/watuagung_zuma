@@ -2,20 +2,16 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Check, Search, LoaderCircle } from "lucide-react";
+import { Check, Search, LoaderCircle, CircleAlert, CircleX } from "lucide-react";
 import { pelayananService, isDemo } from "@/services/pelayanan";
 import type { Receipt } from "@/types/pelayanan";
-import { StatusBadge } from "@/components/site";
+import { StatusBadge, statusLabels, statusDescriptions } from "@/components/site";
 const steps = [
-  ["SUBMITTED", "Pengajuan diterima", "Data permohonan berhasil diterima."],
-  [
-    "VERIFIED",
-    "Verifikasi perangkat desa",
-    "Petugas memeriksa kelengkapan data.",
-  ],
-  ["PROCESSING", "Pembuatan surat", "Surat sedang disiapkan."],
-  ["WAITING_APPROVAL", "Persetujuan", "Menunggu persetujuan pejabat desa."],
-  ["APPROVED", "Selesai", "Permohonan telah disetujui."],
+  ["SUBMITTED", "Penerimaan data pengajuan."],
+  ["VERIFIED", "Verifikasi kelengkapan data oleh petugas."],
+  ["PROCESSING", "Penyiapan surat oleh petugas."],
+  ["WAITING_APPROVAL", "Pengajuan menunggu persetujuan."],
+  ["APPROVED", "Persetujuan pengajuan surat."],
 ] as const;
 export function StatusChecker() {
   const params = useSearchParams();
@@ -48,14 +44,11 @@ export function StatusChecker() {
   const exception =
     result && ["REJECTED", "NEED_REVISION"].includes(result.status);
   return (
-    <div className="center-card">
-      <h2 className="text-2xl">Lacak permohonan Anda</h2>
-      <p className="mt-3 mb-5 text-sm">
+    <div className="center-card status-card">
+      <h2>Masukkan bukti pengajuan</h2>
+      <p className="lookup-intro" id="lookup-help">
         {isDemo ? "Masukkan nomor yang diterima setelah mengirim formulir." : "Masukkan nomor pengajuan dan kode akses rahasia yang diberikan setelah pengiriman."}
       </p>
-      <label htmlFor="request-id" className="text-sm font-semibold">
-        Nomor pengajuan
-      </label>
       <form
         className="lookup-form"
         onSubmit={(e) => {
@@ -63,35 +56,52 @@ export function StatusChecker() {
           void lookup(id.trim().toUpperCase());
         }}
       >
-        <input
-          id="request-id"
-          className="search-input"
-          value={id}
-          onChange={(e) => setId(e.target.value.toUpperCase())}
-          placeholder="REQ-2026-000001"
-          required
-          aria-describedby={error ? "lookup-error" : undefined}
-        />
-        {!isDemo && <div><label htmlFor="lookup-secret" className="text-sm font-semibold">Kode akses pengajuan</label><input id="lookup-secret" className="search-input" type="password" autoComplete="off" value={secret} onChange={(e) => setSecret(e.target.value)} required /></div>}
-        <button id="lookup-submit" className="btn" disabled={busy}>
+        <div className="lookup-field">
+          <label htmlFor="request-id">Nomor pengajuan</label>
+          <input
+            id="request-id"
+            className="search-input"
+            value={id}
+            onChange={(e) => setId(e.target.value.toUpperCase())}
+            placeholder="REQ-2026-000001"
+            required
+            aria-describedby={error ? "lookup-help lookup-error" : "lookup-help"}
+          />
+        </div>
+        {!isDemo && (
+          <div className="lookup-field">
+            <label htmlFor="lookup-secret">Kode akses pengajuan</label>
+            <input id="lookup-secret" className="search-input" type="password" autoComplete="off" value={secret} onChange={(e) => setSecret(e.target.value)} required aria-describedby={error ? "lookup-help lookup-error" : "lookup-help"} />
+          </div>
+        )}
+        <button id="lookup-submit" type="submit" className="btn" disabled={busy}>
           {busy ? (
-            <LoaderCircle className="spin" size={18} />
+            <LoaderCircle className="spin" size={22} aria-hidden="true" />
           ) : (
-            <Search size={18} />
+            <Search size={22} aria-hidden="true" />
           )}{" "}
-          {busy ? "Mencari…" : "Cek Status"}
+          {busy ? "Mencari…" : "Cek Status Surat"}
         </button>
       </form>
       {isDemo && (
         <div className="notice mt-5">
-          Simulasi: coba REQ-2026-000001 (diproses), 000002 (perbaikan), 000003
-          (selesai), atau 000004 (ditolak). Nomor dari formulir hanya tersimpan
-          di browser ini.
+          <strong>Mode simulasi — bukan layanan resmi.</strong>
+          <p>Status tidak berubah otomatis. Nomor dari formulir hanya tersimpan di browser ini.</p>
+          <details className="lookup-examples">
+            <summary>Lihat nomor contoh untuk mencoba status</summary>
+            <ul>
+              <li>REQ-2026-000001 — Diproses</li>
+              <li>REQ-2026-000002 — Perlu perbaikan</li>
+              <li>REQ-2026-000003 — Disetujui</li>
+              <li>REQ-2026-000004 — Ditolak</li>
+            </ul>
+          </details>
         </div>
       )}
       {error && (
         <div id="lookup-error" className="error-box" role="alert">
-          {error}
+          <CircleAlert size={24} aria-hidden="true" />
+          <span>{error}</span>
         </div>
       )}
       {busy && (
@@ -102,54 +112,51 @@ export function StatusChecker() {
         />
       )}
       {result && (
-        <div aria-live="polite" className="mt-7">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <strong className="break-all">{result.request_id}</strong>
+        <section aria-live="polite" className="lookup-result" aria-labelledby="lookup-result-heading">
+          <h2 id="lookup-result-heading">Status pengajuan Anda</h2>
+          <div className="lookup-result-header">
+            <strong className="receipt-value">{result.request_id}</strong>
             <StatusBadge status={result.status} />
           </div>
           {exception ? (
-            <div className="error-box">
-              <strong>
-                {result.status === "REJECTED"
-                  ? "Permohonan ditolak"
-                  : "Permohonan memerlukan perbaikan"}
-              </strong>
-              <p className="mt-2">
-                {result.catatan ||
-                  "Hubungi petugas desa untuk informasi selanjutnya."}
-              </p>
-              <Link href="/kontak" className="text-link mt-3">
-                Informasi kontak desa
-              </Link>
+            <div className={"status-exception status-" + result.status}>
+              <div className="status-exception-heading">
+                {result.status === "REJECTED" ? <CircleX size={24} aria-hidden="true" /> : <CircleAlert size={24} aria-hidden="true" />}
+                <h3>{result.status === "REJECTED" ? "Pengajuan ditolak" : "Pengajuan perlu diperbaiki"}</h3>
+              </div>
+              <p>{statusDescriptions[result.status]}</p>
+              <h3>Catatan petugas</h3>
+              <p className="officer-note">{result.catatan || "Catatan belum tersedia. Hubungi kantor desa untuk penjelasan."}</p>
+              <Link href="/kontak" className="text-link">Lihat Kontak Kantor</Link>
             </div>
           ) : (
-            <ol className="timeline">
-              {steps.map(([code, title, description], index) => (
-                <li
-                  className={`${index <= current ? "complete" : ""} ${index === current ? "current" : ""}`}
-                  key={code}
-                  aria-current={index === current ? "step" : undefined}
-                >
-                  <span className="timeline-dot">
-                    {index <= current ? <Check size={17} /> : index + 1}
-                  </span>
-                  <div>
-                    <strong>{title}</strong>
-                    <p>
-                      {description}
-                      {index > current ? " · Belum dimulai" : ""}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <>
+              <div className="status-next-step">
+                <h3>Langkah berikutnya</h3>
+                <p>{statusDescriptions[result.status]}</p>
+                {result.status === "APPROVED" && <Link href="/kontak" className="text-link">Lihat Kontak Kantor</Link>}
+              </div>
+              <ol className="timeline" aria-label="Lima tahap pengajuan surat">
+                {steps.map(([code, description], index) => (
+                  <li
+                    className={`${index <= current ? "complete" : ""} ${index === current ? "current" : ""}`}
+                    key={code}
+                    aria-current={index === current ? "step" : undefined}
+                  >
+                    <span className="timeline-dot" aria-hidden="true">
+                      {index <= current ? <Check size={22} /> : index + 1}
+                    </span>
+                    <div>
+                      <strong>{statusLabels[code]}</strong>
+                      <span className="timeline-state">{index === current ? "Tahap saat ini" : index < current ? "Sudah dilalui" : "Belum dimulai"}</span>
+                      <p>{description}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </>
           )}
-          {result.status === "APPROVED" && (
-            <p className="notice mt-4">
-              Permohonan disetujui. Surat atau PDF belum tersedia; hubungi petugas desa untuk informasi selanjutnya.
-            </p>
-          )}
-        </div>
+        </section>
       )}
     </div>
   );

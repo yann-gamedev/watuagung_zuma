@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, CheckCircle2, ClipboardCheck, Clock3, FileCheck2, FileClock, CircleX, CircleAlert } from "lucide-react";
 import { news } from "@/lib/data";
 import type { Status } from "@/types/pelayanan";
 import { SiteHeader, normalizePath } from "@/components/site-header";
@@ -127,17 +127,37 @@ export function NewsCard({
   );
 }
 export const statusLabels: Record<Status, string> = {
-  SUBMITTED: "Pengajuan diterima",
-  VERIFIED: "Terverifikasi",
-  PROCESSING: "Sedang diproses",
+  SUBMITTED: "Diterima",
+  VERIFIED: "Diverifikasi",
+  PROCESSING: "Diproses",
   WAITING_APPROVAL: "Menunggu persetujuan",
-  APPROVED: "Selesai / disetujui",
+  APPROVED: "Disetujui",
   REJECTED: "Ditolak",
   NEED_REVISION: "Perlu perbaikan",
 };
+export const statusDescriptions: Record<Status, string> = {
+  SUBMITTED: "Pengajuan telah diterima. Simpan bukti pengajuan dan cek status secara berkala untuk mengetahui hasil pemeriksaan petugas.",
+  VERIFIED: "Data pengajuan telah diverifikasi. Cek status secara berkala untuk mengetahui proses penyiapan surat.",
+  PROCESSING: "Surat sedang disiapkan. Cek kembali status pengajuan untuk mengetahui tahap berikutnya.",
+  WAITING_APPROVAL: "Pengajuan menunggu persetujuan. Cek kembali status sebelum menghubungi kantor desa tentang pengambilan surat.",
+  APPROVED: "Pengajuan disetujui. Surat atau PDF belum tersedia melalui website ini. Hubungi kantor desa untuk informasi selanjutnya; status ini belum berarti surat siap diambil.",
+  REJECTED: "Baca catatan petugas. Hubungi kantor desa untuk penjelasan dan arahan sebelum mengajukan kembali.",
+  NEED_REVISION: "Hubungi kantor desa atau ajukan ulang dengan data yang diperbaiki. Perhatikan catatan petugas di bawah ini.",
+};
+const statusIcons = {
+  SUBMITTED: ClipboardCheck,
+  VERIFIED: FileCheck2,
+  PROCESSING: FileClock,
+  WAITING_APPROVAL: Clock3,
+  APPROVED: CheckCircle2,
+  REJECTED: CircleX,
+  NEED_REVISION: CircleAlert,
+};
 export function StatusBadge({ status }: { status: Status }) {
+  const Icon = statusIcons[status];
   return (
     <span className={"status-badge status-" + status}>
+      <Icon size={22} aria-hidden="true" />
       {statusLabels[status]}
     </span>
   );
