@@ -5,7 +5,7 @@ export const metadata = { title: "Pengajuan Berhasil" };
 export default function Page() {
   return (
     <PublicShell>
-      <section className="section container">
+      <section className="section container service-page status-page">
         <Suspense fallback={<div className="skeleton" />}>
           <Success />
         </Suspense>

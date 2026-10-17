@@ -38,6 +38,10 @@
   --on-dark-muted: #b9c4ae;
   --line: #e3dccb;
   --placeholder: #e7e1cf;
+  --status-revision-bg: #fdebd3;
+  --status-revision-text: #8a4b0f;
+  --status-rejected-bg: #f8e1de;
+  --status-rejected-text: #8e2a1e;
 
   /* Alias lama — dipertahankan agar CSS yang ada tetap jalan */
   --green: var(--leaf);
@@ -2252,31 +2256,318 @@ p {
 }
 .status-badge {
   display: inline-flex;
+  align-items: center;
+  gap: 8px;
   border-radius: 20px;
-  padding: 5px 10px;
-  font-size: 11px;
-  font-weight: 650;
-  background: #e9eff8;
-  color: #365b87;
-  white-space: nowrap;
+  padding: 8px 12px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.55;
 }
-.status-APPROVED,
-.status-VERIFIED {
-  background: #e4f1e7;
-  color: #24613b;
+.status-badge svg {
+  flex-shrink: 0;
 }
-.status-PROCESSING,
+.status-SUBMITTED,
+.status-VERIFIED,
+.status-PROCESSING {
+  background: var(--sage);
+  color: var(--leaf);
+}
 .status-WAITING_APPROVAL {
-  background: #fff3d8;
-  color: #806015;
+  background: var(--sand);
+  color: var(--earth);
+}
+.status-APPROVED {
+  background: var(--leaf);
+  color: var(--white);
 }
 .status-REJECTED {
-  background: #ffe7e3;
-  color: #a03c2c;
+  background: var(--status-rejected-bg);
+  color: var(--status-rejected-text);
 }
 .status-NEED_REVISION {
-  background: #fff0dc;
-  color: #8a551b;
+  background: var(--status-revision-bg);
+  color: var(--status-revision-text);
+}
+/* Sukses dan cek status: ukuran mengikuti formulir pelayanan. */
+.status-page .center-card {
+  padding: 24px 16px;
+  border-radius: 18px;
+  background: var(--white);
+}
+.status-page h1,
+.status-page h2 {
+  font-size: 26px;
+  font-weight: 800;
+}
+.status-page h3 {
+  font-size: 18px;
+  font-weight: 700;
+}
+.status-page p {
+  max-width: 36rem;
+}
+.status-page .btn {
+  min-height: 48px;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 17px;
+  font-weight: 700;
+}
+.status-page .btn:hover {
+  background: var(--forest);
+  border-color: var(--forest);
+  color: var(--white);
+}
+.status-page .btn svg {
+  flex-shrink: 0;
+}
+.status-page .text-link {
+  min-height: 48px;
+  font-size: 17px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.receipt-card .success-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 0 24px;
+  background: var(--sage);
+  color: var(--leaf);
+}
+.receipt-intro,
+.lookup-intro {
+  margin-top: 16px;
+}
+.receipt-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--sage);
+}
+.receipt-item > div {
+  min-width: 0;
+  width: 100%;
+}
+.status-page .receipt-value {
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.receipt-item .receipt-value {
+  margin-top: 8px;
+}
+.copy-feedback {
+  min-height: 24px;
+  margin-top: 12px;
+  font-size: 16px;
+}
+.receipt-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 20px;
+  border-radius: 14px;
+  background: var(--sand);
+}
+.receipt-warning > svg {
+  flex-shrink: 0;
+  margin-top: 4px;
+  color: var(--earth);
+}
+.receipt-warning p {
+  margin-top: 8px;
+  font-size: 16px;
+}
+.status-page .button-row {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 12px;
+}
+.status-page .lookup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 24px;
+}
+.lookup-field label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.status-page .lookup-field input {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--ink);
+  font-size: 18px;
+  scroll-margin-top: 96px;
+}
+.status-page .lookup-field input::placeholder {
+  color: var(--muted);
+}
+.status-page .notice {
+  margin-block: 24px 0;
+}
+.lookup-examples summary {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding-block: 8px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.lookup-examples ul {
+  list-style: disc;
+  padding-left: 20px;
+  overflow-wrap: anywhere;
+}
+.status-page .error-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid var(--status-rejected-text);
+  border-radius: 14px;
+  background: var(--white);
+  color: var(--status-rejected-text);
+  font-size: 16px;
+}
+.status-page .error-box svg {
+  flex-shrink: 0;
+}
+.lookup-result {
+  margin-top: 32px;
+  padding-top: 32px;
+  border-top: 1px solid var(--line);
+}
+.lookup-result-header {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
+}
+.status-next-step,
+.status-exception {
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 14px;
+}
+.status-next-step {
+  background: var(--sage);
+}
+.status-next-step p,
+.status-exception p {
+  margin-top: 12px;
+}
+.status-exception p,
+.status-exception .text-link {
+  color: inherit;
+}
+.status-exception-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.status-exception-heading svg {
+  flex-shrink: 0;
+}
+.status-exception > h3 {
+  margin-top: 24px;
+}
+.officer-note {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.status-page .timeline {
+  margin-top: 32px;
+}
+.status-page .timeline li {
+  gap: 16px;
+  padding-bottom: 24px;
+}
+.status-page .timeline li:last-child {
+  padding-bottom: 0;
+}
+.status-page .timeline li:not(:last-child)::before {
+  left: 23px;
+  top: 48px;
+  background: var(--line);
+}
+.status-page .timeline-dot {
+  width: 48px;
+  height: 48px;
+  border-color: var(--line);
+  background: var(--white);
+  color: var(--muted);
+  font-size: 17px;
+}
+.status-page .timeline .complete .timeline-dot {
+  background: var(--leaf);
+  border-color: var(--leaf);
+  color: var(--white);
+}
+.status-page .timeline .current .timeline-dot {
+  outline: 2px solid var(--leaf);
+  outline-offset: 4px;
+}
+.status-page .timeline strong {
+  font-size: 18px;
+}
+.timeline-state {
+  display: block;
+  color: var(--muted);
+  font-size: 16px;
+}
+.timeline .current .timeline-state {
+  color: var(--leaf);
+  font-weight: 700;
+}
+.status-page .timeline p {
+  margin-top: 4px;
+  font-size: 16px;
+}
+@media (min-width: 601px) {
+  .status-page .center-card {
+    padding: 32px;
+  }
+  .receipt-item {
+    flex-direction: row;
+    align-items: center;
+  }
+  .receipt-item > div {
+    flex: 1;
+    width: auto;
+  }
+  .status-page .button-row {
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+  .status-page .lookup-form > .btn {
+    align-self: flex-start;
+  }
+}
+@media (min-width: 901px) {
+  .status-page .btn {
+    min-height: 52px;
+  }
 }
 .skeleton {
   height: 140px;
