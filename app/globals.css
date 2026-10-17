@@ -43,10 +43,9 @@
   --status-rejected-bg: #f8e1de;
   --status-rejected-text: #8e2a1e;
 
-  /* Alias lama — dipertahankan agar CSS yang ada tetap jalan */
+  /* Alias lama — hanya tersisa untuk CSS berita dan .text-link dasar
+     (dikunci sampai halaman berita boleh diubah). Pakai --leaf di CSS baru. */
   --green: var(--leaf);
-  --deep: var(--forest);
-  --soft: var(--sage);
 }
 * {
   box-sizing: border-box;
@@ -119,62 +118,35 @@ p {
   width: min(1200px, calc(100% - 64px));
   margin: auto;
 }
-.brand {
-  display: flex;
-  align-items: center;
-  font-size: 20px;
-  letter-spacing: 0.07em;
-  font-weight: 800;
-  line-height: 1.4;
-}
-.brand small {
-  display: block;
-  font-size: 10px;
-  letter-spacing: 0.17em;
-  font-weight: 500;
-}
+/* Tombol dasar — DESIGN.md §4. Varian emas/garis hanya dipakai hero (.hero-actions). */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 14px 23px;
-  background: var(--green);
-  color: white;
+  padding: 12px 24px;
+  background: var(--leaf);
+  color: var(--white);
   border: 1px solid transparent;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 650;
+  border-radius: 10px;
+  font-size: 17px;
+  font-weight: 700;
   min-height: 48px;
   transition: background 0.15s;
 }
 .btn:hover {
-  background: #226348;
-  color: #ffffff;
-  border-color: #226348;
+  background: var(--forest);
+  color: var(--white);
+  border-color: var(--forest);
 }
-.btn-small {
-  padding: 11px 16px;
-  min-height: 43px;
-}
-.btn-gold {
-  background: var(--gold);
-  color: #21382d;
-}
-.btn-gold:hover {
-  background: #f8d99d;
-}
-.btn-outline {
-  background: transparent;
-  border-color: #ffffff66;
-  color: white;
-}
-.btn-outline:hover {
-  background: #ffffff15;
+@media (min-width: 901px) {
+  .btn {
+    min-height: 52px;
+  }
 }
 .btn-secondary {
-  background: white;
-  color: var(--green);
+  background: var(--white);
+  color: var(--leaf);
   border-color: var(--line);
 }
 .skip {
@@ -182,7 +154,7 @@ p {
   left: 15px;
   top: -100px;
   z-index: 100;
-  background: white;
+  background: var(--white);
   padding: 12px;
 }
 .skip:focus {
@@ -1271,9 +1243,6 @@ p {
 .home-umkm {
   background: var(--sage);
 }
-.home-umkm .home-bottom-label {
-  color: var(--leaf);
-}
 .home-economy-card p {
   margin-top: 16px;
   margin-bottom: 12px;
@@ -1369,60 +1338,43 @@ p {
     padding-block: 96px;
   }
 }
+/* Kerangka statistik; warna dan ukuran ada di blok .statistics-page. */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  background: #fff;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: 0 8px 25px #1b45300b;
-  padding: 28px 8px;
 }
 .statistic {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 19px;
   border-right: 1px solid var(--line);
 }
 .statistic:last-child {
   border-right: 0;
 }
 .stat-icon {
-  color: var(--green);
-  background: #edf3ed;
-  padding: 14px;
   border-radius: 50%;
   display: flex;
 }
 .statistic strong {
   display: block;
-  font-size: 29px;
-  letter-spacing: -0.035em;
-  line-height: 1.3;
-}
-.statistic div > span {
-  font-size: 12px;
-  color: var(--muted);
-}
-.data-note {
-  font-size: 12px;
-  color: #6e786f;
-  margin-top: 12px;
 }
 .section {
   padding-top: 77px;
   padding-bottom: 77px;
 }
-.hero + .section {
-  padding-top: clamp(44px, 5vw, 64px);
-}
 .eyebrow {
-  color: var(--green);
+  color: var(--leaf);
   font-weight: 700;
-  font-size: 11px;
-  letter-spacing: 0.16em;
+  font-size: 16px;
+  letter-spacing: 0.04em;
   margin-bottom: 12px;
+}
+@media (max-width: 900px) {
+  .eyebrow {
+    font-size: 14px;
+  }
 }
 .text-link {
   display: inline-flex;
@@ -1435,36 +1387,12 @@ p {
 .text-link:hover {
   text-decoration: underline;
 }
-.icon-box {
-  width: 49px;
-  height: 49px;
-  background: #eef4ec;
-  color: var(--green);
-  border-radius: 9px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
+/* Kerangka strip cek status; ukuran ada di blok .service-page .status-strip. */
 .status-strip {
-  margin-top: 25px;
-  background: var(--soft);
   border: 1px solid var(--line);
-  padding: 22px 25px;
-  border-radius: 7px;
   display: flex;
   align-items: center;
   gap: 16px;
-}
-.status-strip strong {
-  font-size: 15px;
-}
-.status-strip p {
-  font-size: 13px;
-  margin-top: 2px;
-}
-.status-strip .text-link {
-  margin-left: auto;
 }
 .news-grid {
   display: grid;
@@ -1746,16 +1674,9 @@ p {
   max-width: 36rem;
   font-size: 18px;
 }
-.page-heading .eyebrow {
-  font-size: 16px;
-  letter-spacing: 0.04em;
-}
 @media (max-width: 900px) {
   .page-heading h1 {
     font-size: 30px;
-  }
-  .page-heading .eyebrow {
-    font-size: 14px;
   }
 }
 .content-grid {
@@ -1768,23 +1689,11 @@ p {
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 28px;
-  background: #fffdf8;
+  background: var(--white);
   transition:
     transform 180ms ease,
     box-shadow 180ms ease,
     border-color 180ms ease;
-}
-.content-card h2 {
-  font-size: 23px;
-  line-height: 1.4;
-  margin: 10px 0 12px;
-  color: #203b27;
-}
-.content-card p {
-  font-size: 15px;
-  line-height: 1.8;
-  color: #5e695e;
-  margin: 0;
 }
 .notice {
   padding: 18px 22px;
@@ -1806,9 +1715,6 @@ p {
   color: var(--ink);
   font-size: 18px;
   line-height: 1.6;
-}
-.info-page .content-card {
-  background: var(--white);
 }
 .info-page h2 {
   margin: 0 0 12px;
@@ -1967,11 +1873,6 @@ p {
 }
 .form-card {
   border: 1px solid var(--line);
-  border-radius: 9px;
-  padding: 32px;
-}
-.form-card h2 {
-  font-size: 24px;
 }
 .form-card fieldset {
   border: 0;
@@ -1993,82 +1894,57 @@ p {
 .field.wide {
   grid-column: 1/-1;
 }
+/* .field hanya dipakai FormField di .application-form; ukuran dan warna ada di blok itu. */
 .field label {
   display: block;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 7px;
-}
-.field label span {
-  color: #aa392c;
 }
 .field input,
 .field textarea,
 .field select,
 .search-input {
   width: 100%;
-  border: 1px solid #cbd6ce;
-  border-radius: 5px;
-  padding: 11px 13px;
-  background: white;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 16px;
+  background: var(--white);
   color: var(--ink);
-  min-height: 46px;
+  min-height: 48px;
 }
 .field textarea {
-  min-height: 100px;
   resize: vertical;
 }
-.field [aria-invalid="true"] {
-  border-color: #b44336;
-}
 .field-error {
-  color: #a43128;
-  font-size: 13px;
   margin-top: 5px;
 }
 .error-box {
-  padding: 15px;
-  background: #fff0ed;
-  border: 1px solid #e8b6aa;
-  color: #982f25;
-  border-radius: 6px;
+  padding: 16px;
+  background: var(--status-rejected-bg);
+  border: 1px solid var(--status-rejected-text);
+  color: var(--status-rejected-text);
+  border-radius: 10px;
   margin: 18px 0;
-}
-.form-aside {
-  background: var(--soft);
-  padding: 25px;
-  border-radius: 8px;
 }
 .form-aside h3 {
   margin-bottom: 14px;
 }
 .form-aside li {
-  font-size: 14px;
   color: var(--muted);
   margin: 10px 0;
 }
-.form-aside ol {
-  padding-left: 19px;
-}
 .form-aside p {
-  font-size: 13px;
   margin-top: 15px;
 }
 .form-footer {
   border-top: 1px solid var(--line);
-  padding-top: 23px;
   display: flex;
   justify-content: space-between;
-  gap: 20px;
-  align-items: center;
 }
 .form-footer p {
-  font-size: 12px;
   max-width: 340px;
 }
 /* Pelayanan: varian lengkap dari daftar beranda; logika form tetap. */
 .container.service-page {
-  --form-error: #8e2a1e;
+  --form-error: var(--status-rejected-text);
   width: min(1200px, calc(100% - 32px));
   padding-block: 48px;
 }
@@ -2325,35 +2201,16 @@ p {
 .center-card {
   max-width: 730px;
   margin: auto;
-  padding: 35px;
+  padding: 32px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 18px;
+  background: var(--white);
 }
+/* Hanya dipakai di .receipt-card; ukuran dan warna ada di blok itu. */
 .success-icon {
   display: grid;
   place-items: center;
-  background: #e6f2e8;
-  color: var(--green);
-  width: 68px;
-  height: 68px;
   border-radius: 50%;
-  margin: 0 auto 23px;
-}
-.success-card {
-  text-align: center;
-}
-.success-card p {
-  margin-top: 18px;
-}
-.receipt {
-  font-size: clamp(1.05rem, 4vw, 1.5rem);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  overflow-wrap: anywhere;
-  background: var(--soft);
-  padding: 23px;
-  margin: 25px 0;
-  border-radius: 7px;
 }
 .button-row {
   display: flex;
@@ -2362,60 +2219,31 @@ p {
   gap: 12px;
   margin-top: 32px;
 }
-.lookup-form {
-  display: flex;
-  gap: 12px;
-  margin-top: 10px;
-}
-.lookup-form input {
-  flex: 1;
-  min-width: 0;
-}
+/* Timeline hanya dipakai di .status-page; ukuran dan warna ada di blok itu. */
 .timeline {
   padding: 0;
-  margin: 35px 0 0;
+  margin: 0;
   list-style: none;
 }
 .timeline li {
   display: flex;
-  gap: 18px;
   position: relative;
-  padding-bottom: 30px;
 }
-.timeline li:not(:last-child):before {
+.timeline li:not(:last-child)::before {
   content: "";
   position: absolute;
-  left: 17px;
-  top: 35px;
   bottom: 0;
   width: 2px;
-  background: #dce4dc;
 }
 .timeline-dot {
-  height: 36px;
-  width: 36px;
-  border: 1px solid #d6dfd5;
+  border: 1px solid var(--line);
   border-radius: 50%;
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  background: #f6f8f5;
-  color: #7a897b;
-  font-size: 13px;
-}
-.timeline .complete .timeline-dot {
-  background: var(--green);
-  border-color: var(--green);
-  color: white;
 }
 .timeline .current strong {
-  color: var(--green);
-}
-.timeline strong {
-  font-size: 15px;
-}
-.timeline p {
-  font-size: 12px;
+  color: var(--leaf);
 }
 .status-badge {
   display: inline-flex;
@@ -2743,76 +2571,112 @@ p {
   padding: 45px 20px;
   color: var(--muted);
 }
+/* Panel petugas: warna dan huruf dari token DESIGN.md; logika tidak berubah. */
 .admin-layout {
   display: flex;
   min-height: 100vh;
-  background: #f5f7f4;
+  background: var(--cream);
 }
 .admin-sidebar {
-  width: 235px;
+  width: 256px;
   flex-shrink: 0;
-  background: var(--deep);
-  color: #c5d7ca;
-  padding: 28px 19px;
+  background: var(--forest);
+  color: var(--on-dark-muted);
+  padding: 28px 20px;
 }
-.admin-sidebar .brand {
-  font-size: 17px;
-  color: white;
-  margin-bottom: 35px;
+.admin-sidebar :focus-visible {
+  outline-color: var(--gold);
+}
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  margin-bottom: 32px;
+  color: var(--white);
+}
+.admin-brand-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.admin-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.admin-brand-text strong {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+/* Pengecualian ukuran: subteks identitas (DESIGN.md §3). */
+.admin-brand-text small {
+  margin-top: 3px;
+  color: var(--on-dark-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
 }
 .admin-sidebar nav a {
   display: flex;
   gap: 12px;
   align-items: center;
-  font-size: 14px;
-  padding: 12px 15px;
-  margin-bottom: 6px;
-  border-radius: 5px;
+  min-height: 48px;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 12px 16px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+}
+.admin-sidebar nav a:hover {
+  color: var(--white);
 }
 .admin-sidebar nav a.active {
-  background: #ffffff17;
-  color: #fff;
+  background: color-mix(in srgb, var(--white) 12%, transparent);
+  color: var(--white);
+}
+.admin-sidebar nav a svg {
+  flex-shrink: 0;
 }
 .admin-main {
   flex: 1;
   min-width: 0;
   padding: 35px 40px;
 }
+.admin-main :focus-visible {
+  outline-color: var(--leaf);
+}
+.admin-main h1 {
+  color: var(--ink);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.admin-main .notice {
+  border-color: var(--line);
+  background: var(--sand);
+  color: var(--ink);
+  font-size: 16px;
+}
 .admin-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
   margin-bottom: 30px;
 }
 .admin-header h1 {
   font-size: 30px;
 }
 .admin-header p {
-  font-size: 14px;
-  margin-top: 5px;
-}
-.admin-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
-  margin-bottom: 28px;
-}
-.admin-stat {
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 22px;
-}
-.admin-stat p {
-  font-size: 12px;
-}
-.admin-stat strong {
-  font-size: 32px;
+  font-size: 16px;
+  margin-top: 8px;
 }
 .table-card {
-  background: white;
+  background: var(--white);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 14px;
   overflow: hidden;
 }
 .table-toolbar {
@@ -2824,9 +2688,10 @@ p {
 }
 .table-toolbar h2 {
   font-size: 20px;
+  font-weight: 700;
 }
-.table-toolbar input {
-  max-width: 260px;
+.table-toolbar .search-input {
+  max-width: 320px;
 }
 .table-scroll {
   overflow: auto;
@@ -2838,61 +2703,40 @@ table {
   white-space: nowrap;
 }
 th {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #65766a;
-  background: #f7f9f6;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--sage);
 }
 th,
 td {
   padding: 16px 20px;
-  border-bottom: 1px solid #e9eee7;
+  border-bottom: 1px solid var(--line);
 }
 td {
-  font-size: 13px;
+  font-size: 16px;
 }
 .table-action {
+  min-height: 48px;
   border: 1px solid var(--line);
-  border-radius: 5px;
-  padding: 6px 12px;
-  background: white;
-  color: var(--green);
-  font-size: 12px;
+  border-radius: 10px;
+  padding: 8px 16px;
+  background: var(--white);
+  color: var(--leaf);
+  font-size: 16px;
+  font-weight: 700;
 }
 .detail-panel {
-  background: white;
+  background: var(--white);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 14px;
   padding: 28px;
   margin-top: 25px;
   scroll-margin-top: 25px;
 }
 .detail-panel h2 {
   font-size: 22px;
-}
-.detail-data {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  margin: 23px 0;
-}
-.detail-data dt {
-  font-size: 12px;
-  color: var(--muted);
-}
-.detail-data dd {
-  margin: 0;
-  font-size: 14px;
-}
-.detail-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 20px;
-}
-.detail-actions .btn {
-  font-size: 12px;
+  font-weight: 800;
 }
 .article-body {
   max-width: 760px;
@@ -2903,6 +2747,7 @@ td {
   font-size: 18px;
   line-height: 1.9;
 }
+/* Kerangka grafik batang; ukuran dan warna ada di blok .statistics-page. */
 .bars {
   margin-top: 24px;
 }
@@ -2912,32 +2757,13 @@ td {
 .bar-row div:first-child {
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
 }
 .bar-track {
-  height: 12px;
-  background: #edf1e9;
-  border-radius: 4px;
-  margin-top: 7px;
   overflow: hidden;
 }
 .bar-track span {
   height: 100%;
-  background: var(--green);
   display: block;
-}
-.admin-tabs-content {
-  padding: 28px;
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-.admin-tabs-content article {
-  padding: 20px 0;
-  border-bottom: 1px solid var(--line);
-}
-.admin-tabs-content p {
-  margin-top: 12px;
 }
 .spin {
   animation: spin 1s linear infinite;
@@ -2948,26 +2774,16 @@ td {
   }
 }
 @media (max-width: 1100px) {
-  .brand {
-    font-size: 17px;
-  }
   .container {
     width: calc(100% - 48px);
   }
-  .admin-sidebar {
-    width: 205px;
-  }
   .admin-main {
     padding: 25px;
-  }
-  .admin-stats {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 @media (max-width: 850px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 25px;
   }
   .statistic:nth-child(2) {
     border: 0;
@@ -2981,48 +2797,27 @@ td {
   .news-card h3 {
     font-size: 16px;
   }
-  .form-layout {
-    grid-template-columns: 1fr;
-  }
-  .form-aside {
-    order: -1;
-  }
-  .form-aside ol {
-    display: flex;
-    gap: 30px;
-    flex-wrap: wrap;
-    margin: 0;
-  }
   .admin-layout {
     display: block;
   }
   .admin-sidebar {
     width: 100%;
-    padding: 18px;
+    padding: 16px;
   }
-  .admin-sidebar .brand {
+  .admin-brand {
     margin-bottom: 16px;
   }
   .admin-sidebar nav {
     display: flex;
+    gap: 4px;
     overflow: auto;
   }
   .admin-sidebar nav a {
     flex-shrink: 0;
     margin: 0;
-    font-size: 12px;
-  }
-  .admin-sidebar nav a svg {
-    width: 16px;
   }
   .content-grid {
     grid-template-columns: 1fr;
-  }
-  .status-strip {
-    flex-wrap: wrap;
-  }
-  .status-strip .text-link {
-    margin-left: 65px;
   }
 }
 @media (max-width: 600px) {
@@ -3036,40 +2831,11 @@ td {
   .container {
     width: calc(100% - 36px);
   }
-  .stats-grid {
-    padding: 22px 0;
-    gap: 24px 0;
-  }
-  .statistic {
-    gap: 10px;
-  }
-  .stat-icon {
-    padding: 10px;
-  }
-  .stat-icon svg {
-    width: 19px;
-  }
-  .statistic strong {
-    font-size: 23px;
-  }
-  .statistic div > span {
-    font-size: 10px;
-  }
-  .data-note {
-    font-size: 10px;
-  }
   .section {
     padding-block: 48px;
   }
   .status-strip {
-    padding: 19px;
     gap: 12px;
-  }
-  .status-strip > .icon-box {
-    display: none;
-  }
-  .status-strip .text-link {
-    margin: 5px 0 0;
   }
   .news-grid {
     grid-template-columns: 1fr;
@@ -3089,60 +2855,32 @@ td {
   .fields {
     grid-template-columns: 1fr;
   }
-  .form-card {
-    padding: 23px 18px;
-  }
-  .form-footer {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .form-aside ol {
-    display: block;
-  }
   .center-card {
-    padding: 26px 18px;
-  }
-  .lookup-form {
-    flex-direction: column;
+    padding: 24px 16px;
   }
   .admin-main {
-    padding: 22px 15px;
+    padding: 24px 16px;
   }
   .admin-header {
+    flex-direction: column;
     align-items: flex-start;
-    gap: 15px;
   }
   .admin-header h1 {
-    font-size: 25px;
+    font-size: 26px;
   }
-  .admin-header .btn {
-    font-size: 11px;
-    padding: 8px 12px;
-  }
-  .admin-stats {
-    gap: 10px;
-  }
-  .admin-stat {
-    padding: 17px;
-  }
-  .admin-stat strong {
-    font-size: 27px;
+  .admin-header .button-row {
+    justify-content: flex-start;
+    margin-top: 0;
   }
   .table-toolbar {
     flex-direction: column;
     align-items: stretch;
   }
-  .table-toolbar input {
+  .table-toolbar .search-input {
     max-width: none;
-  }
-  .detail-data {
-    grid-template-columns: 1fr;
   }
   .content-card {
     padding: 24px;
-  }
-  .desktop-break {
-    display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {

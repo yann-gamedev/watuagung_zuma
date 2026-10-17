@@ -5,7 +5,7 @@ import { ArrowUpRight, RefreshCw } from "lucide-react";
 import { apiBase, apiRequest } from "@/services/pelayanan";
 import { StatusBadge } from "@/components/site";
 import { DataTable } from "@/components/data-table";
-import type { ServiceCode, Status } from "@/types/pelayanan";
+import type { ServiceCode, StaffLoginRequest, StaffLoginResponse, Status } from "@/types/pelayanan";
 
 type RecordItem = { request_id: string; nama: string; jenis_surat: ServiceCode; status: Status; catatan: string | null; created_at: string };
 type Page = { data: RecordItem[]; current_page: number; last_page: number; total: number };
@@ -18,7 +18,7 @@ const transitions: Partial<Record<Status, Status[]>> = {
 };
 export function AdminDashboard({ section = "" }: { section?: string }) {
   const [token, setToken] = useState("");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [records, setRecords] = useState<Page | null>(null);
   const [page, setPage] = useState(1);
@@ -46,7 +46,8 @@ export function AdminDashboard({ section = "" }: { section?: string }) {
   async function login(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setError("");
     try {
-      const result = await apiRequest<{ token: string }>("/staff/login", { method: "POST", body: JSON.stringify({ email, password }) });
+      const credentials: StaffLoginRequest = { username: username.trim(), password };
+      const result = await apiRequest<StaffLoginResponse>("/staff/login", { method: "POST", body: JSON.stringify(credentials) });
       setPassword(""); setToken(result.token);
     } catch (e) { setError(e instanceof Error ? e.message : "Login gagal."); }
     finally { setBusy(false); }
@@ -66,9 +67,9 @@ export function AdminDashboard({ section = "" }: { section?: string }) {
     finally { setBusy(false); }
   }
   if (!apiBase) return <div className="center-card"><h1>Panel petugas tidak aktif pada demo</h1><p className="mt-3">Prototipe ini berjalan tanpa server dan database. Login, pengelolaan pengajuan, dan penerbitan surat belum tersedia.</p><Link id="admin-demo-services" href="/pelayanan/" className="btn mt-5">Coba simulasi pelayanan</Link></div>;
-  if (!token) return <div className="center-card"><h1>Masuk sebagai petugas</h1><p className="mt-3 mb-5">Gunakan akun yang dibuat oleh administrator desa.</p><form onSubmit={login} className="fields"><label htmlFor="staff-email">Email petugas</label><input id="staff-email" className="search-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" /><label htmlFor="staff-password">Kata sandi</label><input id="staff-password" className="search-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" /><button id="staff-login" className="btn" disabled={busy}>Masuk</button></form>{error && <p className="error-box" role="alert">{error}</p>}</div>;
+  if (!token) return <div className="center-card"><h1>Masuk sebagai petugas</h1><p className="mt-3 mb-5">Gunakan akun yang dibuat oleh administrator desa.</p><form onSubmit={login} className="fields"><label htmlFor="staff-username">Username</label><input id="staff-username" className="search-input" type="text" value={username} onChange={(e) => setUsername(e.target.value)} maxLength={64} required autoComplete="username" autoCapitalize="none" spellCheck={false} /><label htmlFor="staff-password">Kata sandi</label><input id="staff-password" className="search-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" /><button id="staff-login" className="btn" disabled={busy}>Masuk</button></form>{error && <p className="error-box" role="alert">{error}</p>}</div>;
   return <>
-    <header className="admin-header"><div><div className="eyebrow">RUANG KERJA PEMERINTAH DESA</div><h1>{section === "surat" ? "Permohonan disetujui" : "Permohonan warga"}</h1><p>Daftar pengajuan dari API Laravel; data pribadi sensitif tidak ditampilkan.</p></div><div className="button-row"><button id="refresh-applications" className="btn btn-secondary" onClick={() => void load()}><RefreshCw size={16} /> Muat ulang</button><button id="staff-logout" className="btn btn-secondary" onClick={() => void logout()}>Keluar</button><Link href="/" className="btn btn-secondary">Website <ArrowUpRight size={16} /></Link></div></header>
+    <header className="admin-header"><div><h1>{section === "surat" ? "Permohonan disetujui" : "Permohonan warga"}</h1><p>Daftar pengajuan dari API Laravel; data pribadi sensitif tidak ditampilkan.</p></div><div className="button-row"><button id="refresh-applications" className="btn btn-secondary" onClick={() => void load()}><RefreshCw size={16} /> Muat ulang</button><button id="staff-logout" className="btn btn-secondary" onClick={() => void logout()}>Keluar</button><Link href="/" className="btn btn-secondary">Website <ArrowUpRight size={16} /></Link></div></header>
     {!['', 'permohonan', 'surat'].includes(section) && <p className="notice">Penyuntingan konten {section} belum tersedia. Gunakan panel ini untuk pelayanan terlebih dahulu.</p>}
     <div className="table-card"><div className="table-toolbar"><h2>Daftar permohonan ({records?.total ?? 0})</h2><label htmlFor="admin-status-filter">Filter status</label><select id="admin-status-filter" className="search-input" value={section === 'surat' ? 'APPROVED' : filter} disabled={section === 'surat'} onChange={(e) => { setFilter(e.target.value); setPage(1); }}><option value="">Semua</option>{Object.keys(transitions).concat('APPROVED','REJECTED').map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
     <DataTable rows={(records?.data ?? []).filter((r) => section !== 'surat' || r.status === 'APPROVED')} rowKey={(r) => r.request_id} empty="Tidak ada permohonan pada halaman ini." columns={[{ label: "ID", render: (r) => r.request_id },{ label: "Pemohon", render: (r) => r.nama },{ label: "Layanan", render: (r) => r.jenis_surat },{ label: "Tanggal", render: (r) => new Date(r.created_at).toLocaleDateString('id-ID') },{ label: "Status", render: (r) => <StatusBadge status={r.status} /> },{ label: "Aksi", render: (r) => <button id={`open-${r.request_id}`} className="table-action" onClick={() => { setSelected(r.request_id); setNote(r.catatan || ''); }}>Detail</button> }]} />

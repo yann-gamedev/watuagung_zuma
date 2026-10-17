@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -25,9 +26,17 @@ export function AdminSidebar() {
   const path = usePathname().replace(/\/$/, "");
   return (
     <aside className="admin-sidebar">
-      <Link href="/" className="brand">
-        <span>
-          WATUAGUNG<small>ADMINISTRASI DESA</small>
+      <Link href="/" className="admin-brand">
+        <Image
+          className="admin-brand-logo"
+          src="/brand/logo-watuagung-128.png"
+          alt="Logo Desa Watuagung"
+          width={56}
+          height={56}
+        />
+        <span className="admin-brand-text">
+          <strong>WATUAGUNG</strong>
+          <small>ADMINISTRASI DESA</small>
         </span>
       </Link>
       <nav aria-label="Navigasi admin">
@@ -39,7 +48,7 @@ export function AdminSidebar() {
               path === "/admin" + (slug ? "/" + slug : "") ? "active" : ""
             }
           >
-            <Icon size={19} />
+            <Icon size={22} aria-hidden="true" />
             {title}
           </Link>
         ))}

@@ -60,7 +60,7 @@ export function FormField({
           }
         />
       )}{" "}
-      {hint && <p id={`${name}-hint`} className="text-sm mt-2">{hint}</p>}
+      {hint && <p id={`${name}-hint`} className="mt-2">{hint}</p>}
       {error && (
         <p id={`${name}-error`} className="field-error">
           <CircleAlert size={22} aria-hidden="true" />

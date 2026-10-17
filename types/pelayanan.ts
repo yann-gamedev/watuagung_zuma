@@ -9,6 +9,14 @@ export const statuses = [
 ] as const;
 export type Status = (typeof statuses)[number];
 export type ServiceCode = "SKU" | "DOMISILI" | "SKTM" | "KTP_KK";
+export type StaffLoginRequest = { password: string } & (
+  | { username: string; email?: never }
+  | { email: string; username?: never }
+);
+export interface StaffLoginResponse {
+  token: string;
+  user: { name: string; role: "staff" | "admin" };
+}
 export interface Submission {
   jenis_surat: ServiceCode;
   nama: string;
