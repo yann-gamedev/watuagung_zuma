@@ -27,11 +27,14 @@ php artisan config:clear
 
 ### Akun petugas
 
+Jalankan `php artisan migrate` terlebih dahulu untuk menambahkan kolom username unik. Akun lama tetap tersimpan dengan username null dan login email melalui API masih didukung. Form admin sekarang menggunakan username; tetapkan username unik pada akun lama sebelum memakainya. Format: 1–64 karakter huruf kecil/angka, `_`, atau `-`, diawali huruf kecil/angka. Tidak ada akun/kata sandi bawaan.
+
 Tidak ada endpoint pendaftaran publik. Untuk mencoba panel petugas secara lokal, jalankan `php artisan tinker`, lalu masukkan perintah berikut dengan email dan kata sandi kuat milik Anda sendiri:
 
 ```php
 App\Models\User::create([
     'name' => 'Petugas Desa',
+    'username' => 'petugas-contoh',
     'email' => 'petugas@example.test',
     'password' => 'ganti-dengan-kata-sandi-kuat',
     'role' => 'staff',
@@ -54,7 +57,7 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | --- | --- | --- | --- |
 | POST | `/applications` | Publik, 5 permintaan/menit | Mengajukan layanan; mengembalikan `request_id`, `status`, dan `lookup_secret` (HTTP 201) |
 | POST | `/applications/status` | Publik, 10 permintaan/menit | Body: `request_id` dan `lookup_secret`; mengembalikan status dan catatan |
-| POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `email` dan `password`; mengembalikan bearer token |
+| POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `username` dan `password` (atau `email` untuk klien lama); mengembalikan bearer token |
 | POST | `/staff/logout` | Token petugas | Mencabut token aktif |
 | GET | `/staff/applications` | Token petugas | Daftar paginasi; filter opsional `?status=SUBMITTED` |
 | PATCH | `/staff/applications/{request_id}/status` | Token petugas | Mengubah status dengan `status` dan `catatan` opsional |

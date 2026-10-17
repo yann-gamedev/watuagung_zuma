@@ -10,8 +10,15 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 class StaffController extends Controller {
     public function login(Request $request): JsonResponse {
-        $data = $request->validate(['email'=>['required','email'],'password'=>['required','string']]);
-        $user = User::where('email', $data['email'])->first();
+        $data = $request->validate([
+            'username'=>['required_without:email','prohibits:email','string','max:64','regex:/\A[a-z0-9][a-z0-9_-]*\z/'],
+            'email'=>['required_without:username','prohibits:username','email','max:255'],
+            'password'=>['required','string'],
+        ]);
+        // Existing clients may still authenticate by email, but never both identifiers.
+        $user = isset($data['username'])
+            ? User::where('username', $data['username'])->first()
+            : User::where('email', $data['email'])->first();
         if (! $user || ! in_array($user->role, ['staff', 'admin'], true) || ! Hash::check($data['password'], $user->password)) return response()->json(['message'=>'Kredensial tidak valid.'], 401);
         return response()->json(['token'=>$user->createToken('staff', ['applications:manage'])->plainTextToken,'user'=>['name'=>$user->name,'role'=>$user->role]]);
     }

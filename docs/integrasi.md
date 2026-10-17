@@ -32,12 +32,18 @@ Path berikut relatif terhadap `/api/v1`. Transport menggunakan `Accept: applicat
 | --- | --- | --- |
 | POST | `/applications` | Field sesuai [Submission](../types/pelayanan.ts); SKU memerlukan informasi usaha |
 | POST | `/applications/status` | `request_id` dan `lookup_secret` |
-| POST | `/staff/login` | `email` dan `password`; respons bearer token |
+| POST | `/staff/login` | `username` dan `password`; kompatibilitas klien lama: `email` dan `password`; respons bearer token |
 | POST | `/staff/logout` | Mencabut token petugas aktif |
 | GET | `/staff/applications` | Daftar paginasi; parameter `page` dan filter `status` opsional |
 | PATCH | `/staff/applications/{request_id}/status` | `status` dan `catatan` |
 
 Pengajuan berhasil mengembalikan HTTP 201 dengan `success`, `request_id`, `status`, dan `lookup_secret`. Cek status mengembalikan metadata status serta catatan, bukan identitas sensitif. Respons validasi gagal menggunakan HTTP 422. Frontend membatasi waktu tunggu API menjadi 20 detik dan memvalidasi respons pelayanan dengan Zod.
+
+### Login username
+
+Frontend mengirim `{ username, password }`. Username unik, 1–64 karakter, diawali huruf kecil/angka, selanjutnya huruf kecil, angka, `_`, atau `-`. Spasi luar dibuang; huruf besar ditolak. Klien lama masih dapat mengirim `{ email, password }`, tetapi kedua identitas tidak boleh dikirim bersama. Identitas tidak dikenal, kata sandi salah, dan peran selain staff/admin menghasilkan pesan 401 yang sama. Validasi gagal menghasilkan 422; rate limit tetap 5/menit.
+
+Jalankan migration penambahan username sebelum memakai frontend baru. Akun lama tetap memiliki username nullable dan bisa memakai API login email; untuk form baru, administrator perlu menetapkan username unik pada akun tersebut. Tidak ada akun/kata sandi bawaan atau endpoint pendaftaran publik. Tipe frontend: `StaffLoginRequest` dan `StaffLoginResponse` di `types/pelayanan.ts`.
 
 ## Kode akses dan autentikasi
 
