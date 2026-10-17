@@ -98,7 +98,6 @@ export default function Home() {
       </section>
       <section className="container home-bottom-container home-bottom home-economy" aria-label="BUMDes dan UMKM">
         <article className="home-economy-card home-bumdes">
-          <div className="home-bottom-label">EKONOMI DESA</div>
           <h2>BUMDes [NAMA BUMDES]</h2>
           <p>[RINGKASAN BUMDES DAN UNIT USAHA — dari dokumen resmi desa]</p>
           <Link href="/bumdes" className="home-bottom-link">
@@ -106,7 +105,6 @@ export default function Home() {
           </Link>
         </article>
         <article className="home-economy-card home-umkm">
-          <div className="home-bottom-label">PRODUK WARGA</div>
           <h2>UMKM Watuagung</h2>
           <p>Daftar produk warga sedang disiapkan.</p>
           <span className="home-bottom-badge">Segera hadir</span>
