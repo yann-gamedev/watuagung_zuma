@@ -34,14 +34,15 @@ Path berikut relatif terhadap `/api/v1`. Transport menggunakan `Accept: applicat
 | POST | `/applications/status` | `request_id` dan `lookup_secret` |
 | POST | `/staff/login` | `username` dan `password`; kompatibilitas klien lama: `email` dan `password`; respons bearer token |
 | POST | `/staff/logout` | Mencabut token petugas aktif |
-| GET | `/staff/applications` | Daftar paginasi; parameter `page` dan filter `status` opsional |
-| PATCH | `/staff/applications/{request_id}/status` | `status` dan `catatan` |
+| GET | `/staff/me` | Profil petugas pemilik token: `{ name, username, role }` dengan `role` = `staff`, `village_head`, atau `admin`; dipakai untuk memvalidasi sesi |
+| GET | `/staff/applications` | Daftar paginasi (`page` ≥ 1). Filter opsional `status` (satu) **atau** `statuses[]` (beberapa), tidak boleh keduanya. Tiap item ([StaffApplication](../types/pelayanan.ts)) memuat `allowed_transitions` untuk peran pengguna |
+| PATCH | `/staff/applications/{request_id}/status` | `status` dan `catatan`; respons ([StaffStatusResponse](../types/pelayanan.ts)) memuat `allowed_transitions` baru |
 
 Pengajuan berhasil mengembalikan HTTP 201 dengan `success`, `request_id`, `status`, dan `lookup_secret`. Cek status mengembalikan metadata status serta catatan, bukan identitas sensitif. Respons validasi gagal menggunakan HTTP 422. Frontend membatasi waktu tunggu API menjadi 20 detik dan memvalidasi respons pelayanan dengan Zod.
 
 ### Login username
 
-Frontend mengirim `{ username, password }`. Username unik, 1–64 karakter, diawali huruf kecil/angka, selanjutnya huruf kecil, angka, `_`, atau `-`. Spasi luar dibuang; huruf besar ditolak. Klien lama masih dapat mengirim `{ email, password }`, tetapi kedua identitas tidak boleh dikirim bersama. Identitas tidak dikenal, kata sandi salah, dan peran selain staff/admin menghasilkan pesan 401 yang sama. Validasi gagal menghasilkan 422; rate limit tetap 5/menit.
+Frontend mengirim `{ username, password }`. Username unik, 1–64 karakter, diawali huruf kecil/angka, selanjutnya huruf kecil, angka, `_`, atau `-`. Spasi luar dibuang; huruf besar ditolak. Klien lama masih dapat mengirim `{ email, password }`, tetapi kedua identitas tidak boleh dikirim bersama. Identitas tidak dikenal, kata sandi salah, dan peran selain staff/village_head/admin menghasilkan pesan 401 yang sama. Validasi gagal menghasilkan 422; rate limit tetap 5/menit.
 
 Jalankan migration penambahan username sebelum memakai frontend baru. Akun lama tetap memiliki username nullable dan bisa memakai API login email; untuk form baru, administrator perlu menetapkan username unik pada akun tersebut. Tidak ada akun/kata sandi bawaan atau endpoint pendaftaran publik. Tipe frontend: `StaffLoginRequest` dan `StaffLoginResponse` di `types/pelayanan.ts`.
 
@@ -50,16 +51,26 @@ Jalankan migration penambahan username sebelum memakai frontend baru. Akun lama 
 - Kode akses diberikan setelah pengajuan API dan disimpan pada sessionStorage tab untuk halaman berhasil. Simpan nomor serta kode di tempat aman; pemulihan belum tersedia.
 - Kode akses dikirim pada body POST untuk cek status, tidak dimasukkan ke URL.
 - Backend menyimpan hash kode akses; NIK, KK, telepon, dan alamat dienkripsi dengan APP_KEY.
-- Token petugas hanya berada di memori halaman. Refresh atau perpindahan route dapat meminta login ulang. Jangan memindahkan token ke URL atau localStorage.
+- Token petugas disimpan di `sessionStorage` tab (`watuagung-staff-token`) oleh `features/admin/session.tsx`. Pindah route admin dan reload tetap login; menutup tab menghapus sesi. Fitur browser "pulihkan tab" atau "duplikat tab" dapat ikut menyalin sessionStorage. Jangan memindahkan token ke URL atau localStorage.
+- Saat dibuka atau di-reload, panel memvalidasi token lewat `GET /staff/me` sebelum menampilkan isi. Gangguan jaringan menampilkan pesan "Server belum dapat dihubungi" dengan tombol coba lagi, bukan logout.
+- Semua permintaan panel melewati `adminRequest()` (`features/admin/api.ts`). Respons 401 menghapus sesi lalu menampilkan login dengan pesan "Sesi berakhir, silakan masuk lagi."
+- Token kedaluwarsa setelah `SANCTUM_EXPIRATION` menit (bawaan 480 = 8 jam kerja), dihitung sejak login, bukan sejak aktivitas terakhir. Tipe frontend: `StaffProfile` di `types/pelayanan.ts`.
 - Jangan mengganti APP_KEY pada database berisi data terenkripsi tanpa prosedur migrasi yang benar.
 
 ## Status dan batas fitur
 
-Alur normal: `SUBMITTED` -> `VERIFIED` -> `PROCESSING` -> `WAITING_APPROVAL` -> `APPROVED`.
+Alur normal: `SUBMITTED` -> `VERIFIED` -> `PROCESSING` -> `WAITING_APPROVAL` -> `APPROVED` -> `READY_FOR_PICKUP` -> `COMPLETED`.
 
-`NEED_REVISION` dan `REJECTED` memerlukan catatan. Backend membatasi transisi status dan mencatat perubahan. `APPROVED` berarti disetujui, **bukan PDF tersedia**.
+Wewenang per peran ditentukan server di `backend/app/Domain/ApplicationStatus.php` (tabel lengkap di [README backend](../backend/README.md#alur-status-dan-wewenang)). Ringkasnya: `staff` dan `admin` memverifikasi, memproses, mengajukan ke kepala desa, menandai siap diambil, dan menandai sudah diambil; **hanya** `village_head` yang memutuskan `WAITING_APPROVAL` → `APPROVED`/`REJECTED`/`NEED_REVISION`. Admin tidak dapat menyetujui.
 
-Login, daftar permohonan, filter, pagination, perubahan status, dan logout sudah diimplementasikan. PDF, unggah dokumen/revisi, pemulihan kode akses, OTP, notifikasi, dan pengelolaan konten publik belum tersedia. Menu konten admin masih prototipe.
+- Transisi yang tidak ada di alur (melompat atau dari status akhir) → 422. Transisi yang ada tetapi bukan wewenang peran → 403 dengan pesan jelas.
+- `NEED_REVISION` dan `REJECTED` memerlukan catatan. Setiap perubahan dicatat di `application_events` dengan `user_id`.
+- Frontend **tidak** menyimpan tabel transisi: tombol aksi di panel dibentuk dari `allowed_transitions` respons server, dan hanya label tombol yang ada di `features/admin/applications-table.tsx`.
+- `APPROVED` berarti disetujui, **bukan PDF tersedia**. `READY_FOR_PICKUP` ditandai petugas saat surat fisik siap; warga diminta membawa KTP asli dan nomor pengajuan. `COMPLETED` berarti surat sudah diambil.
+
+Login, sesi persisten per tab, daftar permohonan, filter, pagination, perubahan status, dan logout sudah diimplementasikan. Menu admin: Dashboard (`/admin`), Permohonan (`/admin/permohonan`), Persetujuan (`/admin/persetujuan`, hanya tampil untuk `village_head`; berisi `WAITING_APPROVAL`), dan Siap diambil (`/admin/surat`; berisi `APPROVED` dan `READY_FOR_PICKUP` lewat `statuses[]`). Menyembunyikan menu hanya kenyamanan tampilan; otorisasi tetap di server; halaman konten (berita, pengumuman, potensi, statistik, pengaturan) dihapus dan dibuat ulang saat modulnya dikerjakan. PDF, unggah dokumen/revisi, pemulihan kode akses, OTP, notifikasi, dan pengelolaan konten publik belum tersedia.
+
+Frontend adalah static export: route admin baru tidak boleh bergantung pada ID dari database. Gunakan query string, misalnya `/admin/permohonan/detail/?id=REQ-...`.
 
 ## Menjalankan dan memeriksa
 

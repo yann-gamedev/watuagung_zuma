@@ -30,7 +30,7 @@ class ApplicationsApiTest extends TestCase {
     }
     public function test_staff_can_progress_status_with_audit(): void {
         $id = $this->postJson('/api/v1/applications', $this->payload())->json('request_id');
-        Sanctum::actingAs(User::factory()->create(), ['applications:manage']);
+        Sanctum::actingAs(User::factory()->create(['role'=>'staff']), ['applications:manage']);
         $url = '/api/v1/staff/applications/'.$id.'/status';
         $this->patchJson($url,['status'=>'APPROVED'])->assertUnprocessable();
         $this->patchJson($url,['status'=>'NEED_REVISION'])->assertUnprocessable();

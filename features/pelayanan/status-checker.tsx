@@ -12,6 +12,8 @@ const steps = [
   ["PROCESSING", "Penyiapan surat oleh petugas."],
   ["WAITING_APPROVAL", "Pengajuan menunggu persetujuan."],
   ["APPROVED", "Persetujuan pengajuan surat."],
+  ["READY_FOR_PICKUP", "Surat siap diambil di kantor desa."],
+  ["COMPLETED", "Surat sudah diambil."],
 ] as const;
 export function StatusChecker() {
   const params = useSearchParams();
@@ -94,6 +96,8 @@ export function StatusChecker() {
               <li>REQ-2026-000002 — Perlu perbaikan</li>
               <li>REQ-2026-000003 — Disetujui</li>
               <li>REQ-2026-000004 — Ditolak</li>
+              <li>REQ-2026-000005 — Siap diambil</li>
+              <li>REQ-2026-000006 — Selesai</li>
             </ul>
           </details>
         </div>
@@ -134,9 +138,9 @@ export function StatusChecker() {
               <div className="status-next-step">
                 <h3>Langkah berikutnya</h3>
                 <p>{statusDescriptions[result.status]}</p>
-                {result.status === "APPROVED" && <Link href="/kontak" className="text-link">Lihat Kontak Kantor</Link>}
+                {(result.status === "APPROVED" || result.status === "READY_FOR_PICKUP") && <Link href="/kontak" className="text-link">Lihat Kontak Kantor</Link>}
               </div>
-              <ol className="timeline" aria-label="Lima tahap pengajuan surat">
+              <ol className="timeline" aria-label="Tujuh tahap pengajuan surat">
                 {steps.map(([code, description], index) => (
                   <li
                     className={`${index <= current ? "complete" : ""} ${index === current ? "current" : ""}`}

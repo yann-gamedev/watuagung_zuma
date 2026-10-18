@@ -4,6 +4,8 @@ export const statuses = [
   "PROCESSING",
   "WAITING_APPROVAL",
   "APPROVED",
+  "READY_FOR_PICKUP",
+  "COMPLETED",
   "REJECTED",
   "NEED_REVISION",
 ] as const;
@@ -13,9 +15,39 @@ export type StaffLoginRequest = { password: string } & (
   | { username: string; email?: never }
   | { email: string; username?: never }
 );
+export type StaffRole = "staff" | "village_head" | "admin";
+/** Metadata daftar petugas; tidak memuat NIK, KK, telepon, atau alamat. */
+export interface StaffApplication {
+  request_id: string;
+  nama: string;
+  jenis_surat: ServiceCode;
+  status: Status;
+  catatan: string | null;
+  created_at: string;
+  allowed_transitions: Status[];
+}
+export interface StaffApplicationsPage {
+  data: StaffApplication[];
+  current_page: number;
+  last_page: number;
+  total: number;
+}
+export interface StaffStatusResponse {
+  success: true;
+  request_id: string;
+  status: Status;
+  catatan: string | null;
+  allowed_transitions: Status[];
+}
 export interface StaffLoginResponse {
   token: string;
-  user: { name: string; role: "staff" | "admin" };
+  user: { name: string; role: StaffRole };
+}
+/** GET /staff/me. Akun lama boleh belum punya username. */
+export interface StaffProfile {
+  name: string;
+  username: string | null;
+  role: StaffRole;
 }
 export interface Submission {
   jenis_surat: ServiceCode;

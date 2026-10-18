@@ -55,8 +55,15 @@ for (const corrupt of ["{}", "null", "not json", '[{"status":"BAD"}]']) {
   await pelayananService.submit(valid);
   assert.equal(JSON.parse(stored).length, 1);
 }
-for (const [suffix, status] of [["000002", "NEED_REVISION"], ["000003", "APPROVED"], ["000004", "REJECTED"]])
+for (const [suffix, status] of [["000002", "NEED_REVISION"], ["000003", "APPROVED"], ["000004", "REJECTED"], ["000005", "READY_FOR_PICKUP"], ["000006", "COMPLETED"]])
   assert.equal((await pelayananService.getStatus(`REQ-2026-${suffix}`)).status, status);
+for (const status of ["READY_FOR_PICKUP", "COMPLETED"]) {
+  const receipt = { success: true, request_id: "REQ-2026-PICKUPTEST", status };
+  stored = JSON.stringify([receipt]);
+  assert.deepEqual(await pelayananService.getStatus(receipt.request_id), receipt);
+  assert.deepEqual(await pelayananService.getStatus(receipt.request_id), receipt, "Status must not advance automatically");
+  assert.deepEqual(JSON.parse(stored), [receipt], "Lookup must not alter storage");
+}
 await assert.rejects(pelayananService.getStatus("REQ-2026-UNKNOWN"), /tidak ditemukan/);
 localStorage.setItem = () => { throw new Error("Storage blocked"); };
 await assert.rejects(pelayananService.submit(valid), /Penyimpanan simulasi tidak tersedia/);

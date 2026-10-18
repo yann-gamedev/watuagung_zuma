@@ -132,6 +132,8 @@ export const statusLabels: Record<Status, string> = {
   PROCESSING: "Diproses",
   WAITING_APPROVAL: "Menunggu persetujuan",
   APPROVED: "Disetujui",
+  READY_FOR_PICKUP: "Siap diambil",
+  COMPLETED: "Selesai",
   REJECTED: "Ditolak",
   NEED_REVISION: "Perlu perbaikan",
 };
@@ -141,6 +143,8 @@ export const statusDescriptions: Record<Status, string> = {
   PROCESSING: "Surat sedang disiapkan. Cek kembali status pengajuan untuk mengetahui tahap berikutnya.",
   WAITING_APPROVAL: "Pengajuan menunggu persetujuan. Cek kembali status sebelum menghubungi kantor desa tentang pengambilan surat.",
   APPROVED: "Pengajuan disetujui. Surat atau PDF belum tersedia melalui website ini. Hubungi kantor desa untuk informasi selanjutnya; status ini belum berarti surat siap diambil.",
+  READY_FOR_PICKUP: "Surat sudah siap. Ambil di kantor desa dengan membawa KTP asli dan nomor pengajuan.",
+  COMPLETED: "Surat sudah diambil.",
   REJECTED: "Baca catatan petugas. Hubungi kantor desa untuk penjelasan dan arahan sebelum mengajukan kembali.",
   NEED_REVISION: "Hubungi kantor desa atau ajukan ulang dengan data yang diperbaiki. Perhatikan catatan petugas di bawah ini.",
 };
@@ -150,6 +154,8 @@ const statusIcons = {
   PROCESSING: FileClock,
   WAITING_APPROVAL: Clock3,
   APPROVED: CheckCircle2,
+  READY_FOR_PICKUP: FileCheck2,
+  COMPLETED: CheckCircle2,
   REJECTED: CircleX,
   NEED_REVISION: CircleAlert,
 };
