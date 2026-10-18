@@ -2268,7 +2268,9 @@ p {
   background: var(--sand);
   color: var(--earth);
 }
-.status-APPROVED {
+.status-APPROVED,
+.status-READY_FOR_PICKUP,
+.status-COMPLETED {
   background: var(--leaf);
   color: var(--white);
 }

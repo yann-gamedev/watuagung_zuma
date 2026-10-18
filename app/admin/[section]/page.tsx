@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { ApplicationsTable } from "@/features/admin/applications-table";
 // Hanya modul yang sudah berfungsi. Halaman konten dibuat ulang saat modulnya dikerjakan.
-const sections = ["permohonan", "surat"] as const;
+const sections = ["permohonan", "surat", "persetujuan"] as const;
 type Section = (typeof sections)[number];
 export const dynamicParams = false;
 export function generateStaticParams() {

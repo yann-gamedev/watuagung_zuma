@@ -5,12 +5,14 @@ import { usePathname } from "next/navigation";
 import { forwardRef } from "react";
 import { ClipboardList, FileCheck2, LayoutDashboard, X } from "lucide-react";
 import { normalizePath } from "@/components/site-header";
+import { useAdminSession } from "@/features/admin/session";
 
 /** Hanya menu yang sudah berfungsi. Modul lain ditambahkan saat dikerjakan. */
 export const adminLinks = [
   { title: "Dashboard", href: "/admin", Icon: LayoutDashboard },
   { title: "Permohonan", href: "/admin/permohonan", Icon: ClipboardList },
-  { title: "Surat disetujui", href: "/admin/surat", Icon: FileCheck2 },
+  { title: "Persetujuan", href: "/admin/persetujuan", Icon: FileCheck2 },
+  { title: "Siap diambil", href: "/admin/surat", Icon: FileCheck2 },
 ] as const;
 
 export function adminPageTitle(path: string) {
@@ -21,6 +23,8 @@ type Props = { open: boolean; onClose: () => void };
 
 export const AdminSidebar = forwardRef<HTMLElement, Props>(function AdminSidebar({ open, onClose }, ref) {
   const path = normalizePath(usePathname());
+  const { user } = useAdminSession();
+  const links = adminLinks.filter((link) => link.href !== "/admin/persetujuan" || user?.role === "village_head");
   return (
     <aside ref={ref} id="admin-sidebar" className="admin-sidebar" data-open={open} aria-label="Menu petugas">
       <div className="admin-sidebar-top">
@@ -42,7 +46,7 @@ export const AdminSidebar = forwardRef<HTMLElement, Props>(function AdminSidebar
         </button>
       </div>
       <nav aria-label="Navigasi admin">
-        {adminLinks.map(({ title, href, Icon }) => (
+        {links.map(({ title, href, Icon }) => (
           <Link key={href} href={href} className={path === href ? "active" : ""} aria-current={path === href ? "page" : undefined}>
             <Icon size={22} aria-hidden="true" />
             {title}

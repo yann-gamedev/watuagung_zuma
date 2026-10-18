@@ -9,7 +9,7 @@ import { normalizePath } from "@/components/site-header";
 import { AdminLoginForm } from "./login-form";
 import { useAdminSession } from "./session";
 
-const roleLabels = { staff: "Petugas", admin: "Admin" } as const;
+const roleLabels = { staff: "Petugas", village_head: "Kepala Desa", admin: "Admin" } as const;
 const MOBILE_QUERY = "(max-width: 900px)";
 
 function focusables(container: HTMLElement | null) {

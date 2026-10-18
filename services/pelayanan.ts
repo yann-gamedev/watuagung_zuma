@@ -47,7 +47,7 @@ export const pelayananService = {
     await new Promise((resolve) => setTimeout(resolve, 650));
     const record = demoRecords().find((item) => item.request_id === id);
     if (record) return record;
-    const examples: Record<string, (typeof statuses)[number]> = { 'REQ-2026-000001': 'PROCESSING', 'REQ-2026-000002': 'NEED_REVISION', 'REQ-2026-000003': 'APPROVED', 'REQ-2026-000004': 'REJECTED' };
+    const examples: Record<string, (typeof statuses)[number]> = { 'REQ-2026-000001': 'PROCESSING', 'REQ-2026-000002': 'NEED_REVISION', 'REQ-2026-000003': 'APPROVED', 'REQ-2026-000004': 'REJECTED', 'REQ-2026-000005': 'READY_FOR_PICKUP', 'REQ-2026-000006': 'COMPLETED' };
     if (examples[id]) return { success: true, request_id: id, status: examples[id], catatan: examples[id] === 'NEED_REVISION' ? 'Contoh: alamat usaha perlu dilengkapi.' : examples[id] === 'REJECTED' ? 'Contoh: pengajuan tidak memenuhi persyaratan.' : undefined };
     throw new Error('Nomor pengajuan tidak ditemukan. Periksa kembali nomor Anda.');
   },

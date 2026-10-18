@@ -29,19 +29,15 @@ php artisan config:clear
 
 Jalankan `php artisan migrate` terlebih dahulu untuk menambahkan kolom username unik. Akun lama tetap tersimpan dengan username null dan login email melalui API masih didukung. Form admin sekarang menggunakan username; tetapkan username unik pada akun lama sebelum memakainya. Format: 1–64 karakter huruf kecil/angka, `_`, atau `-`, diawali huruf kecil/angka. Tidak ada akun/kata sandi bawaan.
 
-Tidak ada endpoint pendaftaran publik. Untuk mencoba panel petugas secara lokal, jalankan `php artisan tinker`, lalu masukkan perintah berikut dengan email dan kata sandi kuat milik Anda sendiri:
+Tidak ada endpoint pendaftaran publik. Panel menerima tiga peran: `staff` (petugas), `village_head` (kepala desa), dan `admin`. Buat akun lokal dengan perintah berikut; kata sandi (minimal 12 karakter) diminta dua kali secara tersembunyi, jadi tidak tersimpan di riwayat terminal maupun repositori:
 
-```php
-App\Models\User::create([
-    'name' => 'Petugas Desa',
-    'username' => 'petugas-contoh',
-    'email' => 'petugas@example.test',
-    'password' => 'ganti-dengan-kata-sandi-kuat',
-    'role' => 'staff',
-]);
+```powershell
+php artisan staff:create petugas-lokal --role=staff --name="Petugas Lokal"
+php artisan staff:create kades-lokal --role=village_head --name="Kepala Desa Lokal"
+php artisan staff:create admin-lokal --role=admin --name="Admin Lokal"
 ```
 
-Ketik `exit` untuk keluar dari Tinker. Kredensial contoh di atas **bukan** akun bawaan; ubah sebelum dijalankan. Jangan simpan kata sandi pada repositori.
+`--email` opsional (bawaan `<username>@example.test`). Nama dan username di atas hanya contoh, **bukan** akun bawaan. Untuk mengubah peran akun lama, gunakan `php artisan tinker`, lalu `App\Models\User::where('username', 'nama-akun')->update(['role' => 'village_head']);`. Perubahan peran berlaku seketika pada token yang sudah aktif.
 
 ## Integrasi frontend
 
@@ -59,13 +55,33 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | POST | `/applications/status` | Publik, 10 permintaan/menit | Body: `request_id` dan `lookup_secret`; mengembalikan status dan catatan |
 | POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `username` dan `password` (atau `email` untuk klien lama); mengembalikan bearer token |
 | POST | `/staff/logout` | Token petugas | Mencabut token aktif |
-| GET | `/staff/me` | Token petugas | Mengembalikan `{ name, username, role }`; `username` bisa `null` untuk akun lama. Peran selain `staff`/`admin` mendapat 403 |
-| GET | `/staff/applications` | Token petugas | Daftar paginasi; filter opsional `?status=SUBMITTED` |
-| PATCH | `/staff/applications/{request_id}/status` | Token petugas | Mengubah status dengan `status` dan `catatan` opsional |
+| GET | `/staff/me` | Token petugas | Mengembalikan `{ name, username, role }`; `username` bisa `null` untuk akun lama. Peran selain `staff`/`village_head`/`admin` mendapat 403 |
+| GET | `/staff/applications` | Token petugas | Daftar paginasi (20 per halaman, `?page=N`). Filter opsional: satu status `?status=SUBMITTED` **atau** beberapa status `?statuses[]=APPROVED&statuses[]=READY_FOR_PICKUP` (tidak boleh keduanya). Setiap item memuat `allowed_transitions` untuk peran pengguna |
+| PATCH | `/staff/applications/{request_id}/status` | Token petugas | Body `status` dan `catatan` opsional; respons memuat `status`, `catatan`, dan `allowed_transitions` baru |
 
 Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Untuk SKU, `nama_usaha`, `jenis_usaha`, dan `alamat_usaha` wajib diisi. Validasi yang gagal mengembalikan HTTP 422 dengan objek `errors`.
 
-Alur normal status: `SUBMITTED` → `VERIFIED` → `PROCESSING` → `WAITING_APPROVAL` → `APPROVED`. Status `NEED_REVISION` dan `REJECTED` memerlukan catatan petugas; setiap perubahan status dicatat. `APPROVED` **belum** berarti surat/PDF telah dibuat.
+### Alur status dan wewenang
+
+Alur normal: `SUBMITTED` → `VERIFIED` → `PROCESSING` → `WAITING_APPROVAL` → `APPROVED` → `READY_FOR_PICKUP` → `COMPLETED`. Aturan dipusatkan di `app/Domain/ApplicationStatus.php`; controller tidak menyimpan salinan tabel ini.
+
+| Dari | Ke | Peran |
+| --- | --- | --- |
+| `SUBMITTED` | `VERIFIED`, `NEED_REVISION`, `REJECTED` | staff, admin |
+| `NEED_REVISION` | `VERIFIED`, `REJECTED` | staff, admin |
+| `VERIFIED` | `PROCESSING`, `NEED_REVISION`, `REJECTED` | staff, admin |
+| `PROCESSING` | `WAITING_APPROVAL`, `NEED_REVISION`, `REJECTED` | staff, admin |
+| `WAITING_APPROVAL` | `APPROVED`, `REJECTED`, `NEED_REVISION` | **hanya** village_head |
+| `APPROVED` | `READY_FOR_PICKUP` | staff, admin |
+| `READY_FOR_PICKUP` | `COMPLETED` | staff, admin |
+
+- Perpindahan yang tidak ada di tabel (melompat, mundur, atau dari `REJECTED`/`COMPLETED`) → **422** `Transisi status tidak valid.`
+- Perpindahan yang ada di tabel tetapi bukan wewenang peran → **403** `Peran Anda tidak berwenang melakukan perubahan status ini.` Admin tidak dapat menyetujui.
+- `NEED_REVISION` dan `REJECTED` wajib memakai `catatan` (422 dengan `errors.catatan`).
+- Status dibaca ulang dengan kunci baris di dalam transaksi, sehingga klien dengan data usang tidak bisa mengulang transisi. Setiap perubahan dicatat di `application_events` beserta `user_id`.
+- Semua peran memakai satu ability token `applications:manage`; peran diperiksa ulang pada setiap permintaan.
+
+`APPROVED` **belum** berarti surat/PDF telah dibuat; `READY_FOR_PICKUP` ditandai petugas setelah surat fisik siap.
 
 ## Penanganan data dan batas saat ini
 
@@ -74,7 +90,7 @@ Alur normal status: `SUBMITTED` → `VERIFIED` → `PROCESSING` → `WAITING_APP
 - Token petugas berlaku `SANCTUM_EXPIRATION` menit sejak login (bawaan 480 menit = 8 jam kerja; atur di `.env`, lalu `php artisan config:clear` bila konfigurasi di-cache). Token kedaluwarsa atau dicabut menghasilkan 401.
 - Frontend menyimpan token di `sessionStorage` tab dan memvalidasinya lewat `/staff/me`; menutup tab menghapus sesi. Jangan simpan token dalam URL atau localStorage.
 - Token kedaluwarsa dihapus dari database oleh `sanctum:prune-expired --hours=24` yang dijadwalkan harian di `routes/console.php`. Scheduler harus dijalankan: di server tambahkan cron `* * * * * php artisan schedule:run`; secara lokal gunakan `php artisan schedule:work`. Cek jadwal dengan `php artisan schedule:list`.
-- Belum ada PDF, unggah dokumen, OTP, pengelolaan konten, atau otorisasi petugas yang lebih terperinci. Jangan menguji dengan data pribadi nyata.
+- Belum ada PDF, unggah dokumen, OTP, atau pengelolaan konten. Jangan menguji dengan data pribadi nyata.
 
 ## Sebelum produksi
 

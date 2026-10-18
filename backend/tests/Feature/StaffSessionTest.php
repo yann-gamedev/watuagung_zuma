@@ -37,9 +37,9 @@ class StaffSessionTest extends TestCase
         return $token ? $this->withToken($token)->getJson('/api/v1/staff/me') : $this->getJson('/api/v1/staff/me');
     }
 
-    public function test_me_returns_only_public_profile_for_staff_and_admin(): void
+    public function test_me_returns_only_public_profile_for_panel_roles(): void
     {
-        foreach (['staff', 'admin'] as $i => $role) {
+        foreach (['staff', 'village_head', 'admin'] as $i => $role) {
             $user = $this->staff(['role' => $role, 'username' => "petugas-$i", 'email' => "p$i@example.test"]);
             $this->me($this->loginToken($user))
                 ->assertOk()
