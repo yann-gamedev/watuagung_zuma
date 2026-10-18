@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type MouseEvent, type RefObject } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RefreshCw, Search } from "lucide-react";
@@ -29,6 +29,8 @@ export function ApplicationsTable({ section }: { section: ApplicationSection }) 
   const query = buildApplicationQuery(filters, section).toString();
   const apiPath = buildApplicationsApiPath(section, filters);
   const [attempt, setAttempt] = useState(0);
+  // Form and results remount per query; after a user-triggered change, focus the new result summary.
+  const focusResultsRef = useRef(false);
   const restricted = section === "persetujuan" && user?.role !== "village_head";
   const filterStatuses = section === "surat"
     ? statuses.filter((status) => status === "APPROVED" || status === "READY_FOR_PICKUP")
@@ -42,6 +44,7 @@ export function ApplicationsTable({ section }: { section: ApplicationSection }) 
       params.set(name, String(form.get(name) ?? ""));
     }
     const next = parseApplicationFilters(params, section);
+    focusResultsRef.current = true;
     router.push(buildApplicationsHref(section, next), { scroll: false });
   }
 
@@ -88,20 +91,23 @@ export function ApplicationsTable({ section }: { section: ApplicationSection }) 
         </div>
         <div className={styles.filterActions}>
           <button type="submit" className="btn btn-primary"><Search size={22} aria-hidden="true" /> Terapkan filter</button>
-          <Link className="btn btn-secondary" href={buildApplicationsHref(section, parseApplicationFilters(new URLSearchParams(), section))} scroll={false}>Hapus filter</Link>
+          <Link className="btn btn-secondary" href={buildApplicationsHref(section, parseApplicationFilters(new URLSearchParams(), section))} scroll={false} onClick={() => { focusResultsRef.current = true; }}>Hapus filter</Link>
         </div>
       </form>
       {/* Remount per query/retry: results from a previous request are never shown. */}
-      <ApplicationResults key={`${apiPath}:${attempt}`} apiPath={apiPath} section={section} filters={filters} />
+      <ApplicationResults key={`${apiPath}:${attempt}`} apiPath={apiPath} section={section} filters={filters} focusResultsRef={focusResultsRef} />
     </section>
   </div>;
 }
 
-function ApplicationResults({ apiPath, section, filters }: { apiPath: string; section: ApplicationSection; filters: ApplicationFilters }) {
+function ApplicationResults({ apiPath, section, filters, focusResultsRef }: {
+  apiPath: string; section: ApplicationSection; filters: ApplicationFilters; focusResultsRef: RefObject<boolean>;
+}) {
   const { request } = useAdminSession();
   const router = useRouter();
   const [records, setRecords] = useState<StaffApplicationsPage | null>(null);
   const [error, setError] = useState("");
+  const summaryRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,18 +120,30 @@ function ApplicationResults({ apiPath, section, filters }: { apiPath: string; se
     return () => { cancelled = true; };
   }, [apiPath, request]);
 
+  useEffect(() => {
+    if ((records || error) && focusResultsRef.current) {
+      focusResultsRef.current = false;
+      summaryRef.current?.focus({ preventScroll: false });
+    }
+  }, [records, error, focusResultsRef]);
+
   function openRow(event: MouseEvent<HTMLTableRowElement>, href: string) {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     if ((event.target as HTMLElement).closest("a") || window.getSelection()?.toString()) return;
     router.push(href);
   }
 
-  if (error) return <p className={styles.error} role="alert">{error} Gunakan tombol Muat ulang untuk mencoba lagi.</p>;
+  if (error) return <p ref={summaryRef} tabIndex={-1} className={styles.error} role="alert">{error} Gunakan tombol Muat ulang untuk mencoba lagi.</p>;
   if (!records) return <p className={styles.message} role="status">Memuat daftar permohonan…</p>;
+  const outOfRange = records.data.length === 0 && filters.page > 1 && filters.page > records.last_page;
 
   return <>
-    <p className={styles.summary} role="status">{records.total} permohonan ditemukan.</p>
-    {records.data.length === 0 ? <p className={styles.message}>Tidak ada permohonan pada halaman ini. Ubah filter atau kembali ke halaman sebelumnya.</p> : <>
+    <p ref={summaryRef} tabIndex={-1} className={styles.summary} role="status">{records.total} permohonan ditemukan.</p>
+    {records.data.length === 0 ? <p className={styles.message}>
+      {outOfRange
+        ? <>Halaman ini tidak tersedia. <Link href={buildApplicationsHref(section, { ...filters, page: 1 })} scroll={false} onClick={() => { focusResultsRef.current = true; }}>Kembali ke halaman 1</Link></>
+        : "Tidak ada permohonan yang cocok. Ubah atau hapus filter."}
+    </p> : <>
       <div className={styles.tableScroll}>
         <table className={styles.table} aria-label="Daftar permohonan surat">
           <thead><tr>{["Nomor", "Pemohon", "Layanan", "Tanggal", "Status"].map((label) => <th key={label} scope="col">{label}</th>)}</tr></thead>
@@ -156,11 +174,11 @@ function ApplicationResults({ apiPath, section, filters }: { apiPath: string; se
     </>}
     <nav className={styles.pager} aria-label="Halaman daftar permohonan">
       {filters.page > 1
-        ? <Link id="prev-applications" className="btn btn-secondary" href={buildApplicationsHref(section, { ...filters, page: filters.page - 1 })} scroll={false}>Sebelumnya</Link>
+        ? <Link id="prev-applications" className="btn btn-secondary" href={buildApplicationsHref(section, { ...filters, page: Math.min(filters.page - 1, Math.max(1, records.last_page)) })} scroll={false} onClick={() => { focusResultsRef.current = true; }}>Sebelumnya</Link>
         : <span className={`btn btn-secondary ${styles.disabled}`} aria-disabled="true">Sebelumnya</span>}
       <span>Halaman {records.current_page} / {records.last_page}</span>
       {filters.page < records.last_page
-        ? <Link id="next-applications" className="btn btn-secondary" href={buildApplicationsHref(section, { ...filters, page: filters.page + 1 })} scroll={false}>Berikutnya</Link>
+        ? <Link id="next-applications" className="btn btn-secondary" href={buildApplicationsHref(section, { ...filters, page: filters.page + 1 })} scroll={false} onClick={() => { focusResultsRef.current = true; }}>Berikutnya</Link>
         : <span className={`btn btn-secondary ${styles.disabled}`} aria-disabled="true">Berikutnya</span>}
     </nav>
   </>;

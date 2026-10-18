@@ -53,10 +53,11 @@ class StaffController extends Controller {
         if (isset($data['jenis_surat'])) $query->where('jenis_surat', $data['jenis_surat']);
         if (filled($data['q'] ?? null)) {
             // Escape LIKE wildcards: search is a literal substring, never raw SQL.
-            $search = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $data['q']).'%';
+            // LOWER() on both sides keeps search case-insensitive on SQLite and PostgreSQL alike.
+            $search = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower($data['q'])).'%';
             $query->where(fn ($searchQuery) => $searchQuery
-                ->whereRaw("request_id LIKE ? ESCAPE '!'", [$search])
-                ->orWhereRaw("nama LIKE ? ESCAPE '!'", [$search]));
+                ->whereRaw("LOWER(request_id) LIKE ? ESCAPE '!'", [$search])
+                ->orWhereRaw("LOWER(nama) LIKE ? ESCAPE '!'", [$search]));
         }
         $direction = ($data['sort'] ?? 'terbaru') === 'terlama' ? 'asc' : 'desc';
         // Explicit fields only: encrypted columns and freeform notes are never selected.

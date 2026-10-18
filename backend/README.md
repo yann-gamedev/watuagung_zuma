@@ -68,7 +68,7 @@ Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Untuk SKU, `nam
 
 | Parameter | Validasi / perilaku |
 | --- | --- |
-| `q` | String maksimal 100 karakter; spasi luar dibuang, kosong berarti tanpa pencarian. Mencocokkan potongan literal `request_id` **atau** `nama`, bukan NIK/KK/telepon/alamat. `%`, `_`, dan `!` dianggap teks literal, bukan wildcard |
+| `q` | String maksimal 100 karakter; spasi luar dibuang, kosong berarti tanpa pencarian. Mencocokkan potongan literal `request_id` **atau** `nama`, bukan NIK/KK/telepon/alamat. `%`, `_`, dan `!` dianggap teks literal, bukan wildcard. Tidak peka huruf besar/kecil (`LOWER()` di kedua sisi, berlaku sama di SQLite dan PostgreSQL; untuk huruf ASCII) |
 | `jenis_surat` | Salah satu `SKU`, `DOMISILI`, `SKTM`, `KTP_KK` |
 | `sort` | `terbaru` (bawaan) atau `terlama`; urutan `created_at` kemudian ID internal, keduanya menurun atau menaik. ID hanya pemecah urutan waktu yang sama, tidak dikirim ke klien |
 | `status` | Satu status dari alur di bawah; tidak boleh bersama `statuses` |

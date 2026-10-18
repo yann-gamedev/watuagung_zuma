@@ -33,11 +33,16 @@ const detailSchema = z.object({
 function dateTime(value: string) {
   return new Date(value).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" });
 }
+/** Format sesuai permintaan pengguna (3201********0001). Nilai pendek disamarkan seluruhnya. */
+export function maskIdentity(value: string) {
+  if (value.length < 12) return "*".repeat(value.length);
+  return `${value.slice(0, 4)}${"*".repeat(value.length - 8)}${value.slice(-4)}`;
+}
 function PrivateField({ label, value }: { label: string; value: string }) {
   const [visible, setVisible] = useState(false);
   return <div><dt>{label}</dt><dd className={styles.privateField}>
-    <span>{visible ? value : `${value.slice(0, 4)}${"*".repeat(Math.max(0, value.length - 8))}${value.slice(-4)}`}</span>
-    <button type="button" className="btn btn-secondary" aria-label={`${visible ? "Sembunyikan" : "Tampilkan"} ${label}`} aria-pressed={visible} onClick={() => setVisible(!visible)}>
+    <span>{visible ? value : maskIdentity(value)}</span>
+    <button type="button" className="btn btn-secondary" aria-label={`${visible ? "Sembunyikan" : "Tampilkan"} ${label}`} onClick={() => setVisible(!visible)}>
       {visible ? <EyeOff size={22} aria-hidden="true" /> : <Eye size={22} aria-hidden="true" />}{visible ? "Sembunyikan" : "Tampilkan"}
     </button>
   </dd></div>;
@@ -54,6 +59,7 @@ function DetailContent({ id }: { id: string }) {
   const { request } = useAdminSession();
   const [detail, setDetail] = useState<StaffApplicationDetail | null>(null);
   const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -64,6 +70,7 @@ function DetailContent({ id }: { id: string }) {
   const changing = useRef(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const actionRef = useRef<HTMLButtonElement | null>(null);
+  const actionHeadingRef = useRef<HTMLHeadingElement>(null);
   const validId = /^REQ-\d{4}-[A-Z0-9]+$/.test(id) && id.length <= 64;
   const source = parseApplicationSection(params.get("from"));
   const backHref = buildApplicationsHref(source, parseApplicationFilters(params, source));
@@ -87,36 +94,40 @@ function DetailContent({ id }: { id: string }) {
     return () => { cancelled = true; mounted.current = false; };
   }, [readDetail, validId, attempt]);
 
+  // After a status change the action buttons may disappear; move focus to a stable heading.
+  const focusActions = () => requestAnimationFrame(() => actionHeadingRef.current?.focus());
   async function change(status: Status) {
     if (changing.current || !detail?.allowed_transitions.includes(status)) return;
-    changing.current = true; setBusy(true); setError(""); setNotice("");
+    changing.current = true; setBusy(true); setActionError(""); setNotice("");
+    let updated = false;
     try {
       await request<StaffStatusResponse>(`/staff/applications/${encodeURIComponent(id)}/status`, {
         method: "PATCH", body: JSON.stringify({ status, catatan: note.trim() || null }),
       });
+      updated = true;
       if (!mounted.current) return;
-      setPending(null); setNote("");
-      // Reload actual history and allowed actions; never invent a client-side event.
-      setDetail(null); setLoading(true);
+      setNote("");
+      // Keep the old detail visible (actions disabled) and reload real history from the server.
       const result = await readDetail();
       if (mounted.current) { setDetail(result); setNotice("Status permohonan berhasil diperbarui."); }
     } catch (e) {
-      if (mounted.current && !(e instanceof AdminUnauthorizedError)) {
-        setPending(null);
-        setError(e instanceof Error ? e.message : "Gagal memperbarui status.");
+      if (!mounted.current || e instanceof AdminUnauthorizedError) return;
+      if (updated) {
+        setNotice("Status sudah diperbarui, tetapi detail gagal dimuat ulang. Muat ulang halaman untuk melihat data terbaru.");
+      } else {
+        setActionError(e instanceof Error ? e.message : "Gagal memperbarui status.");
         // A concurrent update may have changed the available actions.
-        try { const result = await readDetail(); if (mounted.current) setDetail(result); }
-        catch { if (mounted.current) setDetail(null); }
+        try { const result = await readDetail(); if (mounted.current) setDetail(result); } catch { /* keep current detail */ }
       }
     } finally {
       changing.current = false;
-      if (mounted.current) { setBusy(false); setLoading(false); }
+      if (mounted.current) { setPending(null); setBusy(false); focusActions(); }
     }
   }
   function choose(status: Status, button: HTMLButtonElement) {
-    setError(""); setNotice("");
+    setActionError(""); setNotice("");
     if (["REJECTED", "NEED_REVISION"].includes(status) && !note.trim()) {
-      setError("Catatan wajib diisi untuk Tolak atau Minta perbaikan."); noteRef.current?.focus(); return;
+      setActionError("Catatan wajib diisi untuk Tolak atau Minta perbaikan."); noteRef.current?.focus(); return;
     }
     actionRef.current = button;
     if (["REJECTED", "APPROVED", "COMPLETED"].includes(status)) setPending(status);
@@ -126,7 +137,6 @@ function DetailContent({ id }: { id: string }) {
     <Link className="btn btn-secondary" href={backHref}><ArrowLeft size={22} aria-hidden="true" />Kembali ke daftar</Link>
     {!validId ? <p className="error-box" role="alert">Nomor permohonan tidak valid. Buka detail dari daftar permohonan.</p> : <>
       {error && <p className="error-box" role="alert">{error}</p>}
-      {notice && <p className={styles.notice} role="status">{notice}</p>}
       {loading && <p role="status">Memuat detail permohonan...</p>}
       {!loading && !detail && <button className="btn" onClick={() => { setError(""); setLoading(true); setAttempt(attempt + 1); }}>Coba lagi</button>}
       {detail && <>
@@ -165,11 +175,13 @@ function DetailContent({ id }: { id: string }) {
               </li>)}</ol> : <p>Belum ada riwayat status.</p>}
             </section>
           </div>
-          <section className={`${styles.card} ${styles.actions}`} aria-labelledby="action-title"><h2 id="action-title">Tindakan petugas</h2>
+          <section className={`${styles.card} ${styles.actions}`} aria-labelledby="action-title"><h2 id="action-title" ref={actionHeadingRef} tabIndex={-1}>Tindakan petugas</h2>
+            {notice && <p className={styles.notice} role="status">{notice}</p>}
+            {actionError && <p id="action-error" className="error-box" role="alert">{actionError}</p>}
             {detail.allowed_transitions.length ? <>
               <label htmlFor="staff-note">Catatan status</label>
               <p id="note-help">Wajib untuk Tolak dan Minta perbaikan. Jangan tuliskan NIK, KK, telepon, atau alamat dalam catatan.</p>
-              <textarea ref={noteRef} id="staff-note" className="search-input" aria-describedby="note-help" value={note} onChange={(event) => setNote(event.target.value)} disabled={busy} maxLength={1000} rows={5} />
+              <textarea ref={noteRef} id="staff-note" className="search-input" aria-describedby={actionError ? "note-help action-error" : "note-help"} aria-invalid={actionError.startsWith("Catatan wajib") || undefined} value={note} onChange={(event) => setNote(event.target.value)} disabled={busy} maxLength={1000} rows={5} />
               <div className={styles.buttons}>{detail.allowed_transitions.map((status) => <button type="button" id={`status-${status}`} className="btn btn-secondary" key={status} disabled={busy} onClick={(event) => choose(status, event.currentTarget)}>{actionLabels[status]}</button>)}</div>
             </> : <p>Tidak ada tindakan yang tersedia untuk peran Anda pada status ini.</p>}
             {busy && <p role="status">Menyimpan perubahan...</p>}

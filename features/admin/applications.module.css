@@ -5,6 +5,10 @@
   line-height: 1.6;
 }
 
+.list [tabindex="-1"]:focus {
+  outline: none;
+}
+
 .list :is(a, button, input, select):focus-visible {
   outline: 3px solid var(--leaf);
   outline-offset: 4px;

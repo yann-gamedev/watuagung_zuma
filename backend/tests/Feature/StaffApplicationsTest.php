@@ -180,6 +180,10 @@ class StaffApplicationsTest extends TestCase
             ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.request_id', $match->request_id);
         $this->getJson('/api/v1/staff/applications?q='.substr($match->request_id, -16))->assertOk()
             ->assertJsonPath('total', 1)->assertJsonPath('data.0.request_id', $match->request_id);
+        $this->getJson('/api/v1/staff/applications?q=pencarian&jenis_surat=DOMISILI&status=APPROVED')
+            ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.request_id', $match->request_id);
+        $this->getJson('/api/v1/staff/applications?q='.strtolower($match->request_id))->assertOk()
+            ->assertJsonPath('total', 1)->assertJsonPath('data.0.request_id', $match->request_id);
         $this->getJson('/api/v1/staff/applications?q=tidak-ada')->assertOk()->assertJsonPath('total', 0);
         $this->getJson('/api/v1/staff/applications?q=%20%20')->assertOk()->assertJsonPath('total', 4);
         $this->assertDatabaseCount('audit_logs', 0);

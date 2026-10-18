@@ -16,14 +16,6 @@ export type StaffLoginRequest = { password: string } & (
   | { email: string; username?: never }
 );
 export type StaffRole = "staff" | "village_head" | "admin";
-export interface StaffApplicationFilters {
-  q?: string;
-  status?: Status;
-  statuses?: Status[];
-  jenis_surat?: ServiceCode;
-  sort?: "terbaru" | "terlama";
-  page?: number;
-}
 /** Metadata daftar petugas; tidak memuat NIK, KK, telepon, atau alamat. */
 export interface StaffApplication {
   request_id: string;
