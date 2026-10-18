@@ -35,7 +35,8 @@ Path berikut relatif terhadap `/api/v1`. Transport menggunakan `Accept: applicat
 | POST | `/staff/login` | `username` dan `password`; kompatibilitas klien lama: `email` dan `password`; respons bearer token |
 | POST | `/staff/logout` | Mencabut token petugas aktif |
 | GET | `/staff/me` | Profil petugas pemilik token: `{ name, username, role }` dengan `role` = `staff`, `village_head`, atau `admin`; dipakai untuk memvalidasi sesi |
-| GET | `/staff/applications` | Daftar paginasi (`page` ≥ 1). Filter opsional `status` (satu) **atau** `statuses[]` (beberapa), tidak boleh keduanya. Tiap item ([StaffApplication](../types/pelayanan.ts)) memuat `allowed_transitions` untuk peran pengguna |
+| GET | `/staff/applications` | Daftar paginasi (`page` ≥ 1, 20 per halaman). Filter opsional `status` (satu) **atau** `statuses[]` (beberapa), tidak boleh keduanya; `q` (maksimal 100 karakter) mencari sebagian nomor/nama secara literal, `jenis_surat` = `SKU`/`DOMISILI`/`SKTM`/`KTP_KK`, `sort` = `terbaru` (bawaan)/`terlama`. Tiap item ([StaffApplication](../types/pelayanan.ts)) memuat `allowed_transitions`, tanpa data pribadi sensitif atau catatan bebas |
+| GET | `/staff/applications/{request_id}` | Detail terotorisasi untuk `staff`, `village_head`, `admin`: data pemohon, usaha, keperluan, catatan, `allowed_transitions`, dan riwayat status. Respons `Cache-Control: no-store`; akses berhasil dicatat di `audit_logs` |
 | PATCH | `/staff/applications/{request_id}/status` | `status` dan `catatan`; respons ([StaffStatusResponse](../types/pelayanan.ts)) memuat `allowed_transitions` baru |
 
 Pengajuan berhasil mengembalikan HTTP 201 dengan `success`, `request_id`, `status`, dan `lookup_secret`. Cek status mengembalikan metadata status serta catatan, bukan identitas sensitif. Respons validasi gagal menggunakan HTTP 422. Frontend membatasi waktu tunggu API menjadi 20 detik dan memvalidasi respons pelayanan dengan Zod.
@@ -65,12 +66,21 @@ Wewenang per peran ditentukan server di `backend/app/Domain/ApplicationStatus.ph
 
 - Transisi yang tidak ada di alur (melompat atau dari status akhir) → 422. Transisi yang ada tetapi bukan wewenang peran → 403 dengan pesan jelas.
 - `NEED_REVISION` dan `REJECTED` memerlukan catatan. Setiap perubahan dicatat di `application_events` dengan `user_id`.
-- Frontend **tidak** menyimpan tabel transisi: tombol aksi di panel dibentuk dari `allowed_transitions` respons server, dan hanya label tombol yang ada di `features/admin/applications-table.tsx`.
+- Frontend **tidak** menyimpan tabel transisi: tombol aksi di halaman detail dibentuk dari `allowed_transitions` respons server, dan hanya label tombol yang ada di `features/admin/application-detail.tsx`. Catatan wajib untuk Tolak/Minta perbaikan; Tolak, Setujui, dan Tandai sudah diambil memakai dialog konfirmasi. Sesudah perubahan, detail dan riwayat dibaca ulang dari server.
 - `APPROVED` berarti disetujui, **bukan PDF tersedia**. `READY_FOR_PICKUP` ditandai petugas saat surat fisik siap; warga diminta membawa KTP asli dan nomor pengajuan. `COMPLETED` berarti surat sudah diambil.
 
 Login, sesi persisten per tab, daftar permohonan, filter, pagination, perubahan status, dan logout sudah diimplementasikan. Menu admin: Dashboard (`/admin`), Permohonan (`/admin/permohonan`), Persetujuan (`/admin/persetujuan`, hanya tampil untuk `village_head`; berisi `WAITING_APPROVAL`), dan Siap diambil (`/admin/surat`; berisi `APPROVED` dan `READY_FOR_PICKUP` lewat `statuses[]`). Menyembunyikan menu hanya kenyamanan tampilan; otorisasi tetap di server; halaman konten (berita, pengumuman, potensi, statistik, pengaturan) dihapus dan dibuat ulang saat modulnya dikerjakan. PDF, unggah dokumen/revisi, pemulihan kode akses, OTP, notifikasi, dan pengelolaan konten publik belum tersedia.
 
-Frontend adalah static export: route admin baru tidak boleh bergantung pada ID dari database. Gunakan query string, misalnya `/admin/permohonan/detail/?id=REQ-...`.
+Frontend adalah static export: halaman `/admin/permohonan/detail/` diekspor tanpa ID database; client membaca `?id=REQ-...` di dalam `Suspense`. Daftar bersama menyimpan `q`, `status`, `jenis_surat`, `sort`, dan `page` dalam query string. Tautan detail membawa `from=permohonan|persetujuan|surat` dan filter tersebut agar tombol kembali memulihkan daftar. Antrean Persetujuan dan Siap diambil membatasi status tetap, termasuk bila URL diubah manual.
+
+### Privasi detail dan audit akses
+
+- Kontrak detail: `StaffApplicationDetail` di `types/pelayanan.ts`; field formulir lengkap ditambah `request_id`, `status`, `created_at`, `updated_at`, `catatan`, `allowed_transitions`, dan `history`; field usaha nullable untuk layanan non-SKU. Setiap event berisi `from_status` (nullable untuk pengajuan awal), `to_status`, `note`, `staff_name` (nullable untuk sistem/petugas yang dihapus), dan `created_at`.
+- NIK/KK tersamar di UI secara default, dengan tombol Tampilkan/Sembunyikan per field. Masking hanya melindungi tampilan; browser petugas terotorisasi tetap menerima detail. Detail tidak disimpan dalam localStorage/sessionStorage atau dicetak ke console.
+- Audit memuat hanya `user_id`, `action=application.viewed`, `subject_type`, `subject_id`, dan `created_at` (selain primary key). Tidak ada isi identitas, catatan, token, maupun payload. Setiap GET detail berhasil, termasuk pemuatan ulang setelah perubahan status, menghasilkan audit. Audit harus tersimpan sebelum respons detail dikirim.
+- NIK, KK, telepon, alamat, dan alamat usaha tetap terenkripsi di database; daftar memakai daftar field eksplisit tanpa nilai tersebut maupun catatan bebas. Hash kode akses tidak pernah dikirim di detail.
+- **Pengecualian disetujui 18 Oktober 2026:** nama yang diketik sebagai pencarian boleh berada di `q` pada URL halaman/API. URL dapat tersimpan dalam riwayat browser dan access log infrastruktur; atur redaksi query string pada proxy/web server sebelum produksi. Jangan memasukkan NIK, KK, telepon, alamat, token, atau catatan ke pencarian/URL. Audit aplikasi tidak mencatat query pencarian.
+- Akses detail memakai ability `applications:manage` dan pemeriksaan tiga peran panel di server. Kemampuan melihat detail tidak memberi hak menyetujui: hanya kepala desa memutuskan `WAITING_APPROVAL`.
 
 ## Menjalankan dan memeriksa
 
@@ -79,6 +89,7 @@ npm ci
 npm run dev
 npm run lint
 npx tsc --noEmit
+node scripts/test-admin-filters.mjs
 npm run build
 ```
 

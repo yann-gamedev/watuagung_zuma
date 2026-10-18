@@ -193,7 +193,7 @@ class StatusWorkflowTest extends TestCase
         $this->application();
         $this->act('admin');
         $row = $this->getJson('/api/v1/staff/applications')->assertOk()->json('data.0');
-        $this->assertEqualsCanonicalizing(['request_id', 'nama', 'jenis_surat', 'status', 'catatan', 'created_at', 'allowed_transitions'], array_keys($row));
+        $this->assertEqualsCanonicalizing(['request_id', 'nama', 'jenis_surat', 'status', 'created_at', 'allowed_transitions'], array_keys($row));
         $this->getJson('/api/v1/staff/applications')->assertJsonMissing(['nik' => '0000000000000000'])->assertJsonMissing(['telepon' => '08000000000']);
     }
 

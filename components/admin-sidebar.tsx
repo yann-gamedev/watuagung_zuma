@@ -16,7 +16,11 @@ export const adminLinks = [
 ] as const;
 
 export function adminPageTitle(path: string) {
+  if (normalizePath(path) === "/admin/permohonan/detail") return "Detail permohonan";
   return adminLinks.find((link) => link.href === normalizePath(path))?.title ?? "Panel Petugas";
+}
+function isActive(path: string, href: string) {
+  return path === href || (href === "/admin/permohonan" && path.startsWith(`${href}/`));
 }
 
 type Props = { open: boolean; onClose: () => void };
@@ -47,7 +51,7 @@ export const AdminSidebar = forwardRef<HTMLElement, Props>(function AdminSidebar
       </div>
       <nav aria-label="Navigasi admin">
         {links.map(({ title, href, Icon }) => (
-          <Link key={href} href={href} className={path === href ? "active" : ""} aria-current={path === href ? "page" : undefined}>
+          <Link key={href} href={href} className={isActive(path, href) ? "active" : ""} aria-current={isActive(path, href) ? "page" : undefined}>
             <Icon size={22} aria-hidden="true" />
             {title}
           </Link>
