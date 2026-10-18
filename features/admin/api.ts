@@ -49,6 +49,8 @@ export async function adminFetch<T>(path: string, token: string, options: Reques
   const body = (await response.json().catch(() => ({}))) as { message?: string; errors?: Record<string, string[]> };
   if (!response.ok) {
     if (response.status === 403) throw new Error("Akun ini tidak memiliki akses untuk tindakan tersebut.");
+    // Pesan bawaan Laravel untuk 404 berbahasa Inggris dan menyebut nama model internal.
+    if (response.status === 404) throw new Error("Permohonan tidak ditemukan. Periksa nomor atau kembali ke daftar.");
     if (response.status === 422 && body.errors) throw new Error(Object.values(body.errors).flat().join(" "));
     throw new Error(body.message || "Layanan belum dapat dihubungi. Coba lagi nanti.");
   }

@@ -22,9 +22,24 @@ export interface StaffApplication {
   nama: string;
   jenis_surat: ServiceCode;
   status: Status;
-  catatan: string | null;
   created_at: string;
   allowed_transitions: Status[];
+}
+export interface StaffApplicationEvent {
+  from_status: Status | null;
+  to_status: Status;
+  note: string | null;
+  staff_name: string | null;
+  created_at: string;
+}
+/** Hanya respons detail terotorisasi; jangan simpan ke storage atau log. */
+export interface StaffApplicationDetail extends StaffApplication, Omit<Submission, "nama_usaha" | "jenis_usaha" | "alamat_usaha"> {
+  nama_usaha: string | null;
+  jenis_usaha: string | null;
+  alamat_usaha: string | null;
+  catatan: string | null;
+  updated_at: string;
+  history: StaffApplicationEvent[];
 }
 export interface StaffApplicationsPage {
   data: StaffApplication[];

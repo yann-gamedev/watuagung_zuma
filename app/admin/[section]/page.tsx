@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { ApplicationsTable } from "@/features/admin/applications-table";
 // Hanya modul yang sudah berfungsi. Halaman konten dibuat ulang saat modulnya dikerjakan.
@@ -14,5 +15,7 @@ export default async function Page({
 }) {
   const { section } = await params;
   if (!sections.includes(section as Section)) notFound();
-  return <ApplicationsTable key={section} section={section as Section} />;
+  return <Suspense fallback={<p role="status">Memuat daftar permohonan…</p>}>
+    <ApplicationsTable key={section} section={section as Section} />
+  </Suspense>;
 }

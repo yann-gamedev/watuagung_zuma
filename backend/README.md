@@ -56,10 +56,43 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `username` dan `password` (atau `email` untuk klien lama); mengembalikan bearer token |
 | POST | `/staff/logout` | Token petugas | Mencabut token aktif |
 | GET | `/staff/me` | Token petugas | Mengembalikan `{ name, username, role }`; `username` bisa `null` untuk akun lama. Peran selain `staff`/`village_head`/`admin` mendapat 403 |
-| GET | `/staff/applications` | Token petugas | Daftar paginasi (20 per halaman, `?page=N`). Filter opsional: satu status `?status=SUBMITTED` **atau** beberapa status `?statuses[]=APPROVED&statuses[]=READY_FOR_PICKUP` (tidak boleh keduanya). Setiap item memuat `allowed_transitions` untuk peran pengguna |
+| GET | `/staff/applications` | Token petugas | Daftar paginasi 20 per halaman; filter `status` atau `statuses[]`, `q`, `jenis_surat`, dan `sort` (kontrak di bawah) |
+| GET | `/staff/applications/{request_id}` | Token staff, village_head, admin | Detail data pemohon terdekripsi, `allowed_transitions`, dan `history`; setiap akses berhasil dicatat di `audit_logs` |
 | PATCH | `/staff/applications/{request_id}/status` | Token petugas | Body `status` dan `catatan` opsional; respons memuat `status`, `catatan`, dan `allowed_transitions` baru |
 
 Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Untuk SKU, `nama_usaha`, `jenis_usaha`, dan `alamat_usaha` wajib diisi. Validasi yang gagal mengembalikan HTTP 422 dengan objek `errors`.
+
+### Daftar pengajuan
+
+`GET /api/v1/staff/applications` menerima parameter query berikut (semuanya opsional):
+
+| Parameter | Validasi / perilaku |
+| --- | --- |
+| `q` | String maksimal 100 karakter; spasi luar dibuang, kosong berarti tanpa pencarian. Mencocokkan potongan literal `request_id` **atau** `nama`, bukan NIK/KK/telepon/alamat. `%`, `_`, dan `!` dianggap teks literal, bukan wildcard. Tidak peka huruf besar/kecil (`LOWER()` di kedua sisi, berlaku sama di SQLite dan PostgreSQL; untuk huruf ASCII) |
+| `jenis_surat` | Salah satu `SKU`, `DOMISILI`, `SKTM`, `KTP_KK` |
+| `sort` | `terbaru` (bawaan) atau `terlama`; urutan `created_at` kemudian ID internal, keduanya menurun atau menaik. ID hanya pemecah urutan waktu yang sama, tidak dikirim ke klien |
+| `status` | Satu status dari alur di bawah; tidak boleh bersama `statuses` |
+| `statuses[]` | Array tidak kosong, maksimal jumlah status yang tersedia, setiap status valid dan tidak duplikat; tidak boleh bersama `status` |
+| `page` | Bilangan bulat ≥ 1; 20 item per halaman |
+
+Nama pencarian di parameter `q` adalah pengecualian URL yang disetujui pengguna (18 Oktober 2026). Jangan memasukkan NIK/KK/telepon/alamat ke pencarian. Query URL dapat tersimpan di riwayat browser/access log server; sebelum produksi, redaksi query pada log proxy/web server perlu dikonfigurasi. Audit aplikasi tidak merekam pencarian.
+
+Filter digabung dengan AND; pasangan pencarian nomor/nama dikelompokkan dengan OR. Respons tetap objek paginator Laravel (`data`, `current_page`, `last_page`, `per_page`, `total`, metadata/tautan pagination). Setiap item `data` **hanya** berisi `request_id`, `nama`, `jenis_surat`, `status`, `created_at`, `allowed_transitions`. **Perubahan kontrak:** `catatan` tidak lagi dikirim dalam daftar karena teks bebas dapat memuat data pribadi; baca catatan melalui endpoint detail. NIK, KK, alamat, telepon, data usaha, keperluan, hash kode akses, dan ID internal tidak disertakan. Daftar tidak mencatat audit akses detail.
+
+### Detail pengajuan dan audit akses
+
+`GET /api/v1/staff/applications/{request_id}` memerlukan bearer token Sanctum dengan ability `applications:manage` **dan** peran aktif `staff`, `village_head`, atau `admin`. Ketiga peran boleh melihat detail; wewenang perubahan status tetap mengikuti tabel di bawah. Otorisasi dilakukan sebelum data pengajuan dimuat/dekripsi, tanpa implicit model binding pada endpoint detail.
+
+- Format nomor: `REQ-` + empat digit tahun + `-` + satu atau lebih huruf kapital/angka, maksimal 64 karakter (`/^REQ-\d{4}-[A-Z0-9]+$/`). Format ini menerima ULID server dan nomor pendek fixture. Nomor tidak sesuai format → **422** dengan `errors.request_id`; nomor valid tetapi tidak ditemukan → **404**.
+- Tanpa token/token tidak valid → **401**; peran atau ability salah → **403**, termasuk sebelum memvalidasi/mencari nomor.
+- Respons sukses **200** berupa objek detail langsung (tanpa pembungkus `data`/`success`), dengan field eksplisit:
+  - `request_id`, `jenis_surat`, `nama`, `nik`, `no_kk`, `tempat_lahir`, `tanggal_lahir` (`YYYY-MM-DD`), `jenis_kelamin`, `alamat`, `rt`, `rw`, `telepon`;
+  - `nama_usaha`, `jenis_usaha`, `alamat_usaha` (masing-masing dapat `null`), `keperluan`, `status`, `catatan` (dapat `null`);
+  - `created_at`, `updated_at` (ISO 8601 UTC), `allowed_transitions` (array status untuk peran aktif), `history` (array, dapat kosong).
+- Setiap item `history` **hanya** berisi `from_status` (nullable), `to_status`, `note` (nullable), `staff_name` (nullable untuk pengajuan awal/pengguna yang sudah dihapus), `created_at` (ISO 8601 UTC). Urutan kronologis menaik berdasarkan waktu lalu ID event. ID event, ID pengguna, email, serta metadata internal tidak dikirim.
+- Data terenkripsi dibuka hanya untuk respons detail berotorisasi; encrypted casts dan field tersembunyi model tetap dipertahankan. Hash/kode akses tidak pernah dikirim melalui endpoint ini.
+- Respons daftar/detail (termasuk kegagalan validasi/otorisasi) memakai `Cache-Control: private, no-store`. Frontend tidak boleh menyimpan detail ke localStorage/sessionStorage atau memasukkan identitas sensitif ke URL.
+- Jalankan `php artisan migrate` sebelum memakai detail untuk membuat tabel `audit_logs`. Tabel hanya memuat primary key `id`, `user_id`, `action`, `subject_type`, `subject_id`, `created_at`; tanpa payload, IP, user agent, nomor pengajuan, atau identitas warga. Setiap detail berhasil mencatat `action=application.viewed`, `subject_type=application`, `subject_id` = ID internal pengajuan, dan pengguna aktif **sebelum** respons dikirim. Audit gagal → detail tidak diberikan. Akses 401/403/404/422 dan daftar tidak membuat audit. Audit menggunakan foreign key pengguna dengan restrict-on-delete agar riwayat tidak hilang; penghapusan akun perlu kebijakan terpisah.
 
 ### Alur status dan wewenang
 
