@@ -66,7 +66,7 @@ export function StatusChecker() {
         {!isDemo && (
           <div className="lookup-field">
             <label htmlFor="lookup-secret">Kode akses pengajuan</label>
-            <input id="lookup-secret" className="search-input" type="password" autoComplete="off" value={secret} onChange={(e) => setSecret(e.target.value)} required aria-describedby={error ? "lookup-help lookup-error" : "lookup-help"} />
+            <input id="lookup-secret" className="search-input" type="password" autoComplete="off" placeholder="WAD-1234-5678" value={secret} onChange={(e) => setSecret(e.target.value)} required aria-describedby={error ? "lookup-help lookup-error" : "lookup-help"} />
           </div>
         )}
         <button id="lookup-submit" type="submit" className="btn" disabled={busy}>

@@ -54,7 +54,7 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | Metode | Path | Akses | Kegunaan |
 | --- | --- | --- | --- |
 | POST | `/applications` | Publik, 5 permintaan/menit | Mengajukan layanan; mengembalikan `request_id`, `status`, `jenis_surat`, dan `lookup_secret` (HTTP 201) |
-| POST | `/applications/status` | Publik, 10 permintaan/menit | Body: `request_id` dan `lookup_secret`; mengembalikan `jenis_surat`, status, dan catatan (penolakan RT/RW diberi awalan "Ditolak oleh Ketua RT/RW") |
+| POST | `/applications/status` | Publik, 10 permintaan/menit; 5 kode salah per nomor → 429 selama 15 menit | Body: `request_id` dan `lookup_secret`; mengembalikan `jenis_surat`, status, dan catatan (penolakan RT/RW diberi awalan "Ditolak oleh Ketua RT/RW") |
 | POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `username` dan `password` (atau `email` untuk klien lama); mengembalikan bearer token |
 | POST | `/staff/logout` | Token petugas | Mencabut token aktif |
 | GET | `/staff/me` | Token petugas | Mengembalikan `{ name, username, role, rt, rw }`; `username`, `rt`, `rw` bisa `null`. Peran di luar lima peran panel atau ketua RT/RW tanpa wilayah lengkap mendapat 403 |
@@ -143,7 +143,8 @@ Migration `2026_10_20_000000_add_neighborhood_territories` menambah kolom `rt`/`
 
 ## Penanganan data dan batas saat ini
 
-- `lookup_secret` diberikan sekali setelah pengajuan. Warga harus menyimpan kode itu bersama nomor pengajuan; saat ini belum tersedia pemulihan kode.
+- `lookup_secret` diberikan sekali setelah pengajuan dengan format `WAD-XXXX-XXXX` (8 angka acak, `App\Domain\AccessCode`). Input diterima tanpa tanda hubung, dengan spasi, atau huruf kecil. Hash memakai HMAC-SHA256 dengan `APP_KEY`, jadi **mengganti `APP_KEY` membatalkan semua kode akses**. Kode lama (48 karakter, SHA-256 polos) tetap berlaku.
+- Cek status dikunci per nomor pengajuan setelah 5 kode salah selama 15 menit (HTTP 429), di samping batas 10 permintaan/menit per IP. Kode benar membuka kunci. Pemulihan kode belum tersedia (Tahap 2).
 - NIK, nomor KK, telepon, dan alamat disimpan terenkripsi memakai `APP_KEY`. Endpoint publik hanya mengembalikan metadata status; daftar petugas tidak menampilkan field sensitif itu.
 - Token petugas berlaku `SANCTUM_EXPIRATION` menit sejak login (bawaan 480 menit = 8 jam kerja; atur di `.env`, lalu `php artisan config:clear` bila konfigurasi di-cache). Token kedaluwarsa atau dicabut menghasilkan 401.
 - Frontend menyimpan token di `sessionStorage` tab dan memvalidasinya lewat `/staff/me`; menutup tab menghapus sesi. Jangan simpan token dalam URL atau localStorage.

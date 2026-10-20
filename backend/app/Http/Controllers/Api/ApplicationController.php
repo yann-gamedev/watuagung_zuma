@@ -1,11 +1,13 @@
 <?php
 namespace App\Http\Controllers\Api;
+use App\Domain\AccessCode;
 use App\Domain\LetterType;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 class ApplicationController extends Controller {
@@ -25,11 +27,11 @@ class ApplicationController extends Controller {
             'alamat_usaha'=>['required_if:jenis_surat,SKU','nullable','string','min:2','max:200'],
             'keperluan'=>['required','string','min:2','max:200'],
         ]);
-        $secret = Str::random(48);
+        $secret = AccessCode::generate();
         $application = DB::transaction(function () use ($data, $secret) {
             $application = Application::create($data + [
                 'request_id'=>'REQ-'.now()->year.'-'.Str::upper((string) Str::ulid()),
-                'lookup_secret_hash'=>hash('sha256', $secret), 'status'=>'SUBMITTED',
+                'lookup_secret_hash'=>AccessCode::hash($secret), 'status'=>'SUBMITTED',
             ]);
             DB::table('application_events')->insert(['application_id'=>$application->id,'to_status'=>'SUBMITTED','created_at'=>now()]);
             return $application;
@@ -38,10 +40,17 @@ class ApplicationController extends Controller {
     }
     public function status(Request $request): JsonResponse {
         $data = $request->validate(['request_id'=>['required','string','max:64'],'lookup_secret'=>['required','string','max:128']]);
+        // Kunci per nomor pengajuan: batas per IP saja bisa diakali dengan banyak perangkat.
+        $key = 'lookup:'.$data['request_id'];
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            return response()->json(['success'=>false,'message'=>'Terlalu banyak percobaan kode akses. Coba lagi dalam 15 menit.'], 429);
+        }
         $application = Application::where('request_id', $data['request_id'])->first();
-        if (! $application || ! hash_equals($application->lookup_secret_hash, hash('sha256', $data['lookup_secret']))) {
+        if (! $application || ! AccessCode::matches($data['lookup_secret'], $application->lookup_secret_hash)) {
+            RateLimiter::hit($key, 900);
             return response()->json(['success'=>false,'message'=>'Permohonan tidak ditemukan atau kode akses tidak valid.'], 404);
         }
+        RateLimiter::clear($key);
         $note = $application->catatan;
         if ($application->status === 'REJECTED' && LetterType::from($application->jenis_surat)->requiresNeighborhoodApproval()) {
             // The originating status records the decision stage even if the account role changes or is deleted.
