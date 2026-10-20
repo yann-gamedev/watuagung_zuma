@@ -100,8 +100,9 @@ class StaffController extends Controller {
             'request_id'=>$application->request_id,
             'jenis_surat'=>$application->jenis_surat,
             'nama'=>$application->nama,
-            'nik'=>$user->isNeighborhoodHead() ? str_repeat('*', 12).substr($application->nik, -4) : $application->nik,
-            'no_kk'=>$user->isNeighborhoodHead() ? str_repeat('*', 12).substr($application->no_kk, -4) : $application->no_kk,
+            // NIK/KK utuh untuk semua peran panel: dibutuhkan untuk verifikasi (keputusan pengguna 20 Okt 2026).
+            'nik'=>$application->nik,
+            'no_kk'=>$application->no_kk,
             'alamat'=>$application->alamat,
             'rt'=>$application->rt,
             'rw'=>$application->rw,

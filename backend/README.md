@@ -87,7 +87,7 @@ Filter digabung dengan AND; pasangan pencarian nomor/nama dikelompokkan dengan O
 
 **Batas wilayah ketua RT/RW** (`Application::forUser()` dan `isInTerritory()`): keduanya hanya melihat jenis surat dengan `requiresNeighborhoodApproval` (bukan SKU); `rt_head` hanya pengajuan dengan `rt` **dan** `rw` sama dengan akunnya; `rw_head` hanya pengajuan dengan `rw` sama. Daftar otomatis disaring; detail di luar wilayah → **404** (tidak membocorkan keberadaan); PATCH status di luar wilayah → **403**. Kode wilayah dibandingkan setelah dinormalkan ke 3 digit.
 
-**Detail untuk ketua RT/RW:** `nik` dan `no_kk` dikirim tersamar dari server (12 `*` + 4 digit terakhir); `telepon`, `tempat_lahir`, `tanggal_lahir`, dan `jenis_kelamin` tidak dikirim sama sekali. Audit akses sama dengan peran lain. Otorisasi dilakukan sebelum data pengajuan dimuat/dekripsi, tanpa implicit model binding pada endpoint detail.
+**Detail untuk ketua RT/RW:** `nik` dan `no_kk` dikirim utuh untuk verifikasi; `telepon`, `tempat_lahir`, `tanggal_lahir`, dan `jenis_kelamin` tidak dikirim sama sekali. Audit akses sama dengan peran lain. Otorisasi dilakukan sebelum data pengajuan dimuat/dekripsi, tanpa implicit model binding pada endpoint detail.
 
 - Format nomor: `REQ-` + empat digit tahun + `-` + satu atau lebih huruf kapital/angka, maksimal 64 karakter (`/^REQ-\d{4}-[A-Z0-9]+$/`). Format ini menerima ULID server dan nomor pendek fixture. Nomor tidak sesuai format → **422** dengan `errors.request_id`; nomor valid tetapi tidak ditemukan → **404**.
 - Tanpa token/token tidak valid → **401**; peran atau ability salah → **403**, termasuk sebelum memvalidasi/mencari nomor.

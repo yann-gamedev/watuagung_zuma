@@ -81,11 +81,11 @@ Frontend adalah static export: halaman `/admin/permohonan/detail/` diekspor tanp
 ### Privasi detail dan audit akses
 
 - Kontrak detail: `StaffApplicationDetail` di `types/pelayanan.ts`; field formulir lengkap ditambah `request_id`, `status`, `created_at`, `updated_at`, `catatan`, `allowed_transitions`, dan `history`; field usaha nullable untuk layanan non-SKU. Setiap event berisi `from_status` (nullable untuk pengajuan awal), `to_status`, `note`, `staff_name` (nullable untuk sistem/petugas yang dihapus), dan `created_at`.
-- NIK/KK tersamar di UI secara default, dengan tombol Tampilkan/Sembunyikan per field. Masking hanya melindungi tampilan; browser petugas terotorisasi tetap menerima detail. Detail tidak disimpan dalam localStorage/sessionStorage atau dicetak ke console.
+- NIK/KK tampil utuh untuk semua peran panel (keputusan 20 Okt 2026: dibutuhkan untuk verifikasi). Detail tidak disimpan dalam localStorage/sessionStorage atau dicetak ke console.
 - Audit memuat hanya `user_id`, `action=application.viewed`, `subject_type`, `subject_id`, dan `created_at` (selain primary key). Tidak ada isi identitas, catatan, token, maupun payload. Setiap GET detail berhasil, termasuk pemuatan ulang setelah perubahan status, menghasilkan audit. Audit harus tersimpan sebelum respons detail dikirim.
 - NIK, KK, telepon, alamat, dan alamat usaha tetap terenkripsi di database; daftar memakai daftar field eksplisit tanpa nilai tersebut maupun catatan bebas. Hash kode akses tidak pernah dikirim di detail.
 - **Pengecualian disetujui 18 Oktober 2026:** nama yang diketik sebagai pencarian boleh berada di `q` pada URL halaman/API. URL dapat tersimpan dalam riwayat browser dan access log infrastruktur; atur redaksi query string pada proxy/web server sebelum produksi. Jangan memasukkan NIK, KK, telepon, alamat, token, atau catatan ke pencarian/URL. Audit aplikasi tidak mencatat query pencarian.
-- **Ketua RT/RW:** server mengirim NIK/KK yang sudah disamarkan (12 bintang + 4 digit terakhir) dan **tidak** mengirim `telepon`, `tempat_lahir`, `tanggal_lahir`, maupun `jenis_kelamin` (field opsional di `StaffApplicationDetail`). UI tidak menampilkan tombol Tampilkan untuk peran ini. Audit akses tetap sama untuk semua peran.
+- **Ketua RT/RW:** server mengirim NIK/KK utuh tetapi **tidak** mengirim `telepon`, `tempat_lahir`, `tanggal_lahir`, maupun `jenis_kelamin` (field opsional di `StaffApplicationDetail`). Audit akses tetap sama untuk semua peran.
 - Akses detail memakai ability `applications:manage` dan pemeriksaan lima peran panel di server, ditambah batas wilayah untuk ketua RT/RW. Kemampuan melihat detail tidak memberi hak menyetujui: hanya kepala desa memutuskan `WAITING_APPROVAL`.
 
 ## Menjalankan dan memeriksa

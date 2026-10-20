@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { z } from "zod";
 import { StatusBadge, statusLabels } from "@/components/site";
@@ -37,20 +37,6 @@ function lowerLabel(status: Status) {
 }
 function dateTime(value: string) {
   return new Date(value).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" });
-}
-/** Format sesuai permintaan pengguna (3201********0001). Nilai pendek disamarkan seluruhnya. */
-export function maskIdentity(value: string) {
-  if (value.length < 12) return "*".repeat(value.length);
-  return `${value.slice(0, 4)}${"*".repeat(value.length - 8)}${value.slice(-4)}`;
-}
-function PrivateField({ label, value }: { label: string; value: string }) {
-  const [visible, setVisible] = useState(false);
-  return <div><dt>{label}</dt><dd className={styles.privateField}>
-    <span>{visible ? value : maskIdentity(value)}</span>
-    <button type="button" className="btn btn-secondary" aria-label={`${visible ? "Sembunyikan" : "Tampilkan"} ${label}`} onClick={() => setVisible(!visible)}>
-      {visible ? <EyeOff size={22} aria-hidden="true" /> : <Eye size={22} aria-hidden="true" />}{visible ? "Sembunyikan" : "Tampilkan"}
-    </button>
-  </dd></div>;
 }
 
 export function ApplicationDetail() {
@@ -155,11 +141,9 @@ function DetailContent({ id }: { id: string }) {
           <div className={styles.groups}>
             <section className={styles.card}><h2>Data diri</h2><dl className={styles.fields}>
               <div><dt>Nama pemohon</dt><dd>{detail.nama}</dd></div>
-              {neighborhood ? <>
-                <div><dt>NIK (disamarkan)</dt><dd>{detail.nik}</dd></div>
-                <div><dt>Nomor KK (disamarkan)</dt><dd>{detail.no_kk}</dd></div>
-              </> : <>
-                <PrivateField label="NIK" value={detail.nik} /><PrivateField label="Nomor KK" value={detail.no_kk} />
+              <div><dt>NIK</dt><dd className={styles.identity}>{detail.nik}</dd></div>
+              <div><dt>Nomor KK</dt><dd className={styles.identity}>{detail.no_kk}</dd></div>
+              {!neighborhood && <>
                 <div><dt>Tempat lahir</dt><dd>{detail.tempat_lahir ?? "—"}</dd></div>
                 <div><dt>Tanggal lahir</dt><dd>{detail.tanggal_lahir ? new Date(`${detail.tanggal_lahir}T00:00:00`).toLocaleDateString("id-ID", { dateStyle: "long" }) : "—"}</dd></div>
                 <div><dt>Jenis kelamin</dt><dd>{detail.jenis_kelamin ?? "—"}</dd></div>

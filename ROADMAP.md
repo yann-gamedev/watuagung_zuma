@@ -76,7 +76,7 @@ Bergantung pada M2 dan M3 (detail permohonan). Disetujui pengguna 20 Oktober 202
 - [x] Status `RT_APPROVED` dan `RW_APPROVED`; alur `SUBMITTED → RT_APPROVED → RW_APPROVED → VERIFIED → … → COMPLETED`; RT/RW hanya boleh menyetujui atau menolak (catatan wajib)
 - [x] Peran `rt_head` (RT + RW) dan `rw_head` (RW); kolom `rt`/`rw` nullable di `users`, kode wilayah dinormalkan menjadi 3 digit
 - [x] Daftar dan detail dibatasi wilayah: detail di luar wilayah 404, perubahan status di luar wilayah 403, transisi melompat 422
-- [x] Detail RT/RW: NIK/KK disamarkan di server; telepon, tempat/tanggal lahir, dan jenis kelamin tidak dikirim; audit akses tetap sama
+- [x] Detail RT/RW: NIK/KK utuh (revisi pengguna 20 Okt 2026); telepon, tempat/tanggal lahir, dan jenis kelamin tidak dikirim; audit akses tetap sama
 - [x] Cek status publik mengembalikan `jenis_surat`; demo hanya menambah `jenis_surat` pada bukti tersimpan; bukti demo lama tanpa jenis surat tidak menampilkan linimasa
 - [x] Antrean `/admin/antrean-rt` dan `/admin/antrean-rw` dengan pilihan menunggu keputusan/riwayat baca-saja sesuai `DESIGN.md`
 - [x] Migration hanya menormalkan kode wilayah; pengajuan lama yang sudah berjalan tidak diulang dari RT/RW

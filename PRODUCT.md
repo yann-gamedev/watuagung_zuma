@@ -54,7 +54,7 @@ Tujuan pelayanan harus dibedakan dari kemampuan yang sudah tersedia. Tidak ada t
 - API pengajuan surat dan cek status (kode akses di-hash, rate limit).
 - Login petugas, daftar pengajuan dengan pencarian nomor/nama, filter, dan urutan; halaman detail pemohon untuk peran panel dengan audit akses; perubahan status dengan aturan transisi; dan riwayat perubahan di `application_events`.
 - Status "Siap diambil" (`READY_FOR_PICKUP`) dan "Selesai" (`COMPLETED`), serta lima peran panel: `rt_head` (ketua RT), `rw_head` (ketua RW), `staff` (petugas), `village_head` (kepala desa), `admin`. Hanya kepala desa yang memutuskan pengajuan yang menunggu persetujuan; wewenang dijaga di server (lihat `backend/README.md`).
-- **[BARU] Persetujuan RT/RW:** status `RT_APPROVED` dan `RW_APPROVED`. Ketua RT/RW hanya melihat pengajuan di wilayahnya, menerima NIK/KK yang sudah disamarkan server, dan tidak menerima telepon, tempat/tanggal lahir, maupun jenis kelamin.
+- **[BARU] Persetujuan RT/RW:** status `RT_APPROVED` dan `RW_APPROVED`. Ketua RT/RW hanya melihat pengajuan di wilayahnya, menerima NIK/KK utuh untuk verifikasi, dan tidak menerima telepon, tempat/tanggal lahir, maupun jenis kelamin.
 - Field sensitif pemohon (NIK, KK, telepon, alamat) dienkripsi di database.
 - Fondasi tabel resident terenkripsi, seeder dummy, dan feature test backend.
 - Autofill NIK memakai tiga identitas dummy frontend. Ini bukan akses Dukcapil, bukan verifikasi identitas, dan belum terhubung ke database resident.

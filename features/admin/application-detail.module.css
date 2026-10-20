@@ -11,8 +11,7 @@
 .fields { display: grid; gap: 20px; margin: 0; }
 .fields dt { color: var(--muted); font-weight: 600; margin-bottom: 4px; }
 .fields dd { margin: 0; white-space: pre-wrap; }
-.privateField { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-.privateField > span { font-variant-numeric: tabular-nums; }
+.identity { font-variant-numeric: tabular-nums; }
 .multiline { white-space: pre-wrap; }
 .actions label { font-weight: 700; }
 .actions textarea { width: 100%; min-height: 120px; resize: vertical; margin-top: 12px; }
@@ -36,7 +35,6 @@
 @media (max-width: 600px) {
   .card { padding: 16px; }
   .page, .groups, .columns { gap: 16px; }
-  .privateField { align-items: start; flex-direction: column; }
   .dialogButtons { flex-direction: column; }
   .dialogButtons button { width: 100%; white-space: normal; }
 }

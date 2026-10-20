@@ -168,7 +168,7 @@ Disetujui pengguna untuk M3:
 
 - Daftar permohonan: pencarian nomor/nama, filter status dan layanan dengan label Indonesia, urutan terbaru/terlama; kolom Nomor, Pemohon, Layanan, Tanggal, Status. Pada ≤600px menjadi kartu dengan tautan detail yang dapat diakses keyboard.
 - Detail: ringkasan di atas; desktop memakai kolom utama (data dan riwayat) dan panel aksi di kanan; layar sempit menjadi satu kolom dengan panel aksi setelah data dan riwayat. Kelompok Data diri, Alamat, Usaha (SKU), Keperluan; riwayat berbentuk linimasa.
-- NIK dan KK tersamar secara default, tombol Tampilkan/Sembunyikan per field. Konfirmasi untuk Tolak, Setujui, dan Tandai sudah diambil. Catatan wajib untuk Tolak/Minta perbaikan.
+- NIK dan KK tampil utuh untuk semua peran panel karena dibutuhkan untuk verifikasi. Konfirmasi untuk Tolak, Setujui, dan Tandai sudah diambil. Catatan wajib untuk Tolak/Minta perbaikan.
 - Semua warna, font, radius, spasi, dan ukuran tetap memakai token dokumen ini; gaya dibatasi ke fitur admin, tidak mengubah halaman publik.
 
 ### Antrean RT/RW — 20 Oktober 2026
@@ -179,7 +179,7 @@ Disetujui pengguna:
 - Antrean memakai pilihan "Menunggu keputusan RT/RW" (bawaan) atau "Semua pengajuan wilayah" untuk riwayat baca-saja pada halaman yang sama. Filter jenis surat tidak menampilkan SKU.
 - Pada semua lebar layar, kartu antrean memakai radius 18px dan tombol tinggi minimal 52px. Warna tetap `--sage`/`--leaf`; ikon `UserCheck` (RT) dan `ShieldCheck` (RW).
 - Aksi detail: "Setujui sebagai Ketua RT", "Setujui sebagai Ketua RW", dan "Tolak"; persetujuan dan penolakan memakai dialog konfirmasi, tolak wajib memakai catatan.
-- Detail RT/RW menampilkan NIK/KK yang sudah disamarkan server, tanpa tombol Tampilkan, dan tanpa telepon, tempat/tanggal lahir, maupun jenis kelamin.
+- Detail RT/RW menampilkan NIK/KK utuh, tanpa telepon, tempat/tanggal lahir, maupun jenis kelamin.
 - Status `SUBMITTED` untuk surat yang memerlukan RT/RW tampil sebagai "Menunggu verifikasi RT".
 
 ## 7. Struktur beranda (urutan)

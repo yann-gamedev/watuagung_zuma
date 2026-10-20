@@ -176,13 +176,13 @@ class NeighborhoodApprovalTest extends TestCase
         $this->getJson('/api/v1/staff/applications')->assertJsonPath('total', 4);
     }
 
-    public function test_neighborhood_detail_is_minimal_and_masked_and_audited(): void
+    public function test_neighborhood_detail_is_minimal_with_full_identity_and_audited(): void
     {
         $application = $this->application(['status' => 'RT_APPROVED']);
         DB::table('application_events')->insert(['application_id' => $application->id, 'to_status' => 'SUBMITTED', 'created_at' => now()]);
         $user = $this->actAs($this->user('rw_head', null, '002'));
         $detail = $this->getJson('/api/v1/staff/applications/'.$application->request_id)->assertOk()
-            ->assertJsonPath('nik', '************1234')->assertJsonPath('no_kk', '************5678')
+            ->assertJsonPath('nik', $application->nik)->assertJsonPath('no_kk', $application->no_kk)
             ->assertJsonPath('allowed_transitions', ['RW_APPROVED', 'REJECTED'])->json();
         foreach (['telepon', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin'] as $field) $this->assertArrayNotHasKey($field, $detail);
         $this->assertEqualsCanonicalizing([
