@@ -13,9 +13,11 @@ import { AdminUnauthorizedError } from "./api";
 import { useAdminSession } from "./session";
 import { buildApplicationsHref, parseApplicationFilters, parseApplicationSection } from "./application-filters";
 import styles from "./application-detail.module.css";
+import neighborhoodStyles from "./neighborhood.module.css";
 
 const actionLabels: Record<Status, string> = {
   SUBMITTED: "Terima", VERIFIED: "Verifikasi", PROCESSING: "Proses",
+  RT_APPROVED: "Setujui sebagai Ketua RT", RW_APPROVED: "Setujui sebagai Ketua RW",
   WAITING_APPROVAL: "Ajukan ke Kepala Desa", APPROVED: "Setujui",
   READY_FOR_PICKUP: "Tandai siap diambil", COMPLETED: "Tandai sudah diambil",
   NEED_REVISION: "Minta perbaikan", REJECTED: "Tolak",
@@ -23,13 +25,16 @@ const actionLabels: Record<Status, string> = {
 const detailSchema = z.object({
   request_id: z.string(), nama: z.string(), jenis_surat: z.enum(["SKU", "DOMISILI", "SKTM", "KTP_KK"]),
   status: z.enum(statuses), created_at: z.string(), updated_at: z.string(), allowed_transitions: z.array(z.enum(statuses)),
-  nik: z.string(), no_kk: z.string(), tempat_lahir: z.string(), tanggal_lahir: z.string(),
-  jenis_kelamin: z.string(), alamat: z.string(), rt: z.string(), rw: z.string(), telepon: z.string(),
+  nik: z.string(), no_kk: z.string(), tempat_lahir: z.string().optional(), tanggal_lahir: z.string().optional(),
+  jenis_kelamin: z.string().optional(), alamat: z.string(), rt: z.string(), rw: z.string(), telepon: z.string().optional(),
   nama_usaha: z.string().nullable(), jenis_usaha: z.string().nullable(), alamat_usaha: z.string().nullable(),
   keperluan: z.string(), catatan: z.string().nullable(),
   history: z.array(z.object({ from_status: z.enum(statuses).nullable(), to_status: z.enum(statuses),
     note: z.string().nullable(), staff_name: z.string().nullable(), created_at: z.string() })),
 });
+function lowerLabel(status: Status) {
+  return actionLabels[status].replace(/^./, (letter) => letter.toLowerCase());
+}
 function dateTime(value: string) {
   return new Date(value).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" });
 }
@@ -56,7 +61,8 @@ export function ApplicationDetail() {
 }
 function DetailContent({ id }: { id: string }) {
   const params = useSearchParams();
-  const { request } = useAdminSession();
+  const { request, user } = useAdminSession();
+  const neighborhood = user?.role === "rt_head" || user?.role === "rw_head";
   const [detail, setDetail] = useState<StaffApplicationDetail | null>(null);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
@@ -72,7 +78,7 @@ function DetailContent({ id }: { id: string }) {
   const actionRef = useRef<HTMLButtonElement | null>(null);
   const actionHeadingRef = useRef<HTMLHeadingElement>(null);
   const validId = /^REQ-\d{4}-[A-Z0-9]+$/.test(id) && id.length <= 64;
-  const source = parseApplicationSection(params.get("from"));
+  const source = user?.role === "rt_head" ? "antrean-rt" : user?.role === "rw_head" ? "antrean-rw" : parseApplicationSection(params.get("from"));
   const backHref = buildApplicationsHref(source, parseApplicationFilters(params, source));
   const readDetail = useCallback(async () => {
     const response = await request<unknown>(`/staff/applications/${encodeURIComponent(id)}`);
@@ -130,7 +136,7 @@ function DetailContent({ id }: { id: string }) {
       setActionError("Catatan wajib diisi untuk Tolak atau Minta perbaikan."); noteRef.current?.focus(); return;
     }
     actionRef.current = button;
-    if (["REJECTED", "APPROVED", "COMPLETED"].includes(status)) setPending(status);
+    if (["REJECTED", "RT_APPROVED", "RW_APPROVED", "APPROVED", "COMPLETED"].includes(status)) setPending(status);
     else void change(status);
   }
   return <div className={styles.page}>
@@ -143,17 +149,22 @@ function DetailContent({ id }: { id: string }) {
         <section className={styles.card} aria-label="Ringkasan permohonan">
           <h2 className={styles.number}>{detail.request_id}</h2>
           <p>{services.find((service) => service.code === detail.jenis_surat)?.title}</p>
-          <div className={styles.summary}><StatusBadge status={detail.status} /><time dateTime={detail.created_at}>{dateTime(detail.created_at)}</time></div>
+          <div className={styles.summary}><StatusBadge status={detail.status} jenisSurat={detail.jenis_surat} /><time dateTime={detail.created_at}>{dateTime(detail.created_at)}</time></div>
         </section>
         <div className={styles.columns}>
           <div className={styles.groups}>
             <section className={styles.card}><h2>Data diri</h2><dl className={styles.fields}>
               <div><dt>Nama pemohon</dt><dd>{detail.nama}</dd></div>
-              <PrivateField label="NIK" value={detail.nik} /><PrivateField label="Nomor KK" value={detail.no_kk} />
-              <div><dt>Tempat lahir</dt><dd>{detail.tempat_lahir}</dd></div>
-              <div><dt>Tanggal lahir</dt><dd>{new Date(`${detail.tanggal_lahir}T00:00:00`).toLocaleDateString("id-ID", { dateStyle: "long" })}</dd></div>
-              <div><dt>Jenis kelamin</dt><dd>{detail.jenis_kelamin}</dd></div>
-              <div><dt>Telepon</dt><dd>{detail.telepon}</dd></div>
+              {neighborhood ? <>
+                <div><dt>NIK (disamarkan)</dt><dd>{detail.nik}</dd></div>
+                <div><dt>Nomor KK (disamarkan)</dt><dd>{detail.no_kk}</dd></div>
+              </> : <>
+                <PrivateField label="NIK" value={detail.nik} /><PrivateField label="Nomor KK" value={detail.no_kk} />
+                <div><dt>Tempat lahir</dt><dd>{detail.tempat_lahir ?? "—"}</dd></div>
+                <div><dt>Tanggal lahir</dt><dd>{detail.tanggal_lahir ? new Date(`${detail.tanggal_lahir}T00:00:00`).toLocaleDateString("id-ID", { dateStyle: "long" }) : "—"}</dd></div>
+                <div><dt>Jenis kelamin</dt><dd>{detail.jenis_kelamin ?? "—"}</dd></div>
+                <div><dt>Telepon</dt><dd>{detail.telepon ?? "—"}</dd></div>
+              </>}
             </dl></section>
             <section className={styles.card}><h2>Alamat</h2><dl className={styles.fields}>
               <div><dt>Alamat tempat tinggal</dt><dd>{detail.alamat}</dd></div>
@@ -180,7 +191,7 @@ function DetailContent({ id }: { id: string }) {
             {actionError && <p id="action-error" className="error-box" role="alert">{actionError}</p>}
             {detail.allowed_transitions.length ? <>
               <label htmlFor="staff-note">Catatan status</label>
-              <p id="note-help">Wajib untuk Tolak dan Minta perbaikan. Jangan tuliskan NIK, KK, telepon, atau alamat dalam catatan.</p>
+              <p id="note-help">{neighborhood ? "Wajib untuk Tolak." : "Wajib untuk Tolak dan Minta perbaikan."} Jangan tuliskan NIK, KK, telepon, atau alamat dalam catatan.</p>
               <textarea ref={noteRef} id="staff-note" className="search-input" aria-describedby={actionError ? "note-help action-error" : "note-help"} aria-invalid={actionError.startsWith("Catatan wajib") || undefined} value={note} onChange={(event) => setNote(event.target.value)} disabled={busy} maxLength={1000} rows={5} />
               <div className={styles.buttons}>{detail.allowed_transitions.map((status) => <button type="button" id={`status-${status}`} className="btn btn-secondary" key={status} disabled={busy} onClick={(event) => choose(status, event.currentTarget)}>{actionLabels[status]}</button>)}</div>
             </> : <p>Tidak ada tindakan yang tersedia untuk peran Anda pada status ini.</p>}
@@ -191,11 +202,11 @@ function DetailContent({ id }: { id: string }) {
     </>}
     <DialogPrimitive.Root open={pending !== null} onOpenChange={(open) => { if (!open && !busy) setPending(null); }}>
       <DialogPrimitive.Portal><DialogPrimitive.Overlay className={styles.overlay} />
-        <DialogPrimitive.Content className={styles.dialog} onCloseAutoFocus={(event) => { event.preventDefault(); actionRef.current?.focus(); }} onEscapeKeyDown={(event) => { if (busy) event.preventDefault(); }} onPointerDownOutside={(event) => { if (busy) event.preventDefault(); }}>
-          <DialogPrimitive.Title className={styles.dialogTitle}>Konfirmasi {pending ? actionLabels[pending].toLowerCase() : "tindakan"}</DialogPrimitive.Title>
+        <DialogPrimitive.Content className={`${styles.dialog} ${neighborhood ? neighborhoodStyles.neighborhood : ""}`} onCloseAutoFocus={(event) => { event.preventDefault(); actionRef.current?.focus(); }} onEscapeKeyDown={(event) => { if (busy) event.preventDefault(); }} onPointerDownOutside={(event) => { if (busy) event.preventDefault(); }}>
+          <DialogPrimitive.Title className={styles.dialogTitle}>Konfirmasi {pending ? lowerLabel(pending) : "tindakan"}</DialogPrimitive.Title>
           <DialogPrimitive.Description>Anda akan mengubah status permohonan {id}. Pastikan pemeriksaan sudah selesai sebelum melanjutkan.</DialogPrimitive.Description>
           <div className={styles.dialogButtons}><button type="button" className="btn btn-secondary" disabled={busy} autoFocus onClick={() => setPending(null)}>Batal</button>
-            <button type="button" className="btn" disabled={busy || !pending} onClick={() => { if (pending) void change(pending); }}>{busy ? "Menyimpan..." : `Ya, ${pending ? actionLabels[pending].toLowerCase() : "lanjutkan"}`}</button></div>
+            <button type="button" className="btn" disabled={busy || !pending} onClick={() => { if (pending) void change(pending); }}>{busy ? "Menyimpan..." : `Ya, ${pending ? lowerLabel(pending) : "lanjutkan"}`}</button></div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

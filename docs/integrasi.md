@@ -12,7 +12,7 @@ Frontend menggunakan Next.js App Router, React, TypeScript, dan Tailwind CSS. Fo
 
 ## Mode simulasi dan API
 
-Tanpa `NEXT_PUBLIC_API_URL`, pelayanan publik memakai simulasi. localStorage menyimpan maksimal 50 receipt (nomor, status, penanda sukses), bukan identitas formulir. Contoh status tersedia di adapter pelayanan. Panel petugas tidak aktif dalam mode ini. Gunakan data fiktif.
+Tanpa `NEXT_PUBLIC_API_URL`, pelayanan publik memakai simulasi. localStorage menyimpan maksimal 50 receipt (nomor, status, penanda sukses, `jenis_surat`), bukan identitas formulir. Receipt demo lama tanpa `jenis_surat` tetap terbaca, tetapi linimasanya tidak ditampilkan. Contoh status tersedia di adapter pelayanan. Panel petugas tidak aktif dalam mode ini. Gunakan data fiktif.
 
 Untuk API lokal, isi `.env.local` dengan:
 
@@ -34,16 +34,16 @@ Path berikut relatif terhadap `/api/v1`. Transport menggunakan `Accept: applicat
 | POST | `/applications/status` | `request_id` dan `lookup_secret` |
 | POST | `/staff/login` | `username` dan `password`; kompatibilitas klien lama: `email` dan `password`; respons bearer token |
 | POST | `/staff/logout` | Mencabut token petugas aktif |
-| GET | `/staff/me` | Profil petugas pemilik token: `{ name, username, role }` dengan `role` = `staff`, `village_head`, atau `admin`; dipakai untuk memvalidasi sesi |
-| GET | `/staff/applications` | Daftar paginasi (`page` ≥ 1, 20 per halaman). Filter opsional `status` (satu) **atau** `statuses[]` (beberapa), tidak boleh keduanya; `q` (maksimal 100 karakter) mencari sebagian nomor/nama secara literal dan tidak peka huruf besar/kecil, `jenis_surat` = `SKU`/`DOMISILI`/`SKTM`/`KTP_KK`, `sort` = `terbaru` (bawaan)/`terlama`. Tiap item ([StaffApplication](../types/pelayanan.ts)) memuat `allowed_transitions`, tanpa data pribadi sensitif atau catatan bebas |
-| GET | `/staff/applications/{request_id}` | Detail terotorisasi untuk `staff`, `village_head`, `admin`: data pemohon, usaha, keperluan, catatan, `allowed_transitions`, dan riwayat status. Respons `Cache-Control: no-store`; akses berhasil dicatat di `audit_logs` |
+| GET | `/staff/me` | Profil petugas pemilik token: `{ name, username, role, rt, rw }` dengan `role` = `staff`, `village_head`, `admin`, `rt_head`, atau `rw_head`; `rt`/`rw` nullable (3 digit untuk ketua RT/RW); dipakai untuk memvalidasi sesi |
+| GET | `/staff/applications` | Daftar paginasi, dibatasi wilayah dan jenis surat RT/RW (tanpa SKU) untuk `rt_head`/`rw_head` (`page` ≥ 1, 20 per halaman). Filter opsional `status` (satu) **atau** `statuses[]` (beberapa), tidak boleh keduanya; `q` (maksimal 100 karakter) mencari sebagian nomor/nama secara literal dan tidak peka huruf besar/kecil, `jenis_surat` = `SKU`/`DOMISILI`/`SKTM`/`KTP_KK`, `sort` = `terbaru` (bawaan)/`terlama`. Tiap item ([StaffApplication](../types/pelayanan.ts)) memuat `allowed_transitions`, tanpa data pribadi sensitif atau catatan bebas |
+| GET | `/staff/applications/{request_id}` | Detail terotorisasi untuk lima peran panel: data pemohon, usaha, keperluan, catatan, `allowed_transitions`, dan riwayat status. Ketua RT/RW hanya untuk wilayahnya (di luar wilayah → 404) dan menerima versi terbatas. Respons `Cache-Control: no-store`; akses berhasil dicatat di `audit_logs` |
 | PATCH | `/staff/applications/{request_id}/status` | `status` dan `catatan`; respons ([StaffStatusResponse](../types/pelayanan.ts)) memuat `allowed_transitions` baru |
 
-Pengajuan berhasil mengembalikan HTTP 201 dengan `success`, `request_id`, `status`, dan `lookup_secret`. Cek status mengembalikan metadata status serta catatan, bukan identitas sensitif. Respons validasi gagal menggunakan HTTP 422. Frontend membatasi waktu tunggu API menjadi 20 detik dan memvalidasi respons pelayanan dengan Zod.
+Pengajuan berhasil mengembalikan HTTP 201 dengan `success`, `request_id`, `status`, `jenis_surat`, dan `lookup_secret`. Cek status mengembalikan `request_id`, `jenis_surat` (wajib dibaca frontend untuk memilih linimasa), `status`, serta catatan, bukan identitas sensitif. Penolakan oleh RT/RW diberi awalan "Ditolak oleh Ketua RT/RW". Respons validasi gagal menggunakan HTTP 422. Frontend membatasi waktu tunggu API menjadi 20 detik dan memvalidasi respons pelayanan dengan Zod.
 
 ### Login username
 
-Frontend mengirim `{ username, password }`. Username unik, 1–64 karakter, diawali huruf kecil/angka, selanjutnya huruf kecil, angka, `_`, atau `-`. Spasi luar dibuang; huruf besar ditolak. Klien lama masih dapat mengirim `{ email, password }`, tetapi kedua identitas tidak boleh dikirim bersama. Identitas tidak dikenal, kata sandi salah, dan peran selain staff/village_head/admin menghasilkan pesan 401 yang sama. Validasi gagal menghasilkan 422; rate limit tetap 5/menit.
+Frontend mengirim `{ username, password }`. Username unik, 1–64 karakter, diawali huruf kecil/angka, selanjutnya huruf kecil, angka, `_`, atau `-`. Spasi luar dibuang; huruf besar ditolak. Klien lama masih dapat mengirim `{ email, password }`, tetapi kedua identitas tidak boleh dikirim bersama. Identitas tidak dikenal, kata sandi salah, peran di luar lima peran panel, serta ketua RT/RW tanpa wilayah lengkap menghasilkan pesan 401 yang sama. Validasi gagal menghasilkan 422; rate limit tetap 5/menit.
 
 Jalankan migration penambahan username sebelum memakai frontend baru. Akun lama tetap memiliki username nullable dan bisa memakai API login email; untuk form baru, administrator perlu menetapkan username unik pada akun tersebut. Tidak ada akun/kata sandi bawaan atau endpoint pendaftaran publik. Tipe frontend: `StaffLoginRequest` dan `StaffLoginResponse` di `types/pelayanan.ts`.
 
@@ -60,16 +60,21 @@ Jalankan migration penambahan username sebelum memakai frontend baru. Akun lama 
 
 ## Status dan batas fitur
 
-Alur normal: `SUBMITTED` -> `VERIFIED` -> `PROCESSING` -> `WAITING_APPROVAL` -> `APPROVED` -> `READY_FOR_PICKUP` -> `COMPLETED`.
+Alur bergantung pada jenis surat. Konfigurasinya ada di `backend/app/Domain/LetterType.php` (sumber kebenaran) dan dicerminkan untuk tampilan di `lib/letter-workflow.ts`:
 
-Wewenang per peran ditentukan server di `backend/app/Domain/ApplicationStatus.php` (tabel lengkap di [README backend](../backend/README.md#alur-status-dan-wewenang)). Ringkasnya: `staff` dan `admin` memverifikasi, memproses, mengajukan ke kepala desa, menandai siap diambil, dan menandai sudah diambil; **hanya** `village_head` yang memutuskan `WAITING_APPROVAL` → `APPROVED`/`REJECTED`/`NEED_REVISION`. Admin tidak dapat menyetujui.
+- SKU: `SUBMITTED` -> `VERIFIED` -> `PROCESSING` -> `WAITING_APPROVAL` -> `APPROVED` -> `READY_FOR_PICKUP` -> `COMPLETED`.
+- DOMISILI, SKTM, KTP_KK: `SUBMITTED` -> `RT_APPROVED` -> `RW_APPROVED` -> `VERIFIED` -> ... -> `COMPLETED` (lanjutan sama dengan SKU).
 
-- Transisi yang tidak ada di alur (melompat atau dari status akhir) → 422. Transisi yang ada tetapi bukan wewenang peran → 403 dengan pesan jelas.
+Wewenang per peran ditentukan server di `backend/app/Domain/ApplicationStatus.php` (tabel lengkap di [README backend](../backend/README.md#alur-status-dan-wewenang)). Ringkasnya: `rt_head` menyetujui/menolak `SUBMITTED` di RT-nya, `rw_head` menyetujui/menolak `RT_APPROVED` di RW-nya; `staff` dan `admin` memverifikasi, memproses, mengajukan ke kepala desa, menandai siap diambil, dan menandai sudah diambil; **hanya** `village_head` yang memutuskan `WAITING_APPROVAL` → `APPROVED`/`REJECTED`/`NEED_REVISION`. Admin tidak dapat menyetujui. Untuk surat yang memerlukan RT/RW, kantor desa baru bertindak setelah `RW_APPROVED`.
+
+- Transisi yang tidak ada di alur (melompat, misalnya `SUBMITTED` → `RW_APPROVED`, atau dari status akhir) → 422. Transisi yang ada tetapi bukan wewenang peran, atau pengajuan di luar wilayah ketua RT/RW → 403 dengan pesan jelas.
+- Pengajuan yang sudah berjalan sebelum fitur RT/RW tidak diulang; migration hanya menormalkan `rt`/`rw` menjadi 3 digit.
 - `NEED_REVISION` dan `REJECTED` memerlukan catatan. Setiap perubahan dicatat di `application_events` dengan `user_id`.
 - Frontend **tidak** menyimpan tabel transisi: tombol aksi di halaman detail dibentuk dari `allowed_transitions` respons server, dan hanya label tombol yang ada di `features/admin/application-detail.tsx`. Catatan wajib untuk Tolak/Minta perbaikan; Tolak, Setujui, dan Tandai sudah diambil memakai dialog konfirmasi. Sesudah perubahan, detail dan riwayat dibaca ulang dari server.
+- `RT_APPROVED`/`RW_APPROVED` hanya mencatat persetujuan di sistem; tidak ada surat pengantar PDF, TTE, stempel digital, atau notifikasi.
 - `APPROVED` berarti disetujui, **bukan PDF tersedia**. `READY_FOR_PICKUP` ditandai petugas saat surat fisik siap; warga diminta membawa KTP asli dan nomor pengajuan. `COMPLETED` berarti surat sudah diambil.
 
-Login, sesi persisten per tab, daftar permohonan, filter, pagination, perubahan status, dan logout sudah diimplementasikan. Menu admin: Dashboard (`/admin`), Permohonan (`/admin/permohonan`), Persetujuan (`/admin/persetujuan`, hanya tampil untuk `village_head`; berisi `WAITING_APPROVAL`), dan Siap diambil (`/admin/surat`; berisi `APPROVED` dan `READY_FOR_PICKUP` lewat `statuses[]`). Menyembunyikan menu hanya kenyamanan tampilan; otorisasi tetap di server; halaman konten (berita, pengumuman, potensi, statistik, pengaturan) dihapus dan dibuat ulang saat modulnya dikerjakan. PDF, unggah dokumen/revisi, pemulihan kode akses, OTP, notifikasi, dan pengelolaan konten publik belum tersedia.
+Login, sesi persisten per tab, daftar permohonan, filter, pagination, perubahan status, dan logout sudah diimplementasikan. Menu admin: Dashboard (`/admin`), Permohonan (`/admin/permohonan`), Persetujuan (`/admin/persetujuan`, hanya tampil untuk `village_head`; berisi `WAITING_APPROVAL`), dan Siap diambil (`/admin/surat`; berisi `APPROVED` dan `READY_FOR_PICKUP` lewat `statuses[]`). `rt_head` hanya mendapat Antrean RT (`/admin/antrean-rt`, bawaan `SUBMITTED`) dan `rw_head` hanya Antrean RW (`/admin/antrean-rw`, bawaan `RT_APPROVED`); parameter `view=all` menampilkan semua pengajuan wilayah sebagai riwayat baca-saja pada halaman yang sama. Menyembunyikan menu hanya kenyamanan tampilan; otorisasi tetap di server; halaman konten (berita, pengumuman, potensi, statistik, pengaturan) dihapus dan dibuat ulang saat modulnya dikerjakan. PDF, unggah dokumen/revisi, pemulihan kode akses, OTP, notifikasi, dan pengelolaan konten publik belum tersedia.
 
 Frontend adalah static export: halaman `/admin/permohonan/detail/` diekspor tanpa ID database; client membaca `?id=REQ-...` di dalam `Suspense`. Daftar bersama menyimpan `q`, `status`, `jenis_surat`, `sort`, dan `page` dalam query string. Tautan detail membawa `from=permohonan|persetujuan|surat` dan filter tersebut agar tombol kembali memulihkan daftar. Antrean Persetujuan dan Siap diambil membatasi status tetap, termasuk bila URL diubah manual.
 
@@ -80,7 +85,8 @@ Frontend adalah static export: halaman `/admin/permohonan/detail/` diekspor tanp
 - Audit memuat hanya `user_id`, `action=application.viewed`, `subject_type`, `subject_id`, dan `created_at` (selain primary key). Tidak ada isi identitas, catatan, token, maupun payload. Setiap GET detail berhasil, termasuk pemuatan ulang setelah perubahan status, menghasilkan audit. Audit harus tersimpan sebelum respons detail dikirim.
 - NIK, KK, telepon, alamat, dan alamat usaha tetap terenkripsi di database; daftar memakai daftar field eksplisit tanpa nilai tersebut maupun catatan bebas. Hash kode akses tidak pernah dikirim di detail.
 - **Pengecualian disetujui 18 Oktober 2026:** nama yang diketik sebagai pencarian boleh berada di `q` pada URL halaman/API. URL dapat tersimpan dalam riwayat browser dan access log infrastruktur; atur redaksi query string pada proxy/web server sebelum produksi. Jangan memasukkan NIK, KK, telepon, alamat, token, atau catatan ke pencarian/URL. Audit aplikasi tidak mencatat query pencarian.
-- Akses detail memakai ability `applications:manage` dan pemeriksaan tiga peran panel di server. Kemampuan melihat detail tidak memberi hak menyetujui: hanya kepala desa memutuskan `WAITING_APPROVAL`.
+- **Ketua RT/RW:** server mengirim NIK/KK yang sudah disamarkan (12 bintang + 4 digit terakhir) dan **tidak** mengirim `telepon`, `tempat_lahir`, `tanggal_lahir`, maupun `jenis_kelamin` (field opsional di `StaffApplicationDetail`). UI tidak menampilkan tombol Tampilkan untuk peran ini. Audit akses tetap sama untuk semua peran.
+- Akses detail memakai ability `applications:manage` dan pemeriksaan lima peran panel di server, ditambah batas wilayah untuk ketua RT/RW. Kemampuan melihat detail tidak memberi hak menyetujui: hanya kepala desa memutuskan `WAITING_APPROVAL`.
 
 ## Menjalankan dan memeriksa
 

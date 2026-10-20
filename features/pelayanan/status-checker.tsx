@@ -4,22 +4,14 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, Search, LoaderCircle, CircleAlert, CircleX } from "lucide-react";
 import { pelayananService, isDemo } from "@/services/pelayanan";
-import type { Receipt } from "@/types/pelayanan";
-import { StatusBadge, statusLabels, statusDescriptions } from "@/components/site";
-const steps = [
-  ["SUBMITTED", "Penerimaan data pengajuan."],
-  ["VERIFIED", "Verifikasi kelengkapan data oleh petugas."],
-  ["PROCESSING", "Penyiapan surat oleh petugas."],
-  ["WAITING_APPROVAL", "Pengajuan menunggu persetujuan."],
-  ["APPROVED", "Persetujuan pengajuan surat."],
-  ["READY_FOR_PICKUP", "Surat siap diambil di kantor desa."],
-  ["COMPLETED", "Surat sudah diambil."],
-] as const;
+import type { StatusReceipt } from "@/types/pelayanan";
+import { letterSteps, requiresNeighborhoodApproval } from "@/lib/letter-workflow";
+import { StatusBadge, statusDescriptions } from "@/components/site";
 export function StatusChecker() {
   const params = useSearchParams();
   const [id, setId] = useState(params.get("id") || "");
   const [secret, setSecret] = useState("");
-  const [result, setResult] = useState<(Receipt & { catatan?: string | null }) | null>(null);
+  const [result, setResult] = useState<StatusReceipt | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   async function lookup(value: string) {
@@ -42,6 +34,7 @@ export function StatusChecker() {
       setBusy(false);
     }
   }
+  const steps = result?.jenis_surat ? letterSteps(result.jenis_surat) : [];
   const current = result ? steps.findIndex((s) => s[0] === result.status) : -1;
   const exception =
     result && ["REJECTED", "NEED_REVISION"].includes(result.status);
@@ -98,6 +91,8 @@ export function StatusChecker() {
               <li>REQ-2026-000004 — Ditolak</li>
               <li>REQ-2026-000005 — Siap diambil</li>
               <li>REQ-2026-000006 — Selesai</li>
+              <li>REQ-2026-000007 — Disetujui RT (contoh SKTM)</li>
+              <li>REQ-2026-000008 — Disetujui RW (contoh SKTM)</li>
             </ul>
           </details>
         </div>
@@ -120,7 +115,7 @@ export function StatusChecker() {
           <h2 id="lookup-result-heading">Status pengajuan Anda</h2>
           <div className="lookup-result-header">
             <strong className="receipt-value">{result.request_id}</strong>
-            <StatusBadge status={result.status} />
+            <StatusBadge status={result.status} jenisSurat={result.jenis_surat} />
           </div>
           {exception ? (
             <div className={"status-exception status-" + result.status}>
@@ -128,7 +123,7 @@ export function StatusChecker() {
                 {result.status === "REJECTED" ? <CircleX size={24} aria-hidden="true" /> : <CircleAlert size={24} aria-hidden="true" />}
                 <h3>{result.status === "REJECTED" ? "Pengajuan ditolak" : "Pengajuan perlu diperbaiki"}</h3>
               </div>
-              <p>{statusDescriptions[result.status]}</p>
+              <p>{result.status === "SUBMITTED" && requiresNeighborhoodApproval(result.jenis_surat) ? "Permohonan menunggu verifikasi Ketua RT, lalu Ketua RW, sebelum masuk kantor desa." : statusDescriptions[result.status]}</p>
               <h3>Catatan petugas</h3>
               <p className="officer-note">{result.catatan || "Catatan belum tersedia. Hubungi kantor desa untuk penjelasan."}</p>
               <Link href="/kontak" className="text-link">Lihat Kontak Kantor</Link>
@@ -137,11 +132,12 @@ export function StatusChecker() {
             <>
               <div className="status-next-step">
                 <h3>Langkah berikutnya</h3>
-                <p>{statusDescriptions[result.status]}</p>
+                <p>{result.status === "SUBMITTED" && requiresNeighborhoodApproval(result.jenis_surat) ? "Permohonan menunggu verifikasi Ketua RT, lalu Ketua RW, sebelum masuk kantor desa." : statusDescriptions[result.status]}</p>
                 {(result.status === "APPROVED" || result.status === "READY_FOR_PICKUP") && <Link href="/kontak" className="text-link">Lihat Kontak Kantor</Link>}
               </div>
-              <ol className="timeline" aria-label="Tujuh tahap pengajuan surat">
-                {steps.map(([code, description], index) => (
+              {!result.jenis_surat && <p>Jenis surat tidak tersimpan pada bukti simulasi lama ini; linimasa tidak tersedia.</p>}
+              <ol className="timeline" aria-label="Tahap pengajuan sesuai jenis surat">
+                {steps.map(([code, label, description], index) => (
                   <li
                     className={`${index <= current ? "complete" : ""} ${index === current ? "current" : ""}`}
                     key={code}
@@ -151,7 +147,7 @@ export function StatusChecker() {
                       {index <= current ? <Check size={22} /> : index + 1}
                     </span>
                     <div>
-                      <strong>{statusLabels[code]}</strong>
+                      <strong>{label}</strong>
                       <span className="timeline-state">{index === current ? "Tahap saat ini" : index < current ? "Sudah dilalui" : "Belum dimulai"}</span>
                       <p>{description}</p>
                     </div>

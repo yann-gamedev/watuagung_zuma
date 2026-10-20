@@ -29,15 +29,17 @@ php artisan config:clear
 
 Jalankan `php artisan migrate` terlebih dahulu untuk menambahkan kolom username unik. Akun lama tetap tersimpan dengan username null dan login email melalui API masih didukung. Form admin sekarang menggunakan username; tetapkan username unik pada akun lama sebelum memakainya. Format: 1–64 karakter huruf kecil/angka, `_`, atau `-`, diawali huruf kecil/angka. Tidak ada akun/kata sandi bawaan.
 
-Tidak ada endpoint pendaftaran publik. Panel menerima tiga peran: `staff` (petugas), `village_head` (kepala desa), dan `admin`. Buat akun lokal dengan perintah berikut; kata sandi (minimal 12 karakter) diminta dua kali secara tersembunyi, jadi tidak tersimpan di riwayat terminal maupun repositori:
+Tidak ada endpoint pendaftaran publik. Panel menerima lima peran: `rt_head` (ketua RT), `rw_head` (ketua RW), `staff` (petugas), `village_head` (kepala desa), dan `admin`. Buat akun lokal dengan perintah berikut; kata sandi (minimal 12 karakter) diminta dua kali secara tersembunyi, jadi tidak tersimpan di riwayat terminal maupun repositori:
 
 ```powershell
+php artisan staff:create rt-lokal --role=rt_head --rt=1 --rw=2 --name="Ketua RT Lokal"
+php artisan staff:create rw-lokal --role=rw_head --rw=2 --name="Ketua RW Lokal"
 php artisan staff:create petugas-lokal --role=staff --name="Petugas Lokal"
 php artisan staff:create kades-lokal --role=village_head --name="Kepala Desa Lokal"
 php artisan staff:create admin-lokal --role=admin --name="Admin Lokal"
 ```
 
-`--email` opsional (bawaan `<username>@example.test`). Nama dan username di atas hanya contoh, **bukan** akun bawaan. Untuk mengubah peran akun lama, gunakan `php artisan tinker`, lalu `App\Models\User::where('username', 'nama-akun')->update(['role' => 'village_head']);`. Perubahan peran berlaku seketika pada token yang sudah aktif.
+`--email` opsional (bawaan `<username>@example.test`). `rt_head` wajib `--rt` dan `--rw`; `rw_head` wajib `--rw`; isinya 1–3 digit dan disimpan sebagai 3 digit (`1` → `001`). Kolom `rt`/`rw` pada `users` nullable untuk peran lain. Ketua RT/RW tanpa wilayah lengkap tidak bisa masuk panel. Nama, username, dan nomor wilayah di atas hanya contoh, **bukan** akun bawaan. Untuk mengubah peran akun lama, gunakan `php artisan tinker`, lalu `App\Models\User::where('username', 'nama-akun')->update(['role' => 'village_head']);`. Perubahan peran berlaku seketika pada token yang sudah aktif.
 
 ## Integrasi frontend
 
@@ -51,13 +53,13 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 
 | Metode | Path | Akses | Kegunaan |
 | --- | --- | --- | --- |
-| POST | `/applications` | Publik, 5 permintaan/menit | Mengajukan layanan; mengembalikan `request_id`, `status`, dan `lookup_secret` (HTTP 201) |
-| POST | `/applications/status` | Publik, 10 permintaan/menit | Body: `request_id` dan `lookup_secret`; mengembalikan status dan catatan |
+| POST | `/applications` | Publik, 5 permintaan/menit | Mengajukan layanan; mengembalikan `request_id`, `status`, `jenis_surat`, dan `lookup_secret` (HTTP 201) |
+| POST | `/applications/status` | Publik, 10 permintaan/menit | Body: `request_id` dan `lookup_secret`; mengembalikan `jenis_surat`, status, dan catatan (penolakan RT/RW diberi awalan "Ditolak oleh Ketua RT/RW") |
 | POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `username` dan `password` (atau `email` untuk klien lama); mengembalikan bearer token |
 | POST | `/staff/logout` | Token petugas | Mencabut token aktif |
-| GET | `/staff/me` | Token petugas | Mengembalikan `{ name, username, role }`; `username` bisa `null` untuk akun lama. Peran selain `staff`/`village_head`/`admin` mendapat 403 |
-| GET | `/staff/applications` | Token petugas | Daftar paginasi 20 per halaman; filter `status` atau `statuses[]`, `q`, `jenis_surat`, dan `sort` (kontrak di bawah) |
-| GET | `/staff/applications/{request_id}` | Token staff, village_head, admin | Detail data pemohon terdekripsi, `allowed_transitions`, dan `history`; setiap akses berhasil dicatat di `audit_logs` |
+| GET | `/staff/me` | Token petugas | Mengembalikan `{ name, username, role, rt, rw }`; `username`, `rt`, `rw` bisa `null`. Peran di luar lima peran panel atau ketua RT/RW tanpa wilayah lengkap mendapat 403 |
+| GET | `/staff/applications` | Token petugas | Daftar paginasi 20 per halaman, dibatasi wilayah untuk ketua RT/RW; filter `status` atau `statuses[]`, `q`, `jenis_surat`, dan `sort` (kontrak di bawah) |
+| GET | `/staff/applications/{request_id}` | Token lima peran panel | Detail data pemohon, `allowed_transitions`, dan `history`; ketua RT/RW hanya wilayahnya dengan field terbatas; setiap akses berhasil dicatat di `audit_logs` |
 | PATCH | `/staff/applications/{request_id}/status` | Token petugas | Body `status` dan `catatan` opsional; respons memuat `status`, `catatan`, dan `allowed_transitions` baru |
 
 Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Untuk SKU, `nama_usaha`, `jenis_usaha`, dan `alamat_usaha` wajib diisi. Validasi yang gagal mengembalikan HTTP 422 dengan objek `errors`.
@@ -81,12 +83,16 @@ Filter digabung dengan AND; pasangan pencarian nomor/nama dikelompokkan dengan O
 
 ### Detail pengajuan dan audit akses
 
-`GET /api/v1/staff/applications/{request_id}` memerlukan bearer token Sanctum dengan ability `applications:manage` **dan** peran aktif `staff`, `village_head`, atau `admin`. Ketiga peran boleh melihat detail; wewenang perubahan status tetap mengikuti tabel di bawah. Otorisasi dilakukan sebelum data pengajuan dimuat/dekripsi, tanpa implicit model binding pada endpoint detail.
+`GET /api/v1/staff/applications/{request_id}` memerlukan bearer token Sanctum dengan ability `applications:manage` **dan** peran panel aktif. Kelima peran boleh melihat detail; wewenang perubahan status tetap mengikuti tabel di bawah.
+
+**Batas wilayah ketua RT/RW** (`Application::forUser()` dan `isInTerritory()`): keduanya hanya melihat jenis surat dengan `requiresNeighborhoodApproval` (bukan SKU); `rt_head` hanya pengajuan dengan `rt` **dan** `rw` sama dengan akunnya; `rw_head` hanya pengajuan dengan `rw` sama. Daftar otomatis disaring; detail di luar wilayah → **404** (tidak membocorkan keberadaan); PATCH status di luar wilayah → **403**. Kode wilayah dibandingkan setelah dinormalkan ke 3 digit.
+
+**Detail untuk ketua RT/RW:** `nik` dan `no_kk` dikirim tersamar dari server (12 `*` + 4 digit terakhir); `telepon`, `tempat_lahir`, `tanggal_lahir`, dan `jenis_kelamin` tidak dikirim sama sekali. Audit akses sama dengan peran lain. Otorisasi dilakukan sebelum data pengajuan dimuat/dekripsi, tanpa implicit model binding pada endpoint detail.
 
 - Format nomor: `REQ-` + empat digit tahun + `-` + satu atau lebih huruf kapital/angka, maksimal 64 karakter (`/^REQ-\d{4}-[A-Z0-9]+$/`). Format ini menerima ULID server dan nomor pendek fixture. Nomor tidak sesuai format → **422** dengan `errors.request_id`; nomor valid tetapi tidak ditemukan → **404**.
 - Tanpa token/token tidak valid → **401**; peran atau ability salah → **403**, termasuk sebelum memvalidasi/mencari nomor.
 - Respons sukses **200** berupa objek detail langsung (tanpa pembungkus `data`/`success`), dengan field eksplisit:
-  - `request_id`, `jenis_surat`, `nama`, `nik`, `no_kk`, `tempat_lahir`, `tanggal_lahir` (`YYYY-MM-DD`), `jenis_kelamin`, `alamat`, `rt`, `rw`, `telepon`;
+  - `request_id`, `jenis_surat`, `nama`, `nik`, `no_kk`, `alamat`, `rt`, `rw`, serta `tempat_lahir`, `tanggal_lahir` (`YYYY-MM-DD`), `jenis_kelamin`, `telepon` (empat terakhir tidak ada untuk ketua RT/RW);
   - `nama_usaha`, `jenis_usaha`, `alamat_usaha` (masing-masing dapat `null`), `keperluan`, `status`, `catatan` (dapat `null`);
   - `created_at`, `updated_at` (ISO 8601 UTC), `allowed_transitions` (array status untuk peran aktif), `history` (array, dapat kosong).
 - Setiap item `history` **hanya** berisi `from_status` (nullable), `to_status`, `note` (nullable), `staff_name` (nullable untuk pengajuan awal/pengguna yang sudah dihapus), `created_at` (ISO 8601 UTC). Urutan kronologis menaik berdasarkan waktu lalu ID event. ID event, ID pengguna, email, serta metadata internal tidak dikirim.
@@ -96,11 +102,28 @@ Filter digabung dengan AND; pasangan pencarian nomor/nama dikelompokkan dengan O
 
 ### Alur status dan wewenang
 
-Alur normal: `SUBMITTED` → `VERIFIED` → `PROCESSING` → `WAITING_APPROVAL` → `APPROVED` → `READY_FOR_PICKUP` → `COMPLETED`. Aturan dipusatkan di `app/Domain/ApplicationStatus.php`; controller tidak menyimpan salinan tabel ini.
+Alur bergantung pada jenis surat (`app/Domain/LetterType.php::requiresNeighborhoodApproval()`; frontend mencerminkannya di `lib/letter-workflow.ts` hanya untuk tampilan):
+
+- SKU: `SUBMITTED` → `VERIFIED` → `PROCESSING` → `WAITING_APPROVAL` → `APPROVED` → `READY_FOR_PICKUP` → `COMPLETED`.
+- DOMISILI, SKTM, KTP_KK: `SUBMITTED` → `RT_APPROVED` → `RW_APPROVED` → `VERIFIED` → lanjutan sama dengan SKU.
+
+Aturan dipusatkan di `app/Domain/ApplicationStatus.php`; controller tidak menyimpan salinan tabel ini.
+
+**DOMISILI, SKTM, KTP_KK:**
 
 | Dari | Ke | Peran |
 | --- | --- | --- |
-| `SUBMITTED` | `VERIFIED`, `NEED_REVISION`, `REJECTED` | staff, admin |
+| `SUBMITTED` | `RT_APPROVED`, `REJECTED` | **hanya** rt_head (wilayahnya) |
+| `RT_APPROVED` | `RW_APPROVED`, `REJECTED` | **hanya** rw_head (wilayahnya) |
+| `RW_APPROVED` | `VERIFIED`, `NEED_REVISION`, `REJECTED` | staff, admin |
+
+Baris berikutnya (`NEED_REVISION` dan seterusnya) sama dengan tabel SKU.
+
+**SKU dan lanjutan semua jenis:**
+
+| Dari | Ke | Peran |
+| --- | --- | --- |
+| `SUBMITTED` (hanya SKU) | `VERIFIED`, `NEED_REVISION`, `REJECTED` | staff, admin |
 | `NEED_REVISION` | `VERIFIED`, `REJECTED` | staff, admin |
 | `VERIFIED` | `PROCESSING`, `NEED_REVISION`, `REJECTED` | staff, admin |
 | `PROCESSING` | `WAITING_APPROVAL`, `NEED_REVISION`, `REJECTED` | staff, admin |
@@ -108,13 +131,15 @@ Alur normal: `SUBMITTED` → `VERIFIED` → `PROCESSING` → `WAITING_APPROVAL` 
 | `APPROVED` | `READY_FOR_PICKUP` | staff, admin |
 | `READY_FOR_PICKUP` | `COMPLETED` | staff, admin |
 
-- Perpindahan yang tidak ada di tabel (melompat, mundur, atau dari `REJECTED`/`COMPLETED`) → **422** `Transisi status tidak valid.`
-- Perpindahan yang ada di tabel tetapi bukan wewenang peran → **403** `Peran Anda tidak berwenang melakukan perubahan status ini.` Admin tidak dapat menyetujui.
+- Perpindahan yang tidak ada di tabel jenis suratnya (melompat, misalnya `SUBMITTED` → `RW_APPROVED` atau DOMISILI `SUBMITTED` → `VERIFIED`; mundur; atau dari `REJECTED`/`COMPLETED`) → **422** `Transisi status tidak valid.`
+- Perpindahan yang ada di tabel tetapi bukan wewenang peran → **403** `Peran Anda tidak berwenang melakukan perubahan status ini.` Admin tidak dapat menyetujui. Pengajuan di luar wilayah ketua RT/RW → **403** `Akses ditolak.`
 - `NEED_REVISION` dan `REJECTED` wajib memakai `catatan` (422 dengan `errors.catatan`).
 - Status dibaca ulang dengan kunci baris di dalam transaksi, sehingga klien dengan data usang tidak bisa mengulang transisi. Setiap perubahan dicatat di `application_events` beserta `user_id`.
 - Semua peran memakai satu ability token `applications:manage`; peran diperiksa ulang pada setiap permintaan.
 
-`APPROVED` **belum** berarti surat/PDF telah dibuat; `READY_FOR_PICKUP` ditandai petugas setelah surat fisik siap.
+`APPROVED` **belum** berarti surat/PDF telah dibuat; `READY_FOR_PICKUP` ditandai petugas setelah surat fisik siap. `RT_APPROVED`/`RW_APPROVED` hanya catatan persetujuan di sistem: tidak ada PDF pengantar, TTE, stempel digital, atau notifikasi.
+
+Migration `2026_10_20_000000_add_neighborhood_territories` menambah kolom `rt`/`rw` nullable di `users` dan hanya menormalkan `rt`/`rw` pengajuan lama ke 3 digit. Status pengajuan lama tidak diubah: pengajuan DOMISILI/SKTM/KTP_KK yang sudah melewati `SUBMITTED` tetap berjalan tanpa diulang dari RT/RW.
 
 ## Penanganan data dan batas saat ini
 

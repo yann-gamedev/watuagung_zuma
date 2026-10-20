@@ -1,0 +1,12 @@
+.neighborhood.neighborhood,
+.neighborhood.neighborhood :is(p, span, label, dt, dd, time, h3, input, select, textarea, a, button, li) {
+  font-size: max(18px, 1em);
+}
+
+.neighborhood.neighborhood :is(button, a[class~="btn"], input, select) {
+  min-height: 52px;
+}
+
+.neighborhood :global(.admin-sidebar) nav a {
+  min-height: 52px;
+}

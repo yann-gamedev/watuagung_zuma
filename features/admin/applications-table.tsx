@@ -31,7 +31,9 @@ export function ApplicationsTable({ section }: { section: ApplicationSection }) 
   const [attempt, setAttempt] = useState(0);
   // Form and results remount per query; after a user-triggered change, focus the new result summary.
   const focusResultsRef = useRef(false);
-  const restricted = section === "persetujuan" && user?.role !== "village_head";
+  const neighborhood = section === "antrean-rt" || section === "antrean-rw";
+  const userQueue = user?.role === "rt_head" ? "antrean-rt" : user?.role === "rw_head" ? "antrean-rw" : null;
+  const restricted = userQueue ? section !== userQueue : neighborhood || (section === "persetujuan" && user?.role !== "village_head");
   const filterStatuses = section === "surat"
     ? statuses.filter((status) => status === "APPROVED" || status === "READY_FOR_PICKUP")
     : section === "persetujuan" ? ["WAITING_APPROVAL"] as const : statuses;
@@ -40,7 +42,7 @@ export function ApplicationsTable({ section }: { section: ApplicationSection }) 
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const params = new URLSearchParams();
-    for (const name of ["q", "status", "jenis_surat", "sort"]) {
+    for (const name of ["q", "status", "jenis_surat", "sort", "view"]) {
       params.set(name, String(form.get(name) ?? ""));
     }
     const next = parseApplicationFilters(params, section);
@@ -48,11 +50,16 @@ export function ApplicationsTable({ section }: { section: ApplicationSection }) 
     router.push(buildApplicationsHref(section, next), { scroll: false });
   }
 
-  if (restricted) return <p className="error-box" role="alert">Halaman Persetujuan hanya tersedia untuk Kepala Desa.</p>;
+  if (restricted) return <div className={styles.list}>
+    <p className="error-box" role="alert">Halaman ini tidak tersedia untuk peran Anda.</p>
+    <Link className="btn btn-secondary" href={userQueue ? `/admin/${userQueue}/` : "/admin/"}>{userQueue ? "Buka antrean wilayah Anda" : "Kembali ke Dashboard"}</Link>
+  </div>;
 
-  return <div className={styles.list}>
+  return <div className={styles.list} data-neighborhood={neighborhood}>
     <div className={styles.intro}>
-      <p>{section === "surat"
+      <p>{neighborhood
+        ? "Periksa pengajuan di wilayah Anda. Pilih Menunggu keputusan untuk memberi persetujuan, atau Semua pengajuan wilayah untuk membaca pengajuan yang sudah diputuskan."
+        : section === "surat"
         ? "Surat yang sudah disetujui dan yang siap diambil. Buka detail untuk menandai surat yang sudah diambil."
         : section === "persetujuan"
           ? "Pengajuan yang menunggu keputusan Kepala Desa. Buka detail untuk memeriksa pengajuan."
@@ -68,18 +75,24 @@ export function ApplicationsTable({ section }: { section: ApplicationSection }) 
           <label htmlFor="admin-application-search">Nomor pengajuan atau nama pemohon</label>
           <input id="admin-application-search" name="q" type="search" defaultValue={filters.q} maxLength={APPLICATION_SEARCH_MAX_LENGTH} autoComplete="off" />
         </div>
-        <div className={styles.field}>
+        {neighborhood ? <div className={styles.field}>
+          <label htmlFor="admin-queue-view">Tampilkan pengajuan</label>
+          <select id="admin-queue-view" name="view" defaultValue={filters.view}>
+            <option value="pending">Menunggu keputusan {section === "antrean-rt" ? "RT" : "RW"}</option>
+            <option value="all">Semua pengajuan wilayah</option>
+          </select>
+        </div> : <div className={styles.field}>
           <label htmlFor="admin-status-filter">Status</label>
           <select id="admin-status-filter" name="status" defaultValue={filters.status} disabled={section === "persetujuan"}>
             {section !== "persetujuan" && <option value="">{section === "surat" ? "Disetujui dan siap diambil" : "Semua status"}</option>}
             {filterStatuses.map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}
           </select>
-        </div>
+        </div>}
         <div className={styles.field}>
           <label htmlFor="admin-service-filter">Jenis surat</label>
           <select id="admin-service-filter" name="jenis_surat" defaultValue={filters.jenis_surat}>
             <option value="">Semua jenis surat</option>
-            {Object.entries(applicationServiceLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+            {Object.entries(applicationServiceLabels).filter(([code]) => !neighborhood || code !== "SKU").map(([code, label]) => <option key={code} value={code}>{label}</option>)}
           </select>
         </div>
         <div className={styles.field}>
@@ -154,7 +167,7 @@ function ApplicationResults({ apiPath, section, filters, focusResultsRef }: {
               <td>{record.nama}</td>
               <td>{applicationServiceLabels[record.jenis_surat]}</td>
               <td><time dateTime={record.created_at}>{formatDate(record.created_at)}</time></td>
-              <td><StatusBadge status={record.status} /></td>
+              <td><StatusBadge status={record.status} jenisSurat={record.jenis_surat} /></td>
             </tr>;
           })}</tbody>
         </table>
@@ -166,7 +179,7 @@ function ApplicationResults({ apiPath, section, filters, focusResultsRef }: {
             <div><dt>Pemohon</dt><dd>{record.nama}</dd></div>
             <div><dt>Layanan</dt><dd>{applicationServiceLabels[record.jenis_surat]}</dd></div>
             <div><dt>Tanggal</dt><dd><time dateTime={record.created_at}>{formatDate(record.created_at)}</time></dd></div>
-            <div><dt>Status</dt><dd><StatusBadge status={record.status} /></dd></div>
+            <div><dt>Status</dt><dd><StatusBadge status={record.status} jenisSurat={record.jenis_surat} /></dd></div>
           </dl>
           <span className={styles.cardAction}>Buka detail permohonan</span>
         </Link>

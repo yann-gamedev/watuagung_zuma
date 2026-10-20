@@ -1,5 +1,6 @@
 <?php
 namespace App\Http\Controllers\Api;
+use App\Domain\LetterType;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use Illuminate\Http\JsonResponse;
@@ -10,7 +11,7 @@ use Illuminate\Validation\Rule;
 class ApplicationController extends Controller {
     public function store(Request $request): JsonResponse {
         $data = $request->validate([
-            'jenis_surat'=>['required',Rule::in(['SKU','DOMISILI','SKTM','KTP_KK'])],
+            'jenis_surat'=>['required',Rule::enum(LetterType::class)],
             'nama'=>['required','string','min:2','max:200'],
             'nik'=>['required','regex:/^[0-9]{16}$/'], 'no_kk'=>['required','regex:/^[0-9]{16}$/'],
             'tempat_lahir'=>['required','string','min:2','max:200'],
@@ -33,7 +34,7 @@ class ApplicationController extends Controller {
             DB::table('application_events')->insert(['application_id'=>$application->id,'to_status'=>'SUBMITTED','created_at'=>now()]);
             return $application;
         });
-        return response()->json(['success'=>true,'request_id'=>$application->request_id,'status'=>$application->status,'lookup_secret'=>$secret], 201);
+        return response()->json(['success'=>true,'request_id'=>$application->request_id,'status'=>$application->status,'jenis_surat'=>$application->jenis_surat,'lookup_secret'=>$secret], 201);
     }
     public function status(Request $request): JsonResponse {
         $data = $request->validate(['request_id'=>['required','string','max:64'],'lookup_secret'=>['required','string','max:128']]);
@@ -41,6 +42,18 @@ class ApplicationController extends Controller {
         if (! $application || ! hash_equals($application->lookup_secret_hash, hash('sha256', $data['lookup_secret']))) {
             return response()->json(['success'=>false,'message'=>'Permohonan tidak ditemukan atau kode akses tidak valid.'], 404);
         }
-        return response()->json(['success'=>true,'request_id'=>$application->request_id,'status'=>$application->status,'catatan'=>$application->catatan]);
+        $note = $application->catatan;
+        if ($application->status === 'REJECTED' && LetterType::from($application->jenis_surat)->requiresNeighborhoodApproval()) {
+            // The originating status records the decision stage even if the account role changes or is deleted.
+            $event = DB::table('application_events')->where('application_id', $application->id)
+                ->where('to_status', 'REJECTED')->orderByDesc('id')->first();
+            $head = match ($event?->from_status) {
+                'SUBMITTED' => 'RT',
+                'RT_APPROVED' => 'RW',
+                default => null,
+            };
+            if ($head !== null) $note = 'Ditolak oleh Ketua '.$head.': '.rtrim($event->note ?? $note ?? '', '. ').'. Silakan ajukan ulang setelah data diperbaiki.';
+        }
+        return response()->json(['success'=>true,'request_id'=>$application->request_id,'jenis_surat'=>$application->jenis_surat,'status'=>$application->status,'catatan'=>$note]);
     }
 }

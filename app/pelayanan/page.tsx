@@ -17,6 +17,14 @@ export default function Page() {
           Gunakan data fiktif.
         </div>
         <ServiceList fullRequirements />
+        <section aria-labelledby="service-steps-title">
+          <h2 id="service-steps-title">Cara mengajukan surat</h2>
+          <ol>
+            <li>Pilih surat, baca persyaratan, lalu isi formulir.</li>
+            <li>Simpan nomor dan kode akses. Domisili, SKTM, dan KTP/KK diperiksa Ketua RT, lalu Ketua RW, petugas desa, dan Kepala Desa. SKU langsung ke kantor desa.</li>
+            <li>Cek status dan datang ke kantor desa setelah surat siap diambil.</li>
+          </ol>
+        </section>
         <div className="status-strip">
           <div>
             <strong>Sudah punya nomor pengajuan?</strong>

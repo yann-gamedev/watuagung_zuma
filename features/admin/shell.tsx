@@ -8,8 +8,9 @@ import { AdminSidebar, adminPageTitle } from "@/components/admin-sidebar";
 import { normalizePath } from "@/components/site-header";
 import { AdminLoginForm } from "./login-form";
 import { useAdminSession } from "./session";
+import styles from "./neighborhood.module.css";
 
-const roleLabels = { staff: "Petugas", village_head: "Kepala Desa", admin: "Admin" } as const;
+const roleLabels = { staff: "Petugas", village_head: "Kepala Desa", admin: "Admin", rt_head: "Ketua RT", rw_head: "Ketua RW" } as const;
 const MOBILE_QUERY = "(max-width: 900px)";
 
 function focusables(container: HTMLElement | null) {
@@ -116,7 +117,7 @@ function AdminFrame({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="admin-layout" data-menu-open={open}>
+    <div className={`admin-layout ${user?.role === "rt_head" || user?.role === "rw_head" ? styles.neighborhood : ""}`} data-menu-open={open}>
       <AdminSidebar ref={sidebarRef} open={open} onClose={closeMenu} />
       {open && <div className="admin-backdrop" aria-hidden="true" onClick={closeMenu} />}
       <div ref={mainRef} className="admin-body">
@@ -133,7 +134,7 @@ function AdminFrame({ children }: { children: React.ReactNode }) {
           </button>
           <h1>{adminPageTitle(path)}</h1>
           <div className="admin-topbar-user">
-            <p><strong>{user?.name}</strong><span>{user ? roleLabels[user.role] : ""}</span></p>
+            <p><strong>{user?.name}</strong><span>{user?.role === "rt_head" ? `Ketua RT ${user.rt ?? "—"} / RW ${user.rw ?? "—"}` : user?.role === "rw_head" ? `Ketua RW ${user.rw ?? "—"}` : user ? roleLabels[user.role] : ""}</span></p>
             <div className="admin-actions">
               <Link href="/" className="btn btn-secondary">Lihat website <ArrowUpRight size={22} aria-hidden="true" /></Link>
               <button id="staff-logout" type="button" className="btn btn-secondary" disabled={leaving} onClick={() => void signOut()}>

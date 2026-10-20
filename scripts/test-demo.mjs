@@ -47,6 +47,8 @@ for (const jenis_surat of ["SKU", "DOMISILI", "SKTM", "KTP_KK"]) {
   assert.equal(submissionSchema.safeParse(data).success, true);
   const receipt = await pelayananService.submit(data);
   assert.deepEqual(await pelayananService.getStatus(receipt.request_id), receipt);
+  assert.equal(receipt.jenis_surat, jenis_surat);
+  assert.deepEqual(Object.keys(JSON.parse(stored).at(-1)).sort(), ["jenis_surat", "request_id", "status", "success"]);
   assert.ok(!stored.includes(data.nama), "Do not persist identity");
 }
 for (const corrupt of ["{}", "null", "not json", '[{"status":"BAD"}]']) {
@@ -55,9 +57,9 @@ for (const corrupt of ["{}", "null", "not json", '[{"status":"BAD"}]']) {
   await pelayananService.submit(valid);
   assert.equal(JSON.parse(stored).length, 1);
 }
-for (const [suffix, status] of [["000002", "NEED_REVISION"], ["000003", "APPROVED"], ["000004", "REJECTED"], ["000005", "READY_FOR_PICKUP"], ["000006", "COMPLETED"]])
+for (const [suffix, status] of [["000002", "NEED_REVISION"], ["000003", "APPROVED"], ["000004", "REJECTED"], ["000005", "READY_FOR_PICKUP"], ["000006", "COMPLETED"], ["000007", "RT_APPROVED"], ["000008", "RW_APPROVED"]])
   assert.equal((await pelayananService.getStatus(`REQ-2026-${suffix}`)).status, status);
-for (const status of ["READY_FOR_PICKUP", "COMPLETED"]) {
+for (const status of ["READY_FOR_PICKUP", "COMPLETED", "RT_APPROVED", "RW_APPROVED"]) {
   const receipt = { success: true, request_id: "REQ-2026-PICKUPTEST", status };
   stored = JSON.stringify([receipt]);
   assert.deepEqual(await pelayananService.getStatus(receipt.request_id), receipt);
@@ -67,4 +69,11 @@ for (const status of ["READY_FOR_PICKUP", "COMPLETED"]) {
 await assert.rejects(pelayananService.getStatus("REQ-2026-UNKNOWN"), /tidak ditemukan/);
 localStorage.setItem = () => { throw new Error("Storage blocked"); };
 await assert.rejects(pelayananService.submit(valid), /Penyimpanan simulasi tidak tersedia/);
+const { letterSteps } = await source("lib/letter-workflow.ts");
+assert.deepEqual(letterSteps("SKU").map(([status]) => status), ["SUBMITTED", "VERIFIED", "PROCESSING", "WAITING_APPROVAL", "APPROVED", "READY_FOR_PICKUP", "COMPLETED"]);
+for (const type of ["DOMISILI", "SKTM", "KTP_KK"]) {
+  assert.deepEqual(letterSteps(type).map(([status]) => status), ["SUBMITTED", "RT_APPROVED", "RW_APPROVED", ...letterSteps("SKU").slice(1).map(([status]) => status)]);
+}
+assert.equal((await pelayananService.getStatus("REQ-2026-000007")).jenis_surat, "SKTM");
+assert.equal((await pelayananService.getStatus("REQ-2026-000008")).jenis_surat, "SKTM");
 console.log("PASS: demo isolation, autofill fixtures, four services, calendar validation, status lookup, corrupted/blocked storage, identity privacy.");

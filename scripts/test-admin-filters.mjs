@@ -39,6 +39,13 @@ for (const from of ["permohonan", "persetujuan", "surat"]) {
   assert.equal(href.searchParams.get("from"), from);
   assert.equal(list(section(href.searchParams.get("from")), parse(href.searchParams, from)), list(from, filters));
 }
+assert.equal(parse(params("status=APPROVED&jenis_surat=SKU"), "antrean-rt").status, "SUBMITTED");
+assert.equal(parse(params("status=APPROVED&jenis_surat=SKU"), "antrean-rt").jenis_surat, "");
+assert.equal(parse(params("status=APPROVED"), "antrean-rw").status, "RT_APPROVED");
+const all = parse(params("view=all&status=SUBMITTED"), "antrean-rw");
+assert.equal(all.status, "");
+assert.equal(new URL(api("antrean-rw", all), "https://example.test").searchParams.has("view"), false);
+assert.equal(new URL(list("antrean-rw", all), "https://example.test").searchParams.get("view"), "all");
 const safe = list("permohonan", parse(params("nik=0000000000000001&token=secret&returnTo=https://example.test/&alamat=Fiktif")));
 assert.equal(safe, "/admin/permohonan/?sort=terbaru&page=1");
 console.log("PASS: admin query validation, fixed queues, search limit, safe navigation, pagination and filter round-trip.");
