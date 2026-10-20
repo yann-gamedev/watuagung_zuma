@@ -206,6 +206,7 @@ class NeighborhoodApprovalTest extends TestCase
         $this->lookup($rtRejected)->assertOk()->assertExactJson([
             'success' => true, 'request_id' => $rtRejected->request_id, 'jenis_surat' => 'DOMISILI', 'status' => 'REJECTED',
             'catatan' => 'Ditolak oleh Ketua RT: Alamat belum sesuai. Silakan ajukan ulang setelah data diperbaiki.',
+            'letter_number' => null,
         ]);
 
         $rwRejected = $this->application(['status' => 'RT_APPROVED']);

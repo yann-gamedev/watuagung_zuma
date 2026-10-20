@@ -77,6 +77,7 @@ class StaffApplicationsTest extends TestCase
             'created_at' => $application->created_at->toISOString(), 'updated_at' => $application->updated_at->toISOString(),
             'allowed_transitions' => ApplicationStatus::allowedFor('WAITING_APPROVAL', $role, LetterType::Sku),
             'can_reset_access_code' => $role !== 'village_head',
+            'letter_numbers' => [],
             'history' => [
                 ['action' => null, 'from_status' => null, 'to_status' => 'SUBMITTED', 'note' => null, 'staff_name' => null, 'created_at' => now()->toISOString()],
                 ['action' => null, 'from_status' => 'PROCESSING', 'to_status' => 'WAITING_APPROVAL', 'note' => 'Riwayat fiktif', 'staff_name' => 'Petugas Fiktif', 'created_at' => now()->toISOString()],

@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Api;
 use App\Domain\AccessCode;
 use App\Domain\ApplicationStatus;
 use App\Domain\LetterType;
+use App\Domain\LetterNumber;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\User;
@@ -76,6 +77,24 @@ class StaffController extends Controller {
         ]);
         return response()->json($page)->header('Cache-Control', 'private, no-store');
     }
+    public function letterRegister(Request $request): JsonResponse {
+        $user = $request->user();
+        if (! $user->canAccessPanel() || ! in_array($user->role, ['staff', 'admin', 'village_head'], true)) return $this->forbidden();
+        $data = $request->validate([
+            'year'=>['sometimes','integer','between:1000,9999'],
+            'jenis_surat'=>['sometimes',Rule::enum(LetterType::class)],
+            'page'=>['sometimes','integer','min:1'],
+        ]);
+        $query = DB::table('letter_numbers as letters')->join('applications', 'applications.id', '=', 'letters.application_id')
+            ->where('letters.year', $data['year'] ?? now()->year);
+        if (isset($data['jenis_surat'])) $query->where('applications.jenis_surat', $data['jenis_surat']);
+        $page = $query->select(['letters.number','letters.issued_at','applications.jenis_surat','applications.nama','letters.status'])
+            ->orderByDesc('letters.sequence')->paginate(20)->through(fn ($letter) => [
+                'number'=>$letter->number, 'issued_at'=>Carbon::parse($letter->issued_at)->toISOString(),
+                'jenis_surat'=>$letter->jenis_surat, 'nama'=>$letter->nama, 'status'=>$letter->status,
+            ]);
+        return response()->json($page)->header('Cache-Control', 'private, no-store');
+    }
     public function show(Request $request, string $request_id): JsonResponse {
         $user = $request->user();
         if (! $user->canAccessPanel()) return $this->forbidden();
@@ -129,6 +148,11 @@ class StaffController extends Controller {
                 'tempat_lahir'=>$application->tempat_lahir,
                 'tanggal_lahir'=>$application->tanggal_lahir->format('Y-m-d'),
                 'jenis_kelamin'=>$application->jenis_kelamin,
+                'letter_numbers'=>DB::table('letter_numbers')->where('application_id', $application->id)->orderBy('id')
+                    ->get(['number','status','void_reason','issued_at'])->map(fn ($letter) => [
+                        'number'=>$letter->number, 'status'=>$letter->status, 'void_reason'=>$letter->void_reason,
+                        'issued_at'=>Carbon::parse($letter->issued_at)->toISOString(),
+                    ]),
             ];
         }
         // Fail closed: do not return private data if recording the access fails.
@@ -144,7 +168,9 @@ class StaffController extends Controller {
         if (! $application->isInTerritory($user)) return $this->forbidden();
         $data = $request->validate(['status'=>['required',Rule::in(ApplicationStatus::values())], 'catatan'=>['nullable','string','max:1000']]);
         $note = blank($data['catatan'] ?? null) ? null : trim($data['catatan']);
-        $result = DB::transaction(function () use ($application, $data, $note, $user) {
+        $issuedAt = now();
+        $result = DB::transaction(function () use ($application, $data, $note, $user, $issuedAt) {
+            LetterNumber::acquireWriteLock($issuedAt->year);
             // Re-read under lock so a stale client cannot move an already-changed status.
             $fresh = Application::whereKey($application->getKey())->lockForUpdate()->firstOrFail();
             if (! $fresh->isInTerritory($user)) return $this->forbidden();
@@ -153,10 +179,12 @@ class StaffController extends Controller {
             if (! ApplicationStatus::isTransition($from, $data['status'], $type)) return response()->json(['message'=>'Transisi status tidak valid.'], 422);
             if (! ApplicationStatus::canTransition($from, $data['status'], $user->role, $type)) return response()->json(['message'=>'Peran Anda tidak berwenang melakukan perubahan status ini.'], 403);
             if (ApplicationStatus::requiresNote($data['status']) && $note === null) return response()->json(['message'=>'Catatan wajib diisi.','errors'=>['catatan'=>['Catatan wajib diisi.']]], 422);
+            if ($from === 'PROCESSING' && $data['status'] === 'WAITING_APPROVAL') LetterNumber::issue($fresh, $user, $issuedAt);
+            if ($from === 'WAITING_APPROVAL' && in_array($data['status'], ['REJECTED', 'NEED_REVISION'], true)) LetterNumber::void($fresh, $note);
             $fresh->update(['status'=>$data['status'],'catatan'=>$note]);
             DB::table('application_events')->insert(['application_id'=>$fresh->id,'user_id'=>$user->id,'from_status'=>$from,'to_status'=>$data['status'],'note'=>$note,'created_at'=>now()]);
             return $fresh;
-        });
+        }, 3);
         if ($result instanceof JsonResponse) return $result;
         return response()->json([
             'success'=>true,'request_id'=>$result->request_id,'status'=>$result->status,'catatan'=>$result->catatan,

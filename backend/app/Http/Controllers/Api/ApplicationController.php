@@ -63,6 +63,9 @@ class ApplicationController extends Controller {
             };
             if ($head !== null) $note = 'Ditolak oleh Ketua '.$head.': '.rtrim($event->note ?? $note ?? '', '. ').'. Silakan ajukan ulang setelah data diperbaiki.';
         }
-        return response()->json(['success'=>true,'request_id'=>$application->request_id,'jenis_surat'=>$application->jenis_surat,'status'=>$application->status,'catatan'=>$note]);
+        $letterNumber = in_array($application->status, ['APPROVED', 'READY_FOR_PICKUP', 'COMPLETED'], true)
+            ? DB::table('letter_numbers')->where('application_id', $application->id)->where('status', 'issued')->orderByDesc('id')->value('number')
+            : null;
+        return response()->json(['success'=>true,'request_id'=>$application->request_id,'jenis_surat'=>$application->jenis_surat,'status'=>$application->status,'catatan'=>$note,'letter_number'=>$letterNumber]);
     }
 }

@@ -65,6 +65,7 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | PATCH | `/staff/users/{id}` | Admin | Body `name`, `role`, `is_active`, `rt`, `rw`; menonaktifkan akun mencabut semua tokennya |
 | POST | `/staff/users/{id}/reset-password` | Admin | Body `password` (min. 10); menandai wajib ganti kata sandi dan mencabut semua token akun itu |
 | POST | `/staff/me/password` | Token petugas | Body `old_password` dan `password` (min. 10); token lain dicabut, token aktif tetap |
+| GET | `/staff/letter-register` | Staff, admin, village_head aktif | Register nomor terbit/batal; filter `year`, `jenis_surat`, `page`; 20 per halaman |
 | GET | `/staff/applications` | Token petugas | Daftar paginasi 20 per halaman, dibatasi wilayah untuk ketua RT/RW; filter `status` atau `statuses[]`, `q`, `jenis_surat`, dan `sort` (kontrak di bawah) |
 | POST | `/staff/applications/{request_id}/lookup-secret` | Staff, admin, rt_head, rw_head (10/menit) | Membuat ulang kode akses; hanya untuk status non-COMPLETED. Kode lama langsung tidak berlaku. Kode baru hanya ada di respons ini. |
 | GET | `/staff/applications/{request_id}` | Token lima peran panel | Detail data pemohon, `allowed_transitions`, dan `history`; ketua RT/RW hanya wilayahnya dengan field terbatas; setiap akses berhasil dicatat di `audit_logs` |
@@ -97,6 +98,20 @@ Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Untuk SKU, `nam
 Nama pencarian di parameter `q` adalah pengecualian URL yang disetujui pengguna (18 Oktober 2026). Jangan memasukkan NIK/KK/telepon/alamat ke pencarian. Query URL dapat tersimpan di riwayat browser/access log server; sebelum produksi, redaksi query pada log proxy/web server perlu dikonfigurasi. Audit aplikasi tidak merekam pencarian.
 
 Filter digabung dengan AND; pasangan pencarian nomor/nama dikelompokkan dengan OR. Respons tetap objek paginator Laravel (`data`, `current_page`, `last_page`, `per_page`, `total`, metadata/tautan pagination). Setiap item `data` **hanya** berisi `request_id`, `nama`, `jenis_surat`, `status`, `created_at`, `allowed_transitions`. **Perubahan kontrak:** `catatan` tidak lagi dikirim dalam daftar karena teks bebas dapat memuat data pribadi; baca catatan melalui endpoint detail. NIK, KK, alamat, telepon, data usaha, keperluan, hash kode akses, dan ID internal tidak disertakan. Daftar tidak mencatat audit akses detail.
+
+### Register dan nomor surat
+
+`GET /api/v1/staff/letter-register` memerlukan token dengan ability `applications:manage` dan akun aktif berperan `staff`, `admin`, atau `village_head`. Tanpa token → 401; peran lain (termasuk RT/RW), akun nonaktif, atau ability salah → 403. Respons dan kegagalan GET memakai `Cache-Control: private, no-store`.
+
+- Filter opsional: `year` bilangan bulat 1000–9999 (bawaan tahun saat ini), `jenis_surat` dari enum `LetterType` (`SKU`, `DOMISILI`, `SKTM`, `KTP_KK`), dan `page` bilangan bulat ≥ 1. Nilai kosong/tidak valid → 422. Filter digabung AND.
+- Paginator Laravel, 20 item per halaman, urutan nomor urut menurun. Item `data` **hanya** `{ number, issued_at, jenis_surat, nama, status }`; `status` adalah `issued` atau `void`, bukan status pengajuan. `issued_at` ISO 8601 UTC. Register tetap memuat nomor batal; tidak mengirim alasan batal, catatan bebas, atau identitas sensitif.
+- Nomor dialokasikan saat `PROCESSING → WAITING_APPROVAL`, dalam transaksi yang sama dengan perubahan status dan `application_events`. `WAITING_APPROVAL → REJECTED/NEED_REVISION` membatalkan nomor (`void`) dan menyimpan catatan wajib sebagai `void_reason`. Setelah perbaikan dan diajukan lagi, nomor baru dialokasikan; nomor batal tidak dipakai ulang.
+- Tabel `letter_numbers`: `id`, `application_id`, `year`, `sequence`, `number` (unik), `status`, `void_reason` nullable, `issued_by`, `issued_at`. Pasangan `(year, sequence)` unik; foreign key restrict-on-delete menjaga riwayat aplikasi dan penerbit. `letter_number_counters` menyimpan urutan global per tahun, **bersama semua jenis surat**, mulai 1 dan berganti pada tahun penerbitan.
+- SQLite mengambil write lock **sebelum** membaca ulang pengajuan/counter; database lain mengunci baris pengajuan dan counter dengan `FOR UPDATE`. Seluruh transaksi dicoba maksimal 3 kali untuk konflik konkurensi; kegagalan penerbitan atau event membatalkan seluruh perubahan, termasuk counter.
+- `config/letters.php` mengatur format `{kode_klasifikasi}/{urut}/{kode_desa}/{bulan_romawi}/{tahun}`. `urut` angka tanpa padding, bulan I–XII, tahun dari waktu penerbitan server sesuai `config/app.php` (saat ini UTC). `kode_desa` dan `kode_klasifikasi` (bersumber dari `LetterType::classificationCode()`) masih **`[PLACEHOLDER]`**, bukan kode resmi. Tetapkan kode yang disahkan sebelum penggunaan nyata. Nomor tersimpan tidak berubah bila konfigurasi kemudian diubah.
+- Detail pengajuan menambah `letter_numbers: [{ number, status, void_reason, issued_at }]` hanya untuk tiga peran kantor, berurutan kronologis berdasarkan ID. RT/RW tidak menerima field ini. Pengajuan tanpa nomor menerima array kosong.
+- Cek status publik menambah `letter_number: string | null`: hanya nomor `issued` saat `APPROVED`, `READY_FOR_PICKUP`, atau `COMPLETED`. Status lain, nomor batal, dan pengajuan lama tanpa nomor menghasilkan `null`; riwayat nomor tidak dikirim ke publik.
+- Jalankan `php artisan migrate` untuk migration `2026_10_23_000000_create_letter_numbers`. **Tidak ada backfill** untuk pengajuan lama yang sudah menunggu persetujuan/disetujui; alur lama tetap dapat dilanjutkan tanpa nomor. Fitur ini belum membuat PDF, TTE, stempel digital, atau notifikasi.
 
 ### Detail pengajuan dan audit akses
 

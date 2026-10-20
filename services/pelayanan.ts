@@ -42,7 +42,7 @@ export const pelayananService = {
   async getStatus(id: string, secret?: string): Promise<StatusReceipt> {
     if (apiBase) {
       if (!secret) throw new Error('Masukkan kode akses pengajuan.');
-      return receiptSchema.extend({ jenis_surat: z.enum(["SKU", "DOMISILI", "SKTM", "KTP_KK"]), catatan: z.string().nullable().optional() }).parse(await apiRequest('/applications/status', { method: 'POST', body: JSON.stringify({ request_id: id, lookup_secret: secret }) }));
+      return receiptSchema.extend({ jenis_surat: z.enum(["SKU", "DOMISILI", "SKTM", "KTP_KK"]), catatan: z.string().nullable().optional(), letter_number: z.string().nullable().optional() }).parse(await apiRequest('/applications/status', { method: 'POST', body: JSON.stringify({ request_id: id, lookup_secret: secret }) }));
     }
     await new Promise((resolve) => setTimeout(resolve, 650));
     const record = demoRecords().find((item) => item.request_id === id);
