@@ -30,8 +30,8 @@ Path berikut relatif terhadap `/api/v1`. Transport menggunakan `Accept: applicat
 
 | Metode | Path | Permintaan / kegunaan |
 | --- | --- | --- |
-| POST | `/applications` | Field sesuai [Submission](../types/pelayanan.ts); SKU memerlukan informasi usaha |
-| POST | `/applications/status` | `request_id` dan `lookup_secret` |
+| POST | `/applications` | Publik, 5/menit | Field sesuai [Submission](../types/pelayanan.ts); SKU memerlukan informasi usaha |
+| POST | `/applications/status` | `request_id` dan `lookup_secret`; 5 kode salah per nomor → 429 selama 15 menit |
 | POST | `/staff/login` | `username` dan `password`; kompatibilitas klien lama: `email` dan `password`; respons bearer token |
 | POST | `/staff/logout` | Mencabut token petugas aktif |
 | GET | `/staff/me` | Profil petugas pemilik token: `{ name, username, role, rt, rw }` dengan `role` = `staff`, `village_head`, `admin`, `rt_head`, atau `rw_head`; `rt`/`rw` nullable (3 digit untuk ketua RT/RW); dipakai untuk memvalidasi sesi |
@@ -51,7 +51,7 @@ Jalankan migration penambahan username sebelum memakai frontend baru. Akun lama 
 
 - Kode akses diberikan setelah pengajuan API dan disimpan pada sessionStorage tab untuk halaman berhasil. Simpan nomor serta kode di tempat aman; pemulihan belum tersedia.
 - Kode akses dikirim pada body POST untuk cek status, tidak dimasukkan ke URL.
-- Kode akses berformat `WAD-XXXX-XXXX` (8 angka); input dinormalkan (tanpa tanda hubung/spasi/huruf kecil tetap diterima). Backend menyimpan HMAC-nya dengan APP_KEY; kode lama 48 karakter tetap berlaku. 5 kode salah per nomor pengajuan → HTTP 429 selama 15 menit; frontend menampilkan pesan dari server.
+- **Buat ulang kode akses:** `POST /staff/applications/{request_id}/lookup-secret` oleh staff, admin, rt_head, rw_head (bukan village_head). Permohonan di luar wilayah RT/RW = 404. Status `COMPLETED` = 422. Kode lama langsung tidak berlaku; kunci salah coba dibuka. Respons hanya berisi kode sekali; tidak ada di log. Entri riwayat dengan `action: ACCESS_CODE_RESET` dan catatan audit `application.access_code_reset`. input dinormalkan (tanpa tanda hubung/spasi/huruf kecil tetap diterima). Backend menyimpan HMAC-nya dengan APP_KEY; kode lama 48 karakter tetap berlaku. 5 kode salah per nomor pengajuan → HTTP 429 selama 15 menit; frontend menampilkan pesan dari server.
 - Backend menyimpan hash kode akses; NIK, KK, telepon, dan alamat dienkripsi dengan APP_KEY.
 - Token petugas disimpan di `sessionStorage` tab (`watuagung-staff-token`) oleh `features/admin/session.tsx`. Pindah route admin dan reload tetap login; menutup tab menghapus sesi. Fitur browser "pulihkan tab" atau "duplikat tab" dapat ikut menyalin sessionStorage. Jangan memindahkan token ke URL atau localStorage.
 - Saat dibuka atau di-reload, panel memvalidasi token lewat `GET /staff/me` sebelum menampilkan isi. Gangguan jaringan menampilkan pesan "Server belum dapat dihubungi" dengan tombol coba lagi, bukan logout.
@@ -75,7 +75,7 @@ Wewenang per peran ditentukan server di `backend/app/Domain/ApplicationStatus.ph
 - `RT_APPROVED`/`RW_APPROVED` hanya mencatat persetujuan di sistem; tidak ada surat pengantar PDF, TTE, stempel digital, atau notifikasi.
 - `APPROVED` berarti disetujui, **bukan PDF tersedia**. `READY_FOR_PICKUP` ditandai petugas saat surat fisik siap; warga diminta membawa KTP asli dan nomor pengajuan. `COMPLETED` berarti surat sudah diambil.
 
-Login, sesi persisten per tab, daftar permohonan, filter, pagination, perubahan status, dan logout sudah diimplementasikan. Menu admin: Dashboard (`/admin`), Permohonan (`/admin/permohonan`), Persetujuan (`/admin/persetujuan`, hanya tampil untuk `village_head`; berisi `WAITING_APPROVAL`), dan Siap diambil (`/admin/surat`; berisi `APPROVED` dan `READY_FOR_PICKUP` lewat `statuses[]`). `rt_head` hanya mendapat Antrean RT (`/admin/antrean-rt`, bawaan `SUBMITTED`) dan `rw_head` hanya Antrean RW (`/admin/antrean-rw`, bawaan `RT_APPROVED`); parameter `view=all` menampilkan semua pengajuan wilayah sebagai riwayat baca-saja pada halaman yang sama. Menyembunyikan menu hanya kenyamanan tampilan; otorisasi tetap di server; halaman konten (berita, pengumuman, potensi, statistik, pengaturan) dihapus dan dibuat ulang saat modulnya dikerjakan. PDF, unggah dokumen/revisi, pemulihan kode akses, OTP, notifikasi, dan pengelolaan konten publik belum tersedia.
+Login, sesi persisten per tab, daftar permohonan, filter, pagination, perubahan status, dan logout sudah diimplementasikan. Menu admin: Dashboard (`/admin`), Permohonan (`/admin/permohonan`), Persetujuan (`/admin/persetujuan`, hanya tampil untuk `village_head`; berisi `WAITING_APPROVAL`), dan Siap diambil (`/admin/surat`; berisi `APPROVED` dan `READY_FOR_PICKUP` lewat `statuses[]`). `rt_head` hanya mendapat Antrean RT (`/admin/antrean-rt`, bawaan `SUBMITTED`) dan `rw_head` hanya Antrean RW (`/admin/antrean-rw`, bawaan `RT_APPROVED`); parameter `view=all` menampilkan semua pengajuan wilayah sebagai riwayat baca-saja pada halaman yang sama. Menyembunyikan menu hanya kenyamanan tampilan; otorisasi tetap di server; halaman konten (berita, pengumuman, potensi, statistik, pengaturan) dihapus dan dibuat ulang saat modulnya dikerjakan. PDF, unggah dokumen/revisi, OTP, notifikasi, dan pengelolaan konten publik belum tersedia.
 
 Frontend adalah static export: halaman `/admin/permohonan/detail/` diekspor tanpa ID database; client membaca `?id=REQ-...` di dalam `Suspense`. Daftar bersama menyimpan `q`, `status`, `jenis_surat`, `sort`, dan `page` dalam query string. Tautan detail membawa `from=permohonan|persetujuan|surat` dan filter tersebut agar tombol kembali memulihkan daftar. Antrean Persetujuan dan Siap diambil membatasi status tetap, termasuk bila URL diubah manual.
 

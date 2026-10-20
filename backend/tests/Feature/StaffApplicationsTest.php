@@ -76,9 +76,10 @@ class StaffApplicationsTest extends TestCase
             'keperluan' => 'Keperluan fiktif', 'status' => 'WAITING_APPROVAL', 'catatan' => 'Catatan privat fiktif',
             'created_at' => $application->created_at->toISOString(), 'updated_at' => $application->updated_at->toISOString(),
             'allowed_transitions' => ApplicationStatus::allowedFor('WAITING_APPROVAL', $role, LetterType::Sku),
+            'can_reset_access_code' => $role !== 'village_head',
             'history' => [
-                ['from_status' => null, 'to_status' => 'SUBMITTED', 'note' => null, 'staff_name' => null, 'created_at' => now()->toISOString()],
-                ['from_status' => 'PROCESSING', 'to_status' => 'WAITING_APPROVAL', 'note' => 'Riwayat fiktif', 'staff_name' => 'Petugas Fiktif', 'created_at' => now()->toISOString()],
+                ['action' => null, 'from_status' => null, 'to_status' => 'SUBMITTED', 'note' => null, 'staff_name' => null, 'created_at' => now()->toISOString()],
+                ['action' => null, 'from_status' => 'PROCESSING', 'to_status' => 'WAITING_APPROVAL', 'note' => 'Riwayat fiktif', 'staff_name' => 'Petugas Fiktif', 'created_at' => now()->toISOString()],
             ],
         ];
         $response = $this->getJson($this->url($application))->assertOk()->assertExactJson($expected);

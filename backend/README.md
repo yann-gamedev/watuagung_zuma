@@ -59,6 +59,7 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | POST | `/staff/logout` | Token petugas | Mencabut token aktif |
 | GET | `/staff/me` | Token petugas | Mengembalikan `{ name, username, role, rt, rw }`; `username`, `rt`, `rw` bisa `null`. Peran di luar lima peran panel atau ketua RT/RW tanpa wilayah lengkap mendapat 403 |
 | GET | `/staff/applications` | Token petugas | Daftar paginasi 20 per halaman, dibatasi wilayah untuk ketua RT/RW; filter `status` atau `statuses[]`, `q`, `jenis_surat`, dan `sort` (kontrak di bawah) |
+| POST | `/staff/applications/{request_id}/lookup-secret` | Staff, admin, rt_head, rw_head (10/menit) | Membuat ulang kode akses; hanya untuk status non-COMPLETED. Kode lama langsung tidak berlaku. Kode baru hanya ada di respons ini. |
 | GET | `/staff/applications/{request_id}` | Token lima peran panel | Detail data pemohon, `allowed_transitions`, dan `history`; ketua RT/RW hanya wilayahnya dengan field terbatas; setiap akses berhasil dicatat di `audit_logs` |
 | PATCH | `/staff/applications/{request_id}/status` | Token petugas | Body `status` dan `catatan` opsional; respons memuat `status`, `catatan`, dan `allowed_transitions` baru |
 
@@ -144,7 +145,8 @@ Migration `2026_10_20_000000_add_neighborhood_territories` menambah kolom `rt`/`
 ## Penanganan data dan batas saat ini
 
 - `lookup_secret` diberikan sekali setelah pengajuan dengan format `WAD-XXXX-XXXX` (8 angka acak, `App\Domain\AccessCode`). Input diterima tanpa tanda hubung, dengan spasi, atau huruf kecil. Hash memakai HMAC-SHA256 dengan `APP_KEY`, jadi **mengganti `APP_KEY` membatalkan semua kode akses**. Kode lama (48 karakter, SHA-256 polos) tetap berlaku.
-- Cek status dikunci per nomor pengajuan setelah 5 kode salah selama 15 menit (HTTP 429), di samping batas 10 permintaan/menit per IP. Kode benar membuka kunci. Pemulihan kode belum tersedia (Tahap 2).
+- Cek status dikunci per nomor pengajuan setelah 5 kode salah selama 15 menit (HTTP 429), di samping batas 10 permintaan/menit per IP. Kode benar membuka kunci.
+- **Buat ulang kode akses:** `POST /staff/applications/{request_id}/lookup-secret` oleh staff, admin, rt_head, rw_head (bukan village_head). Permohonan di luar wilayah RT/RW = 404. Status `COMPLETED` = 422. Kode lama langsung tidak berlaku. Kunci salah coba dibuka. Respons hanya berisi kode sekali; tidak ada di log. Entri riwayat dengan `action: ACCESS_CODE_RESET` dan catatan audit `application.access_code_reset`.
 - NIK, nomor KK, telepon, dan alamat disimpan terenkripsi memakai `APP_KEY`. Endpoint publik hanya mengembalikan metadata status; daftar petugas tidak menampilkan field sensitif itu.
 - Token petugas berlaku `SANCTUM_EXPIRATION` menit sejak login (bawaan 480 menit = 8 jam kerja; atur di `.env`, lalu `php artisan config:clear` bila konfigurasi di-cache). Token kedaluwarsa atau dicabut menghasilkan 401.
 - Frontend menyimpan token di `sessionStorage` tab dan memvalidasinya lewat `/staff/me`; menutup tab menghapus sesi. Jangan simpan token dalam URL atau localStorage.

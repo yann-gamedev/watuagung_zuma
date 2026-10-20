@@ -55,7 +55,7 @@ class ApplicationController extends Controller {
         if ($application->status === 'REJECTED' && LetterType::from($application->jenis_surat)->requiresNeighborhoodApproval()) {
             // The originating status records the decision stage even if the account role changes or is deleted.
             $event = DB::table('application_events')->where('application_id', $application->id)
-                ->where('to_status', 'REJECTED')->orderByDesc('id')->first();
+                ->where('to_status', 'REJECTED')->whereNull('action')->orderByDesc('id')->first();
             $head = match ($event?->from_status) {
                 'SUBMITTED' => 'RT',
                 'RT_APPROVED' => 'RW',

@@ -78,6 +78,7 @@ export function StatusChecker() {
           {busy ? "Mencari…" : "Cek Status Surat"}
         </button>
       </form>
+      {!isDemo && <p className="lookup-intro">Lupa kode akses? Datang ke Ketua RT/RW atau kantor desa dengan membawa KTP/KK untuk dibuatkan kode baru.</p>}
       {isDemo && (
         <div className="notice mt-5">
           <strong>Mode simulasi — bukan layanan resmi.</strong>

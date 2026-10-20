@@ -43,6 +43,11 @@ class User extends Authenticatable {
         };
     }
 
+    /** Buat ulang kode akses: semua peran panel kecuali kepala desa; wilayah dibatasi lewat Application::forUser. */
+    public function canResetAccessCode(): bool {
+        return $this->canAccessPanel() && $this->role !== 'village_head';
+    }
+
     public function canAccessPanel(): bool {
         return ApplicationStatus::isPanelRole($this->role) && $this->hasValidTerritory();
     }

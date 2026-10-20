@@ -11,4 +11,5 @@ Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/
     Route::get('/applications', [StaffController::class, 'index']);
     Route::get('/applications/{request_id}', [StaffController::class, 'show']);
     Route::patch('/applications/{application:request_id}/status', [StaffController::class, 'update']);
+    Route::post('/applications/{request_id}/lookup-secret', [StaffController::class, 'resetAccessCode'])->middleware('throttle:10,1');
 });

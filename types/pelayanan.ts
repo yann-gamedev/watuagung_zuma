@@ -26,8 +26,11 @@ export interface StaffApplication {
   status: Status;
   created_at: string;
   allowed_transitions: Status[];
+  can_reset_access_code: boolean;
 }
 export interface StaffApplicationEvent {
+  /** null = perubahan status; ACCESS_CODE_RESET = kode akses dibuat ulang (status tidak berubah). */
+  action: "ACCESS_CODE_RESET" | null;
   from_status: Status | null;
   to_status: Status;
   note: string | null;
@@ -45,13 +48,25 @@ export interface StaffApplicationDetail extends StaffApplication, Omit<Submissio
   alamat_usaha: string | null;
   catatan: string | null;
   updated_at: string;
+  can_reset_access_code: boolean;
   history: StaffApplicationEvent[];
+}
+/** Kode baru hanya ada di respons ini; jangan simpan ke storage atau log. */
+export interface StaffAccessCodeResponse {
+  success: true;
+  request_id: string;
+  lookup_secret: string;
 }
 export interface StaffApplicationsPage {
   data: StaffApplication[];
   current_page: number;
   last_page: number;
   total: number;
+}
+export interface StaffAccessCodeResponse {
+  success: true;
+  request_id: string;
+  lookup_secret: string;
 }
 export interface StaffStatusResponse {
   success: true;

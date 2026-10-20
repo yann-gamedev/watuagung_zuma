@@ -187,7 +187,7 @@ class NeighborhoodApprovalTest extends TestCase
         foreach (['telepon', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin'] as $field) $this->assertArrayNotHasKey($field, $detail);
         $this->assertEqualsCanonicalizing([
             'request_id', 'jenis_surat', 'nama', 'nik', 'no_kk', 'alamat', 'rt', 'rw', 'nama_usaha', 'jenis_usaha', 'alamat_usaha',
-            'keperluan', 'status', 'catatan', 'created_at', 'updated_at', 'allowed_transitions', 'history',
+            'keperluan', 'status', 'catatan', 'created_at', 'updated_at', 'allowed_transitions', 'can_reset_access_code', 'history',
         ], array_keys($detail));
         $this->assertDatabaseHas('audit_logs', ['user_id' => $user->id, 'action' => 'application.viewed', 'subject_id' => $application->id]);
         $this->actAs($this->user('staff'));

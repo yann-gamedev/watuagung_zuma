@@ -8,7 +8,7 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import { z } from "zod";
 import { StatusBadge, statusLabels } from "@/components/site";
 import { services } from "@/lib/data";
-import { statuses, type StaffApplicationDetail, type StaffStatusResponse, type Status } from "@/types/pelayanan";
+import { statuses, type StaffAccessCodeResponse, type StaffApplicationDetail, type StaffStatusResponse, type Status } from "@/types/pelayanan";
 import { AdminUnauthorizedError } from "./api";
 import { useAdminSession } from "./session";
 import { buildApplicationsHref, parseApplicationFilters, parseApplicationSection } from "./application-filters";
@@ -28,8 +28,8 @@ const detailSchema = z.object({
   nik: z.string(), no_kk: z.string(), tempat_lahir: z.string().optional(), tanggal_lahir: z.string().optional(),
   jenis_kelamin: z.string().optional(), alamat: z.string(), rt: z.string(), rw: z.string(), telepon: z.string().optional(),
   nama_usaha: z.string().nullable(), jenis_usaha: z.string().nullable(), alamat_usaha: z.string().nullable(),
-  keperluan: z.string(), catatan: z.string().nullable(),
-  history: z.array(z.object({ from_status: z.enum(statuses).nullable(), to_status: z.enum(statuses),
+  keperluan: z.string(), catatan: z.string().nullable(), can_reset_access_code: z.boolean(),
+  history: z.array(z.object({ action: z.enum(["ACCESS_CODE_RESET"]).nullable(), from_status: z.enum(statuses).nullable(), to_status: z.enum(statuses),
     note: z.string().nullable(), staff_name: z.string().nullable(), created_at: z.string() })),
 });
 function lowerLabel(status: Status) {
@@ -58,6 +58,13 @@ function DetailContent({ id }: { id: string }) {
   const [note, setNote] = useState("");
   const [pending, setPending] = useState<Status | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [identityChecked, setIdentityChecked] = useState(false);
+  const [newCode, setNewCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const resetButtonRef = useRef<HTMLButtonElement>(null);
   const mounted = useRef(true);
   const changing = useRef(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
@@ -116,6 +123,25 @@ function DetailContent({ id }: { id: string }) {
       if (mounted.current) { setPending(null); setBusy(false); focusActions(); }
     }
   }
+  async function resetCode() {
+    if (resetBusy || !identityChecked) return;
+    setResetBusy(true); setResetError("");
+    try {
+      const result = await request<StaffAccessCodeResponse>(`/staff/applications/${encodeURIComponent(id)}/lookup-secret`, { method: "POST" });
+      if (!mounted.current) return;
+      setNewCode(result.lookup_secret);
+      // Riwayat dimuat ulang agar entri "Kode akses dibuat ulang" langsung terlihat.
+      try { const fresh = await readDetail(); if (mounted.current) setDetail(fresh); } catch { /* kode tetap ditampilkan */ }
+    } catch (e) {
+      if (mounted.current && !(e instanceof AdminUnauthorizedError)) setResetError(e instanceof Error ? e.message : "Gagal membuat ulang kode akses.");
+    } finally {
+      if (mounted.current) setResetBusy(false);
+    }
+  }
+  function closeReset() {
+    // Kode hanya disimpan di state dialog dan dibuang saat ditutup.
+    setResetOpen(false); setNewCode(null); setCopied(false); setIdentityChecked(false);
+  }
   function choose(status: Status, button: HTMLButtonElement) {
     setActionError(""); setNotice("");
     if (["REJECTED", "NEED_REVISION"].includes(status) && !note.trim()) {
@@ -163,7 +189,7 @@ function DetailContent({ id }: { id: string }) {
               <h3>Catatan terakhir</h3><p className={styles.multiline}>{detail.catatan || "Belum ada catatan."}</p></section>
             <section className={styles.card}><h2>Riwayat status</h2>
               {detail.history.length ? <ol className={styles.timeline}>{detail.history.map((event, index) => <li key={`${event.created_at}-${index}`}>
-                <h3>{event.from_status ? `${statusLabels[event.from_status]} → ` : ""}{statusLabels[event.to_status]}</h3>
+                <h3>{event.action === "ACCESS_CODE_RESET" ? "Kode akses dibuat ulang" : <>{event.from_status ? `${statusLabels[event.from_status]} → ` : ""}{statusLabels[event.to_status]}</>}</h3>
                 <p>{event.staff_name ?? "Pengajuan warga / sistem"}</p>
                 <time dateTime={event.created_at}>{dateTime(event.created_at)}</time>
                 {event.note && <p className={styles.multiline}>{event.note}</p>}
@@ -180,6 +206,11 @@ function DetailContent({ id }: { id: string }) {
               <div className={styles.buttons}>{detail.allowed_transitions.map((status) => <button type="button" id={`status-${status}`} className="btn btn-secondary" key={status} disabled={busy} onClick={(event) => choose(status, event.currentTarget)}>{actionLabels[status]}</button>)}</div>
             </> : <p>Tidak ada tindakan yang tersedia untuk peran Anda pada status ini.</p>}
             {busy && <p role="status">Menyimpan perubahan...</p>}
+            {detail.can_reset_access_code && <>
+              <h3>Kode akses warga</h3>
+              <p>Untuk warga yang kehilangan kode akses. Periksa KTP/KK asli lebih dulu; kode lama langsung tidak berlaku.</p>
+              <button ref={resetButtonRef} type="button" className="btn btn-secondary" disabled={busy} onClick={() => { setResetError(""); setIdentityChecked(false); setNewCode(null); setResetOpen(true); }}>Buat ulang kode akses</button>
+            </>}
           </section>
         </div>
       </>}
@@ -191,6 +222,29 @@ function DetailContent({ id }: { id: string }) {
           <DialogPrimitive.Description>Anda akan mengubah status permohonan {id}. Pastikan pemeriksaan sudah selesai sebelum melanjutkan.</DialogPrimitive.Description>
           <div className={styles.dialogButtons}><button type="button" className="btn btn-secondary" disabled={busy} autoFocus onClick={() => setPending(null)}>Batal</button>
             <button type="button" className="btn" disabled={busy || !pending} onClick={() => { if (pending) void change(pending); }}>{busy ? "Menyimpan..." : `Ya, ${pending ? lowerLabel(pending) : "lanjutkan"}`}</button></div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+    <DialogPrimitive.Root open={resetOpen} onOpenChange={(open) => { if (!open && !resetBusy) closeReset(); }}>
+      <DialogPrimitive.Portal><DialogPrimitive.Overlay className={styles.overlay} />
+        <DialogPrimitive.Content className={`${styles.dialog} ${neighborhood ? neighborhoodStyles.neighborhood : ""}`} onCloseAutoFocus={(event) => { event.preventDefault(); resetButtonRef.current?.focus(); }} onEscapeKeyDown={(event) => { if (resetBusy) event.preventDefault(); }} onPointerDownOutside={(event) => { if (resetBusy || newCode) event.preventDefault(); }}>
+          {newCode ? <>
+            <DialogPrimitive.Title className={styles.dialogTitle}>Kode akses baru</DialogPrimitive.Title>
+            <DialogPrimitive.Description>Berikan kode ini kepada pemohon sekarang. Kode hanya tampil sekali dan tidak bisa dilihat lagi.</DialogPrimitive.Description>
+            <p className={styles.accessCode} aria-label={`Kode akses ${newCode.split("").join(" ")}`}>{newCode}</p>
+            {copied && <p role="status">Kode tersalin.</p>}
+            <div className={styles.dialogButtons}>
+              <button type="button" className="btn btn-secondary" onClick={() => void navigator.clipboard?.writeText(newCode).then(() => setCopied(true), () => setCopied(false))}>Salin kode</button>
+              <button type="button" className="btn" autoFocus onClick={closeReset}>Selesai, kode sudah diberikan</button>
+            </div>
+          </> : <>
+            <DialogPrimitive.Title className={styles.dialogTitle}>Buat ulang kode akses</DialogPrimitive.Title>
+            <DialogPrimitive.Description>Kode akses lama untuk {id} akan langsung tidak berlaku. Tindakan ini tercatat di riwayat permohonan.</DialogPrimitive.Description>
+            <label className={styles.check}><input type="checkbox" checked={identityChecked} onChange={(event) => setIdentityChecked(event.target.checked)} disabled={resetBusy} />Identitas pemohon sudah saya cocokkan dengan KTP/KK asli.</label>
+            {resetError && <p className="error-box" role="alert">{resetError}</p>}
+            <div className={styles.dialogButtons}><button type="button" className="btn btn-secondary" disabled={resetBusy} autoFocus onClick={closeReset}>Batal</button>
+              <button type="button" className="btn" disabled={resetBusy || !identityChecked} onClick={() => void resetCode()}>{resetBusy ? "Membuat kode..." : "Buat kode baru"}</button></div>
+          </>}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

@@ -1,5 +1,6 @@
 <?php
 namespace App\Http\Controllers\Api;
+use App\Domain\AccessCode;
 use App\Domain\ApplicationStatus;
 use App\Domain\LetterType;
 use App\Http\Controllers\Controller;
@@ -9,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -88,8 +90,9 @@ class StaffController extends Controller {
             ->leftJoin('users', 'users.id', '=', 'events.user_id')
             ->where('events.application_id', $application->id)
             ->orderBy('events.created_at')->orderBy('events.id')
-            ->get(['events.from_status','events.to_status','events.note','users.name as staff_name','events.created_at'])
+            ->get(['events.action','events.from_status','events.to_status','events.note','users.name as staff_name','events.created_at'])
             ->map(fn ($event) => [
+                'action'=>$event->action,
                 'from_status'=>$event->from_status,
                 'to_status'=>$event->to_status,
                 'note'=>$event->note,
@@ -115,6 +118,7 @@ class StaffController extends Controller {
             'created_at'=>$application->created_at,
             'updated_at'=>$application->updated_at,
             'allowed_transitions'=>$application->allowedTransitions($user),
+            'can_reset_access_code'=>$user->canResetAccessCode() && $application->status !== 'COMPLETED',
             'history'=>$history,
         ];
         if (! $user->isNeighborhoodHead()) {
@@ -156,6 +160,35 @@ class StaffController extends Controller {
             'success'=>true,'request_id'=>$result->request_id,'status'=>$result->status,'catatan'=>$result->catatan,
             'allowed_transitions'=>$result->allowedTransitions($user),
         ]);
+    }
+    /** Kode lama langsung tidak berlaku; kode baru hanya ada di respons ini, tidak pernah di log. */
+    public function resetAccessCode(Request $request, string $request_id): JsonResponse {
+        $user = $request->user();
+        if (! $user->canResetAccessCode()) return $this->forbidden();
+        Validator::make(['request_id'=>$request_id], [
+            'request_id'=>['required','string','max:64','regex:/\AREQ-[0-9]{4}-[A-Z0-9]+\z/'],
+        ])->validate();
+        $result = DB::transaction(function () use ($user, $request_id) {
+            // Di luar wilayah = 404, sama seperti detail.
+            $application = Application::query()->forUser($user)->where('request_id', $request_id)->lockForUpdate()->firstOrFail();
+            if ($application->status === 'COMPLETED') {
+                return response()->json(['message'=>'Permohonan sudah selesai; kode akses tidak dapat dibuat ulang.'], 422);
+            }
+            $code = AccessCode::generate();
+            $application->update(['lookup_secret_hash'=>AccessCode::hash($code)]);
+            DB::table('application_events')->insert([
+                'application_id'=>$application->id, 'user_id'=>$user->id, 'action'=>'ACCESS_CODE_RESET',
+                'from_status'=>$application->status, 'to_status'=>$application->status, 'created_at'=>now(),
+            ]);
+            DB::table('audit_logs')->insert([
+                'user_id'=>$user->id, 'action'=>'application.access_code_reset', 'subject_type'=>'application',
+                'subject_id'=>$application->id, 'created_at'=>now(),
+            ]);
+            return $code;
+        });
+        if ($result instanceof JsonResponse) return $result;
+        RateLimiter::clear('lookup:'.$request_id);
+        return response()->json(['success'=>true,'request_id'=>$request_id,'lookup_secret'=>$result])->header('Cache-Control', 'private, no-store');
     }
     private function forbidden(): JsonResponse {
         return response()->json(['message'=>'Akses ditolak.'], 403)->header('Cache-Control', 'private, no-store');
