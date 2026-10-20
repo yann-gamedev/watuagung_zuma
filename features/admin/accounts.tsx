@@ -44,12 +44,14 @@ function Accounts() {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [temporary, setTemporary] = useState<{ name: string; password: string } | null>(null);
 
-  const reload = () => setAttempt((value) => value + 1);
+  const reload = () => {
+    setLoading(true);
+    setError("");
+    setAttempt((value) => value + 1);
+  };
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError("");
     request<StaffUsersResponse>("/staff/users")
       .then((result) => {
         if (cancelled) return;
@@ -189,7 +191,7 @@ function Accounts() {
                 </thead>
                 <tbody>
                   {filtered.map((account) => {
-                    const self = account.id === currentUser?.id;
+                    const self = account.username !== null && account.username === currentUser?.username;
                     return (
                       <tr key={account.id}>
                         <td>{account.name}</td>
@@ -227,7 +229,7 @@ function Accounts() {
           <AccountForm
             key={editor.mode === "create" ? "create" : `${editor.mode}-${editor.user.id}`}
             editor={editor}
-            lockRole={editor.mode !== "create" && editor.user.id === currentUser?.id}
+            lockRole={editor.mode !== "create" && editor.user.username !== null && editor.user.username === currentUser?.username}
             onCreate={create}
             onUpdate={update}
             onReset={reset}
