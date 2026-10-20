@@ -50,6 +50,8 @@ export interface StaffApplicationDetail extends StaffApplication, Omit<Submissio
   updated_at: string;
   can_reset_access_code: boolean;
   history: StaffApplicationEvent[];
+  /** Hanya peran kantor; nomor batal tetap tersimpan. */
+  letter_numbers?: LetterNumber[];
 }
 /** Kode baru hanya ada di respons ini; jangan simpan ke storage atau log. */
 export interface StaffAccessCodeResponse {
@@ -142,6 +144,23 @@ export interface Receipt {
 }
 export interface StatusReceipt extends Receipt {
   catatan?: string | null;
+  letter_number?: string | null;
+}
+export interface LetterNumber {
+  number: string;
+  status: "issued" | "void";
+  void_reason: string | null;
+  issued_at: string;
+}
+export interface LetterRegisterEntry extends Omit<LetterNumber, "void_reason"> {
+  jenis_surat: ServiceCode;
+  nama: string;
+}
+export interface LetterRegisterPage {
+  data: LetterRegisterEntry[];
+  current_page: number;
+  last_page: number;
+  total: number;
 }
 export interface RequestRecord extends Receipt {
   nama: string;

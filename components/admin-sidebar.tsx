@@ -15,6 +15,7 @@ export const adminLinks = [
   { title: "Antrean RT", href: "/admin/antrean-rt", Icon: ClipboardList },
   { title: "Antrean RW", href: "/admin/antrean-rw", Icon: ClipboardList },
   { title: "Siap diambil", href: "/admin/surat", Icon: FileCheck2 },
+  { title: "Buku registrasi", href: "/admin/register", Icon: ClipboardList },
   { title: "Akun", href: "/admin/akun", Icon: Users },
 ] as const;
 

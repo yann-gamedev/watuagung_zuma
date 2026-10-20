@@ -94,6 +94,16 @@ Bergantung pada M2, kecuali fondasi sesi dan kerangka (disetujui pengguna untuk 
 - [x] Antrean kepala desa: daftar yang menunggu persetujuan (`/admin/persetujuan`, dikerjakan bersama M2)
 - [ ] Manajemen akun petugas (khusus `admin`) — tambah/ubah/nonaktifkan akun, reset kata sandi sementara, ganti kata sandi sendiri, batas satu ketua RT/RW aktif per wilayah, dan peringatan wilayah tanpa ketua aktif
 
+## M3a — Penomoran dan buku registrasi surat
+
+Dipisahkan dari M7/PDF atas persetujuan pengguna 21 Oktober 2026; bergantung pada M2 dan detail M3, tidak memerlukan library PDF.
+
+- [x] Nomor otomatis pada PROCESSING → WAITING_APPROVAL; konfigurasi format, klasifikasi per LetterType, satu urutan tahunan lintas jenis, transaksi/penguncian dan constraint unik.
+- [x] Nomor batal beserta alasan saat Kepala Desa menolak/meminta perbaikan; nomor tidak dipakai ulang. Tidak ada penomoran retroaktif untuk permohonan lama.
+- [x] API buku registrasi untuk staff/admin/village_head; detail kantor memuat riwayat nomor, cek status warga memuat nomor aktif sejak APPROVED.
+- [x] `/admin/register`: filter tahun/jenis, pagination, tanda nomor batal; tanpa ekspor/PDF.
+- [x] Tes backend (155 tes, 1.668 assertions), lint, tsc, build, build demo, test:demo, dan pemeriksaan register 390px/1440px dengan API tiruan lulus. Belum uji konkurensi multiproses atau browser end-to-end Laravel.
+
 ## M4 — Pengaduan warga
 
 - [ ] Tabel `complaints`: nomor tiket, kode akses (hash), kategori, judul, isi, lokasi/RT-RW, kontak opsional (terenkripsi), status, catatan tindak lanjut
@@ -126,7 +136,7 @@ Bergantung pada K2 dan K4.
 Bergantung pada K5 dan M2.
 
 - [ ] Template per jenis surat sesuai format resmi desa (kop, nomor, penandatangan)
-- [ ] Format penomoran surat dan urutannya
+- [ ] Format penomoran surat resmi dari desa — mesin penomoran/register dipisahkan ke M3a; kode klasifikasi dan kode desa masih `[PLACEHOLDER]`
 - [ ] PDF dibuat saat status `APPROVED`; hanya petugas yang bisa mengunduh dan mencetak
 - [ ] Data dari desa: contoh surat asli tiap jenis, format nomor, nama dan jabatan penandatangan
 

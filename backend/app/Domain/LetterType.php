@@ -9,6 +9,16 @@ enum LetterType: string
     case Sktm = 'SKTM';
     case KtpKk = 'KTP_KK';
 
+    public function classificationCode(): string
+    {
+        return match ($this) {
+            self::Sku => '[PLACEHOLDER]',
+            self::Domisili => '[PLACEHOLDER]',
+            self::Sktm => '[PLACEHOLDER]',
+            self::KtpKk => '[PLACEHOLDER]',
+        };
+    }
+
     public function requiresNeighborhoodApproval(): bool
     {
         return match ($this) {

@@ -118,6 +118,10 @@ export function StatusChecker() {
             <strong className="receipt-value">{result.request_id}</strong>
             <StatusBadge status={result.status} jenisSurat={result.jenis_surat} />
           </div>
+          {result.letter_number && ["APPROVED", "READY_FOR_PICKUP", "COMPLETED"].includes(result.status) && <div className="status-next-step">
+            <h3>Nomor surat</h3><p className="receipt-value">{result.letter_number}</p>
+            {result.letter_number.includes("[PLACEHOLDER]") && <p>Format nomor masih sementara, menunggu ketentuan resmi desa.</p>}
+          </div>}
           {exception ? (
             <div className={"status-exception status-" + result.status}>
               <div className="status-exception-heading">

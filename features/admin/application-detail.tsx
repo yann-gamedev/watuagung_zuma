@@ -29,6 +29,7 @@ const detailSchema = z.object({
   jenis_kelamin: z.string().optional(), alamat: z.string(), rt: z.string(), rw: z.string(), telepon: z.string().optional(),
   nama_usaha: z.string().nullable(), jenis_usaha: z.string().nullable(), alamat_usaha: z.string().nullable(),
   keperluan: z.string(), catatan: z.string().nullable(), can_reset_access_code: z.boolean(),
+  letter_numbers: z.array(z.object({ number: z.string(), status: z.enum(["issued", "void"]), void_reason: z.string().nullable(), issued_at: z.string() })).optional(),
   history: z.array(z.object({ action: z.enum(["ACCESS_CODE_RESET"]).nullable(), from_status: z.enum(statuses).nullable(), to_status: z.enum(statuses),
     note: z.string().nullable(), staff_name: z.string().nullable(), created_at: z.string() })),
 });
@@ -187,6 +188,14 @@ function DetailContent({ id }: { id: string }) {
             </dl></section>}
             <section className={styles.card}><h2>Keperluan</h2><p className={styles.multiline}>{detail.keperluan}</p>
               <h3>Catatan terakhir</h3><p className={styles.multiline}>{detail.catatan || "Belum ada catatan."}</p></section>
+            {!neighborhood && <section className={styles.card}><h2>Nomor surat</h2>
+              {detail.letter_numbers?.length ? <dl className={styles.fields}>{detail.letter_numbers.map((letter) => <div key={letter.number}>
+                <dt>{letter.status === "void" ? "Dibatalkan" : "Diberikan"} · <time dateTime={letter.issued_at}>{dateTime(letter.issued_at)}</time></dt>
+                <dd>{letter.number}</dd>
+                {letter.void_reason && <dd className={styles.multiline}>Alasan pembatalan: {letter.void_reason}</dd>}
+                {letter.number.includes("[PLACEHOLDER]") && <dd>Format sementara, menunggu ketentuan resmi desa.</dd>}
+              </div>)}</dl> : <p>Belum ada nomor surat yang tercatat. Nomor diberikan saat diajukan ke Kepala Desa; permohonan lama tidak diberi nomor secara retroaktif.</p>}
+            </section>}
             <section className={styles.card}><h2>Riwayat status</h2>
               {detail.history.length ? <ol className={styles.timeline}>{detail.history.map((event, index) => <li key={`${event.created_at}-${index}`}>
                 <h3>{event.action === "ACCESS_CODE_RESET" ? "Kode akses dibuat ulang" : <>{event.from_status ? `${statusLabels[event.from_status]} → ` : ""}{statusLabels[event.to_status]}</>}</h3>

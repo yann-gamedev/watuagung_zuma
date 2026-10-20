@@ -218,6 +218,10 @@
   }
 }
 
+.register .tableScroll { display: block; }
+.register .table tbody tr { cursor: default; }
+.register .tableScroll:focus-visible { outline: 3px solid var(--leaf); outline-offset: 4px; }
+
 .list[data-neighborhood="true"] .tableScroll { display: none; }
 .list[data-neighborhood="true"] .cards { display: grid; }
 

@@ -182,6 +182,16 @@ Disetujui pengguna:
 - Detail RT/RW menampilkan NIK/KK utuh, tanpa telepon, tempat/tanggal lahir, maupun jenis kelamin.
 - Status `SUBMITTED` untuk surat yang memerlukan RT/RW tampil sebagai "Menunggu verifikasi RT".
 
+### Buku registrasi surat — 21 Oktober 2026
+
+Disetujui pengguna:
+
+- `/admin/register` untuk staff, admin, dan kepala desa; menu **Buku registrasi**.
+- Filter tahun dan jenis surat di atas tabel; gunakan pola, token, tipografi, dan tombol panel admin yang ada.
+- Kolom Nomor surat, Tanggal, Jenis surat, Pemohon, Status nomor. Tabel bergulir di dalam kartu pada ponsel, tanpa scroll horizontal halaman.
+- Badge **Dibatalkan** memakai token penolakan dengan ikon dan teks; **Diberikan** memakai token verifikasi. Tidak ada ekspor.
+- Detail kantor menampilkan riwayat nomor dan alasan pembatalan. Nomor aktif tampil pada cek status warga sejak disetujui; placeholder diberi keterangan format sementara.
+
 ## 7. Struktur beranda (urutan)
 
 1. Hero foto + header A + H1 fungsional + 2 CTA
