@@ -43,7 +43,7 @@ class StaffSessionTest extends TestCase
             $user = $this->staff(['role' => $role, 'username' => "petugas-$i", 'email' => "p$i@example.test"]);
             $this->me($this->loginToken($user))
                 ->assertOk()
-                ->assertExactJson(['name' => 'Petugas Fiktif', 'username' => "petugas-$i", 'role' => $role, 'rt' => null, 'rw' => null]);
+                ->assertExactJson(['name' => 'Petugas Fiktif', 'username' => "petugas-$i", 'role' => $role, 'rt' => null, 'rw' => null, 'must_change_password' => false]);
         }
     }
 
@@ -53,7 +53,7 @@ class StaffSessionTest extends TestCase
         $token = $this->postJson('/api/v1/staff/login', [
             'email' => $user->email, 'password' => 'test-password-only',
         ])->assertOk()->json('token');
-        $this->me($token)->assertOk()->assertExactJson(['name' => 'Petugas Fiktif', 'username' => null, 'role' => 'staff', 'rt' => null, 'rw' => null]);
+        $this->me($token)->assertOk()->assertExactJson(['name' => 'Petugas Fiktif', 'username' => null, 'role' => 'staff', 'rt' => null, 'rw' => null, 'must_change_password' => false]);
     }
 
     public function test_me_requires_a_token(): void

@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\StaffController;
+use App\Http\Controllers\Api\StaffUserController;
 use Illuminate\Support\Facades\Route;
 Route::post('/v1/applications', [ApplicationController::class, 'store'])->middleware('throttle:5,1');
 Route::post('/v1/applications/status', [ApplicationController::class, 'status'])->middleware('throttle:10,1');
@@ -12,4 +13,9 @@ Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/
     Route::get('/applications/{request_id}', [StaffController::class, 'show']);
     Route::patch('/applications/{application:request_id}/status', [StaffController::class, 'update']);
     Route::post('/applications/{request_id}/lookup-secret', [StaffController::class, 'resetAccessCode'])->middleware('throttle:10,1');
+    Route::post('/me/password', [StaffUserController::class, 'changeOwnPassword']);
+    Route::get('/users', [StaffUserController::class, 'index']);
+    Route::post('/users', [StaffUserController::class, 'store']);
+    Route::patch('/users/{id}', [StaffUserController::class, 'update']);
+    Route::post('/users/{id}/reset-password', [StaffUserController::class, 'resetPassword']);
 });

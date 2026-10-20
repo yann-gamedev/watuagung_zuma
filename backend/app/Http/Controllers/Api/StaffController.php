@@ -25,8 +25,10 @@ class StaffController extends Controller {
         $user = isset($data['username'])
             ? User::where('username', $data['username'])->first()
             : User::where('email', $data['email'])->first();
-        if (! $user || ! $user->canAccessPanel() || ! Hash::check($data['password'], $user->password)) return response()->json(['message'=>'Kredensial tidak valid.'], 401);
-        return response()->json(['token'=>$user->createToken('staff', ['applications:manage'])->plainTextToken,'user'=>['name'=>$user->name,'role'=>$user->role,'rt'=>$user->rt,'rw'=>$user->rw]]);
+        // Akun nonaktif memakai pesan yang sama dengan kredensial salah.
+        if (! $user || ! Hash::check($data['password'], $user->password) || ! $user->canAccessPanel()) return response()->json(['message'=>'Kredensial tidak valid.'], 401);
+        $user->forceFill(['last_login_at'=>now()])->save();
+        return response()->json(['token'=>$user->createToken('staff', ['applications:manage'])->plainTextToken,'must_change_password'=>(bool) $user->must_change_password,'user'=>['name'=>$user->name,'role'=>$user->role,'rt'=>$user->rt,'rw'=>$user->rw]]);
     }
     public function logout(Request $request): JsonResponse {
         $request->user()->currentAccessToken()->delete();
@@ -36,7 +38,7 @@ class StaffController extends Controller {
         $user = $request->user();
         // Role can change after a token is issued; re-check on every call.
         if (! $user->canAccessPanel()) return $this->forbidden();
-        return response()->json(['name'=>$user->name,'username'=>$user->username,'role'=>$user->role,'rt'=>$user->rt,'rw'=>$user->rw]);
+        return response()->json(['name'=>$user->name,'username'=>$user->username,'role'=>$user->role,'rt'=>$user->rt,'rw'=>$user->rw,'must_change_password'=>(bool) $user->must_change_password]);
     }
     public function index(Request $request): JsonResponse {
         $user = $request->user();

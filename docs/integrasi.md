@@ -34,7 +34,12 @@ Path berikut relatif terhadap `/api/v1`. Transport menggunakan `Accept: applicat
 | POST | `/applications/status` | `request_id` dan `lookup_secret`; 5 kode salah per nomor → 429 selama 15 menit |
 | POST | `/staff/login` | `username` dan `password`; kompatibilitas klien lama: `email` dan `password`; respons bearer token |
 | POST | `/staff/logout` | Mencabut token petugas aktif |
-| GET | `/staff/me` | Profil petugas pemilik token: `{ name, username, role, rt, rw }` dengan `role` = `staff`, `village_head`, `admin`, `rt_head`, atau `rw_head`; `rt`/`rw` nullable (3 digit untuk ketua RT/RW); dipakai untuk memvalidasi sesi |
+| GET | `/staff/me` | Profil petugas pemilik token: `{ name, username, role, rt, rw, must_change_password }` dengan `role` = `staff`, `village_head`, `admin`, `rt_head`, atau `rw_head`; `rt`/`rw` nullable (3 digit untuk ketua RT/RW); dipakai untuk memvalidasi sesi |
+| GET | `/staff/users` | Admin: daftar akun dan `warnings` wilayah tanpa ketua aktif |
+| POST | `/staff/users` | Admin: `name`, `username`, `role`, kata sandi sementara (min. 10), `rt`/`rw` sesuai peran |
+| PATCH | `/staff/users/{id}` | Admin: `name`, `role`, `is_active`, `rt`, `rw`; nonaktif → token dicabut |
+| POST | `/staff/users/{id}/reset-password` | Admin: kata sandi sementara baru (min. 10), wajib ganti, semua token akun dicabut |
+| POST | `/staff/me/password` | Semua peran: `old_password` + kata sandi baru (min. 10); token lain dicabut |
 | GET | `/staff/applications` | Daftar paginasi, dibatasi wilayah dan jenis surat RT/RW (tanpa SKU) untuk `rt_head`/`rw_head` (`page` ≥ 1, 20 per halaman). Filter opsional `status` (satu) **atau** `statuses[]` (beberapa), tidak boleh keduanya; `q` (maksimal 100 karakter) mencari sebagian nomor/nama secara literal dan tidak peka huruf besar/kecil, `jenis_surat` = `SKU`/`DOMISILI`/`SKTM`/`KTP_KK`, `sort` = `terbaru` (bawaan)/`terlama`. Tiap item ([StaffApplication](../types/pelayanan.ts)) memuat `allowed_transitions`, tanpa data pribadi sensitif atau catatan bebas |
 | GET | `/staff/applications/{request_id}` | Detail terotorisasi untuk lima peran panel: data pemohon, usaha, keperluan, catatan, `allowed_transitions`, dan riwayat status. Ketua RT/RW hanya untuk wilayahnya (di luar wilayah → 404) dan menerima versi terbatas. Respons `Cache-Control: no-store`; akses berhasil dicatat di `audit_logs` |
 | PATCH | `/staff/applications/{request_id}/status` | `status` dan `catatan`; respons ([StaffStatusResponse](../types/pelayanan.ts)) memuat `allowed_transitions` baru |
@@ -46,6 +51,21 @@ Pengajuan berhasil mengembalikan HTTP 201 dengan `success`, `request_id`, `statu
 Frontend mengirim `{ username, password }`. Username unik, 1–64 karakter, diawali huruf kecil/angka, selanjutnya huruf kecil, angka, `_`, atau `-`. Spasi luar dibuang; huruf besar ditolak. Klien lama masih dapat mengirim `{ email, password }`, tetapi kedua identitas tidak boleh dikirim bersama. Identitas tidak dikenal, kata sandi salah, peran di luar lima peran panel, serta ketua RT/RW tanpa wilayah lengkap menghasilkan pesan 401 yang sama. Validasi gagal menghasilkan 422; rate limit tetap 5/menit.
 
 Jalankan migration penambahan username sebelum memakai frontend baru. Akun lama tetap memiliki username nullable dan bisa memakai API login email; untuk form baru, administrator perlu menetapkan username unik pada akun tersebut. Tidak ada akun/kata sandi bawaan atau endpoint pendaftaran publik. Tipe frontend: `StaffLoginRequest` dan `StaffLoginResponse` di `types/pelayanan.ts`.
+
+## Akun petugas
+
+Migration `2026_10_22_000000_add_staff_account_fields_to_users_table` membuat `email` nullable dan menambah `is_active` (default true), `must_change_password` (default false), serta `last_login_at`. Akun baru dari panel selalu memakai username, tanpa email, aktif, dan wajib mengganti kata sandi saat login pertama. Akun lama tanpa username tetap bisa login lewat email.
+
+- Hanya `admin` yang boleh membuka `/staff/users`; peran lain mendapat 403 dan tanpa token 401. Tidak ada hapus akun; nonaktifkan agar riwayat tetap merujuk ke akun itu.
+- `GET /staff/users` mengembalikan `data` (field eksplisit: `id`, `name`, `username`, `role`, `rt`, `rw`, `is_active`, `must_change_password`, `last_login_at`) dan `warnings` `{ role, rt, rw, pending }`. Warning muncul bila ada permohonan `SUBMITTED` di RT/RW tanpa `rt_head` aktif atau `RT_APPROVED` di RW tanpa `rw_head` aktif.
+- `rt_head` wajib RT+RW dan `rw_head` wajib RW; kode dinormalkan ke 3 digit. Satu wilayah hanya boleh punya satu ketua aktif. Untuk mengganti ketua, nonaktifkan akun lama lebih dulu.
+- Admin tidak dapat menonaktifkan atau menurunkan peran akunnya sendiri, dan sistem selalu menyisakan minimal satu admin aktif.
+- Reset kata sandi oleh admin menandai `must_change_password=true` dan mencabut semua token akun itu. Nonaktifkan akun juga mencabut semua tokennya saat itu juga.
+- `POST /staff/me/password` memakai kata sandi lama + baru (min. 10). Setelah berhasil, `must_change_password=false` dan token lain dicabut; token yang sedang dipakai tetap berlaku.
+- Login akun nonaktif memakai pesan 401 yang sama dengan kredensial salah. Login berhasil mencatat `last_login_at` dan menyertakan `must_change_password` di respons.
+- Audit `user.created`, `user.updated`, dan `user.password_reset` disimpan di `audit_logs` dengan `subject_type=user`; tidak ada kata sandi, token, atau email di audit.
+- Frontend memaksa layar ganti kata sandi sebelum panel dipakai bila flag aktif. Menu akun di bilah atas menyediakan **Ganti kata sandi** untuk semua peran.
+- Tipe frontend: `StaffUser`, `StaffUsersResponse`, `StaffAccountWarning`, dan `StaffPasswordRequest` di `types/pelayanan.ts`.
 
 ## Kode akses dan autentikasi
 

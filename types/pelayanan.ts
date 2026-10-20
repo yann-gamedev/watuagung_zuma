@@ -77,6 +77,7 @@ export interface StaffStatusResponse {
 }
 export interface StaffLoginResponse {
   token: string;
+  must_change_password: boolean;
   user: { name: string; role: StaffRole };
 }
 /** GET /staff/me. Akun lama boleh belum punya username. */
@@ -86,6 +87,33 @@ export interface StaffProfile {
   role: StaffRole;
   rt: string | null;
   rw: string | null;
+  must_change_password: boolean;
+}
+/** GET /staff/users — hanya untuk admin. */
+export interface StaffUser {
+  id: number;
+  name: string;
+  username: string | null;
+  role: StaffRole;
+  rt: string | null;
+  rw: string | null;
+  is_active: boolean;
+  must_change_password: boolean;
+  last_login_at: string | null;
+}
+export interface StaffAccountWarning {
+  role: "rt_head" | "rw_head";
+  rt: string | null;
+  rw: string;
+  pending: number;
+}
+export interface StaffUsersResponse {
+  data: StaffUser[];
+  warnings: StaffAccountWarning[];
+}
+export interface StaffPasswordRequest {
+  old_password: string;
+  password: string;
 }
 export interface Submission {
   jenis_surat: ServiceCode;

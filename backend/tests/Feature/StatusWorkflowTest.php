@@ -285,7 +285,7 @@ class StatusWorkflowTest extends TestCase
         $token = $this->postJson('/api/v1/staff/login', ['username' => 'kades-fiktif', 'password' => 'test-password-only'])
             ->assertOk()->assertJsonPath('user.role', 'village_head')->json('token');
         $this->withToken($token)->getJson('/api/v1/staff/me')->assertOk()
-            ->assertExactJson(['name' => 'Kepala Desa Fiktif', 'username' => 'kades-fiktif', 'role' => 'village_head', 'rt' => null, 'rw' => null]);
+            ->assertExactJson(['name' => 'Kepala Desa Fiktif', 'username' => 'kades-fiktif', 'role' => 'village_head', 'rt' => null, 'rw' => null, 'must_change_password' => false]);
     }
 
     public function test_staff_create_command_prompts_for_hidden_password(): void

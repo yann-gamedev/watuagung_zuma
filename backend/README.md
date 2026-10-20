@@ -41,6 +41,8 @@ php artisan staff:create admin-lokal --role=admin --name="Admin Lokal"
 
 `--email` opsional (bawaan `<username>@example.test`). `rt_head` wajib `--rt` dan `--rw`; `rw_head` wajib `--rw`; isinya 1–3 digit dan disimpan sebagai 3 digit (`1` → `001`). Kolom `rt`/`rw` pada `users` nullable untuk peran lain. Ketua RT/RW tanpa wilayah lengkap tidak bisa masuk panel. Nama, username, dan nomor wilayah di atas hanya contoh, **bukan** akun bawaan. Untuk mengubah peran akun lama, gunakan `php artisan tinker`, lalu `App\Models\User::where('username', 'nama-akun')->update(['role' => 'village_head']);`. Perubahan peran berlaku seketika pada token yang sudah aktif.
 
+Sejak migration `2026_10_22_000000_add_staff_account_fields_to_users_table`, admin dapat mengelola akun dari panel **Akun**. Email menjadi nullable; akun baru wajib memakai username. Kolom baru: `is_active` (default true), `must_change_password` (default false), dan `last_login_at`. Kata sandi sementara dari panel minimal 10 karakter (CLI tetap 12) dan wajib diganti saat login pertama. Akun nonaktif ditolak dengan pesan yang sama seperti kredensial salah; menonaktifkan akun mencabut semua tokennya. Satu wilayah hanya boleh punya satu `rt_head` aktif (RT+RW) dan satu `rw_head` aktif (RW); nonaktifkan ketua lama sebelum membuat pengganti. Admin tidak dapat menonaktifkan atau menurunkan perannya sendiri, dan sistem selalu menyisakan minimal satu admin aktif. Audit mencatat `user.created`, `user.updated`, dan `user.password_reset` di `audit_logs`.
+
 ## Integrasi frontend
 
 Di `.env.local` pada direktori induk, isi `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1`. Jalankan frontend dengan `npm run dev` dari direktori induk dan buka http://127.0.0.1:3000. Gunakan dua terminal supaya Laravel dan Next.js berjalan bersamaan.
@@ -57,13 +59,27 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | POST | `/applications/status` | Publik, 10 permintaan/menit; 5 kode salah per nomor → 429 selama 15 menit | Body: `request_id` dan `lookup_secret`; mengembalikan `jenis_surat`, status, dan catatan (penolakan RT/RW diberi awalan "Ditolak oleh Ketua RT/RW") |
 | POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `username` dan `password` (atau `email` untuk klien lama); mengembalikan bearer token |
 | POST | `/staff/logout` | Token petugas | Mencabut token aktif |
-| GET | `/staff/me` | Token petugas | Mengembalikan `{ name, username, role, rt, rw }`; `username`, `rt`, `rw` bisa `null`. Peran di luar lima peran panel atau ketua RT/RW tanpa wilayah lengkap mendapat 403 |
+| GET | `/staff/me` | Token petugas | Mengembalikan `{ name, username, role, rt, rw, must_change_password }`; `username`, `rt`, `rw` bisa `null`. Peran di luar lima peran panel, akun nonaktif, atau ketua RT/RW tanpa wilayah lengkap mendapat 403 |
+| GET | `/staff/users` | Admin | Daftar akun `{ id, name, username, role, rt, rw, is_active, must_change_password, last_login_at }` dan `warnings` wilayah tanpa ketua aktif |
+| POST | `/staff/users` | Admin | Body `name`, `username`, `role`, `password` (min. 10); `rt` wajib untuk `rt_head`, `rw` wajib untuk `rt_head`/`rw_head`. Akun baru aktif dan wajib ganti kata sandi |
+| PATCH | `/staff/users/{id}` | Admin | Body `name`, `role`, `is_active`, `rt`, `rw`; menonaktifkan akun mencabut semua tokennya |
+| POST | `/staff/users/{id}/reset-password` | Admin | Body `password` (min. 10); menandai wajib ganti kata sandi dan mencabut semua token akun itu |
+| POST | `/staff/me/password` | Token petugas | Body `old_password` dan `password` (min. 10); token lain dicabut, token aktif tetap |
 | GET | `/staff/applications` | Token petugas | Daftar paginasi 20 per halaman, dibatasi wilayah untuk ketua RT/RW; filter `status` atau `statuses[]`, `q`, `jenis_surat`, dan `sort` (kontrak di bawah) |
 | POST | `/staff/applications/{request_id}/lookup-secret` | Staff, admin, rt_head, rw_head (10/menit) | Membuat ulang kode akses; hanya untuk status non-COMPLETED. Kode lama langsung tidak berlaku. Kode baru hanya ada di respons ini. |
 | GET | `/staff/applications/{request_id}` | Token lima peran panel | Detail data pemohon, `allowed_transitions`, dan `history`; ketua RT/RW hanya wilayahnya dengan field terbatas; setiap akses berhasil dicatat di `audit_logs` |
 | PATCH | `/staff/applications/{request_id}/status` | Token petugas | Body `status` dan `catatan` opsional; respons memuat `status`, `catatan`, dan `allowed_transitions` baru |
 
 Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Untuk SKU, `nama_usaha`, `jenis_usaha`, dan `alamat_usaha` wajib diisi. Validasi yang gagal mengembalikan HTTP 422 dengan objek `errors`.
+
+### Akun petugas
+
+- `GET /staff/users` hanya untuk `admin`; peran lain dan tamu mendapat 403/401. Tidak ada endpoint hapus akun: gunakan `is_active=false` agar riwayat status tetap merujuk ke akun itu.
+- `warnings` berisi `{ role, rt, rw, pending }` untuk permohonan `SUBMITTED` di RT/RW tanpa `rt_head` aktif atau `RT_APPROVED` di RW tanpa `rw_head` aktif. Angka `pending` adalah jumlah permohonan yang tertahan.
+- `PATCH` mengikuti aturan: admin tidak bisa menonaktifkan/menurunkan dirinya sendiri; admin aktif terakhir tidak bisa dihapus; satu RT hanya satu `rt_head` aktif dan satu RW hanya satu `rw_head` aktif. Melanggar aturan → 422 dengan `errors`.
+- Login akun nonaktif → 401 `Kredensial tidak valid.` (pesan sama dengan kata sandi salah). Login berhasil mengisi `last_login_at` dan mengembalikan `must_change_password`.
+- `POST /staff/me/password` memverifikasi kata sandi lama, menyimpan kata sandi baru (min. 10), menghapus `must_change_password`, dan mencabut token lain. Token yang sedang dipakai tetap berlaku.
+- Audit akun memakai `subject_type=user` dan `subject_id` = ID akun target. Tidak ada email, kata sandi, atau token di audit.
 
 ### Daftar pengajuan
 

@@ -53,6 +53,7 @@ Tujuan pelayanan harus dibedakan dari kemampuan yang sudah tersedia. Tidak ada t
 - Frontend Next.js 16 / React 19 / TypeScript; backend Laravel 13 + Sanctum di folder `backend/` dalam repositori yang sama.
 - API pengajuan surat dan cek status (kode akses di-hash, rate limit).
 - Login petugas, daftar pengajuan dengan pencarian nomor/nama, filter, dan urutan; halaman detail pemohon untuk peran panel dengan audit akses; perubahan status dengan aturan transisi; dan riwayat perubahan di `application_events`.
+- Manajemen akun petugas melalui panel oleh `admin`: tambah/ubah akun, nonaktifkan, reset kata sandi sementara, dan ganti kata sandi sendiri. Kata sandi sementara wajib diganti saat login pertama; akun nonaktif langsung kehilangan sesi. Satu wilayah hanya punya satu ketua RT/RW aktif.
 - Status "Siap diambil" (`READY_FOR_PICKUP`) dan "Selesai" (`COMPLETED`), serta lima peran panel: `rt_head` (ketua RT), `rw_head` (ketua RW), `staff` (petugas), `village_head` (kepala desa), `admin`. Hanya kepala desa yang memutuskan pengajuan yang menunggu persetujuan; wewenang dijaga di server (lihat `backend/README.md`).
 - **[BARU] Persetujuan RT/RW:** status `RT_APPROVED` dan `RW_APPROVED`. Ketua RT/RW hanya melihat pengajuan di wilayahnya, menerima NIK/KK utuh untuk verifikasi, dan tidak menerima telepon, tempat/tanggal lahir, maupun jenis kelamin.
 - Field sensitif pemohon (NIK, KK, telepon, alamat) dienkripsi di database.
@@ -63,7 +64,6 @@ Tujuan pelayanan harus dibedakan dari kemampuan yang sudah tersedia. Tidak ada t
 
 - Pengaduan warga.
 - Unggah dokumen persyaratan.
-- Manajemen akun petugas melalui panel (akun dibuat lewat `php artisan staff:create`).
 - Penerbitan surat/PDF.
 - Pengelolaan konten (profil, berita, BUMDes, UMKM) melalui backend; konten masih tersimpan di `lib/data.ts`.
 - Pemulihan kode akses / OTP.
