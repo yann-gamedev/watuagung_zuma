@@ -211,63 +211,57 @@
     display: none;
   }
 
-  .cards {
-    display: grid;
-    gap: 16px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .card {
-    display: block;
-    padding: 16px;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    color: var(--ink);
-    background: var(--white);
-    overflow-wrap: anywhere;
-    text-decoration: none;
-  }
-
-  .card:hover {
-    background: var(--sage);
-  }
-
-  .cardNumber {
-    display: block;
-    margin-bottom: 16px;
-    color: var(--leaf);
-    font-size: 18px;
-    font-weight: 700;
-  }
-
-  .card dl {
-    display: grid;
-    gap: 12px;
-    margin: 0;
-  }
-
-  .card dt {
-    color: var(--muted);
-  }
-
-  .card dd {
-    margin: 4px 0 0;
-  }
-
-  .cardAction {
-    display: block;
-    margin-top: 16px;
-    color: var(--leaf);
-    font-weight: 700;
-    text-decoration: underline;
-    text-underline-offset: 4px;
-  }
-
   .pager {
     flex-direction: column;
     align-items: stretch;
     text-align: center;
   }
+}
+
+.list[data-neighborhood="true"] .tableScroll { display: none; }
+.list[data-neighborhood="true"] .cards { display: grid; }
+
+.cards {
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: block;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--ink);
+  background: var(--white);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.card:hover { background: var(--sage); }
+
+.cardNumber {
+  display: block;
+  margin-bottom: 16px;
+  color: var(--leaf);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.card dl { display: grid; gap: 12px; margin: 0; }
+.card dt { color: var(--muted); }
+.card dd { margin: 4px 0 0; }
+
+.cardAction {
+  display: block;
+  margin-top: 16px;
+  color: var(--leaf);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+@media (max-width: 600px) {
+  .cards { display: grid; }
 }

@@ -21,7 +21,7 @@ export default function Home() {
             ],
             [
               "Simpan nomor dan kode akses",
-              "Keduanya dipakai untuk mengecek proses surat. Kode akses tidak bisa dipulihkan.",
+              "Simpan keduanya untuk cek status; jika kode hilang, minta kode baru ke RT/RW atau kantor desa dengan KTP/KK. Domisili, SKTM, dan KTP/KK diverifikasi RT → RW → desa → Kepala Desa. SKU langsung ke desa.",
             ],
             [
               "Ambil di kantor desa",

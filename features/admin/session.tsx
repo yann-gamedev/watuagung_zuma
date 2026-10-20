@@ -11,7 +11,9 @@ const STORAGE_KEY = "watuagung-staff-token";
 const profileSchema = z.object({
   name: z.string(),
   username: z.string().nullable(),
-  role: z.enum(["staff", "village_head", "admin"]),
+  role: z.enum(["staff", "village_head", "admin", "rt_head", "rw_head"]),
+  rt: z.string().nullable(),
+  rw: z.string().nullable(),
 });
 
 export type AdminSessionStatus = "checking" | "signed-out" | "signed-in" | "unreachable";

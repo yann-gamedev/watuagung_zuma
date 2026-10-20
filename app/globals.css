@@ -2258,6 +2258,8 @@ p {
 .status-badge svg {
   flex-shrink: 0;
 }
+.status-RT_APPROVED,
+.status-RW_APPROVED,
 .status-SUBMITTED,
 .status-VERIFIED,
 .status-PROCESSING {

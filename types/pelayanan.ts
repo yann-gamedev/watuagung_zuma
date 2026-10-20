@@ -1,5 +1,7 @@
 export const statuses = [
   "SUBMITTED",
+  "RT_APPROVED",
+  "RW_APPROVED",
   "VERIFIED",
   "PROCESSING",
   "WAITING_APPROVAL",
@@ -15,7 +17,7 @@ export type StaffLoginRequest = { password: string } & (
   | { username: string; email?: never }
   | { email: string; username?: never }
 );
-export type StaffRole = "staff" | "village_head" | "admin";
+export type StaffRole = "staff" | "village_head" | "admin" | "rt_head" | "rw_head";
 /** Metadata daftar petugas; tidak memuat NIK, KK, telepon, atau alamat. */
 export interface StaffApplication {
   request_id: string;
@@ -24,8 +26,11 @@ export interface StaffApplication {
   status: Status;
   created_at: string;
   allowed_transitions: Status[];
+  can_reset_access_code: boolean;
 }
 export interface StaffApplicationEvent {
+  /** null = perubahan status; ACCESS_CODE_RESET = kode akses dibuat ulang (status tidak berubah). */
+  action: "ACCESS_CODE_RESET" | null;
   from_status: Status | null;
   to_status: Status;
   note: string | null;
@@ -33,19 +38,35 @@ export interface StaffApplicationEvent {
   created_at: string;
 }
 /** Hanya respons detail terotorisasi; jangan simpan ke storage atau log. */
-export interface StaffApplicationDetail extends StaffApplication, Omit<Submission, "nama_usaha" | "jenis_usaha" | "alamat_usaha"> {
+export interface StaffApplicationDetail extends StaffApplication, Omit<Submission, "nama_usaha" | "jenis_usaha" | "alamat_usaha" | "telepon" | "tempat_lahir" | "tanggal_lahir" | "jenis_kelamin"> {
+  telepon?: string;
+  tempat_lahir?: string;
+  tanggal_lahir?: string;
+  jenis_kelamin?: string;
   nama_usaha: string | null;
   jenis_usaha: string | null;
   alamat_usaha: string | null;
   catatan: string | null;
   updated_at: string;
+  can_reset_access_code: boolean;
   history: StaffApplicationEvent[];
+}
+/** Kode baru hanya ada di respons ini; jangan simpan ke storage atau log. */
+export interface StaffAccessCodeResponse {
+  success: true;
+  request_id: string;
+  lookup_secret: string;
 }
 export interface StaffApplicationsPage {
   data: StaffApplication[];
   current_page: number;
   last_page: number;
   total: number;
+}
+export interface StaffAccessCodeResponse {
+  success: true;
+  request_id: string;
+  lookup_secret: string;
 }
 export interface StaffStatusResponse {
   success: true;
@@ -63,6 +84,8 @@ export interface StaffProfile {
   name: string;
   username: string | null;
   role: StaffRole;
+  rt: string | null;
+  rw: string | null;
 }
 export interface Submission {
   jenis_surat: ServiceCode;
@@ -86,6 +109,11 @@ export interface Receipt {
   request_id: string;
   status: Status;
   lookup_secret?: string;
+  /** Receipt demo lama belum menyimpan jenis surat. */
+  jenis_surat?: ServiceCode;
+}
+export interface StatusReceipt extends Receipt {
+  catatan?: string | null;
 }
 export interface RequestRecord extends Receipt {
   nama: string;

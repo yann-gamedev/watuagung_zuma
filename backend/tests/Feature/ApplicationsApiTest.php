@@ -23,6 +23,25 @@ class ApplicationsApiTest extends TestCase {
         $this->assertEquals(1, DB::table('application_events')->count());
         $this->assertNotEquals('0000000000000000', DB::table('applications')->value('nik'));
     }
+    public function test_access_code_format_normalization_and_lockout(): void {
+        $response = $this->postJson('/api/v1/applications', $this->payload())->assertCreated();
+        $id = $response->json('request_id'); $secret = $response->json('lookup_secret');
+        $this->assertMatchesRegularExpression('/\AWAD-[0-9]{4}-[0-9]{4}\z/', $secret);
+        $this->assertNotEquals(hash('sha256', $secret), DB::table('applications')->value('lookup_secret_hash'));
+        $loose = strtolower(str_replace('-', ' ', $secret));
+        $this->postJson('/api/v1/applications/status',['request_id'=>$id,'lookup_secret'=>$loose])->assertOk();
+        for ($i = 0; $i < 5; $i++) $this->postJson('/api/v1/applications/status',['request_id'=>$id,'lookup_secret'=>'WAD-0000-0000'])->assertNotFound();
+        // Terkunci: kode benar pun ditolak sampai 15 menit berlalu.
+        $this->postJson('/api/v1/applications/status',['request_id'=>$id,'lookup_secret'=>$secret])->assertTooManyRequests();
+        $this->travel(16)->minutes();
+        $this->postJson('/api/v1/applications/status',['request_id'=>$id,'lookup_secret'=>$secret])->assertOk();
+    }
+    public function test_legacy_access_code_still_works(): void {
+        $id = $this->postJson('/api/v1/applications', $this->payload())->json('request_id');
+        $legacy = str_repeat('aB3', 16);
+        DB::table('applications')->update(['lookup_secret_hash'=>hash('sha256', $legacy)]);
+        $this->postJson('/api/v1/applications/status',['request_id'=>$id,'lookup_secret'=>$legacy])->assertOk();
+    }
     public function test_validation_and_authentication(): void {
         $this->postJson('/api/v1/applications', array_merge($this->payload(), ['nik'=>'123','nama_usaha'=>null]))->assertUnprocessable()->assertJsonValidationErrors(['nik','nama_usaha']);
         $this->getJson('/api/v1/staff/applications')->assertUnauthorized();

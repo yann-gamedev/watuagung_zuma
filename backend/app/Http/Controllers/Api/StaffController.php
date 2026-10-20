@@ -1,6 +1,8 @@
 <?php
 namespace App\Http\Controllers\Api;
+use App\Domain\AccessCode;
 use App\Domain\ApplicationStatus;
+use App\Domain\LetterType;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\User;
@@ -8,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -22,8 +25,8 @@ class StaffController extends Controller {
         $user = isset($data['username'])
             ? User::where('username', $data['username'])->first()
             : User::where('email', $data['email'])->first();
-        if (! $user || ! ApplicationStatus::isPanelRole($user->role) || ! Hash::check($data['password'], $user->password)) return response()->json(['message'=>'Kredensial tidak valid.'], 401);
-        return response()->json(['token'=>$user->createToken('staff', ['applications:manage'])->plainTextToken,'user'=>['name'=>$user->name,'role'=>$user->role]]);
+        if (! $user || ! $user->canAccessPanel() || ! Hash::check($data['password'], $user->password)) return response()->json(['message'=>'Kredensial tidak valid.'], 401);
+        return response()->json(['token'=>$user->createToken('staff', ['applications:manage'])->plainTextToken,'user'=>['name'=>$user->name,'role'=>$user->role,'rt'=>$user->rt,'rw'=>$user->rw]]);
     }
     public function logout(Request $request): JsonResponse {
         $request->user()->currentAccessToken()->delete();
@@ -32,22 +35,22 @@ class StaffController extends Controller {
     public function me(Request $request): JsonResponse {
         $user = $request->user();
         // Role can change after a token is issued; re-check on every call.
-        if (! ApplicationStatus::isPanelRole($user->role)) return $this->forbidden();
-        return response()->json(['name'=>$user->name,'username'=>$user->username,'role'=>$user->role]);
+        if (! $user->canAccessPanel()) return $this->forbidden();
+        return response()->json(['name'=>$user->name,'username'=>$user->username,'role'=>$user->role,'rt'=>$user->rt,'rw'=>$user->rw]);
     }
     public function index(Request $request): JsonResponse {
-        $role = $request->user()->role;
-        if (! ApplicationStatus::isPanelRole($role)) return $this->forbidden();
+        $user = $request->user();
+        if (! $user->canAccessPanel()) return $this->forbidden();
         $data = $request->validate([
             'status'=>['sometimes','prohibits:statuses',Rule::in(ApplicationStatus::values())],
             'statuses'=>['sometimes','prohibits:status','array','min:1','max:'.count(ApplicationStatus::cases())],
             'statuses.*'=>['string','distinct',Rule::in(ApplicationStatus::values())],
             'page'=>['sometimes','integer','min:1'],
             'q'=>['sometimes','nullable','string','max:100'],
-            'jenis_surat'=>['sometimes',Rule::in(['SKU','DOMISILI','SKTM','KTP_KK'])],
+            'jenis_surat'=>['sometimes',Rule::enum(LetterType::class)],
             'sort'=>['sometimes',Rule::in(['terbaru','terlama'])],
         ]);
-        $query = Application::query()->select(['id','request_id','nama','jenis_surat','status','created_at']);
+        $query = Application::query()->forUser($user)->select(['id','request_id','nama','jenis_surat','status','created_at','rt','rw']);
         if (isset($data['status'])) $query->where('status', $data['status']);
         if (isset($data['statuses'])) $query->whereIn('status', $data['statuses']);
         if (isset($data['jenis_surat'])) $query->where('jenis_surat', $data['jenis_surat']);
@@ -67,18 +70,18 @@ class StaffController extends Controller {
             'jenis_surat'=>$application->jenis_surat,
             'status'=>$application->status,
             'created_at'=>$application->created_at,
-            'allowed_transitions'=>ApplicationStatus::allowedFor($application->status, $role),
+            'allowed_transitions'=>$application->allowedTransitions($user),
         ]);
         return response()->json($page)->header('Cache-Control', 'private, no-store');
     }
     public function show(Request $request, string $request_id): JsonResponse {
         $user = $request->user();
-        if (! ApplicationStatus::isPanelRole($user->role)) return $this->forbidden();
+        if (! $user->canAccessPanel()) return $this->forbidden();
         // No implicit model binding: authorize and validate before loading private data.
         Validator::make(['request_id'=>$request_id], [
             'request_id'=>['required','string','max:64','regex:/\AREQ-[0-9]{4}-[A-Z0-9]+\z/'],
         ])->validate();
-        $application = Application::query()->select([
+        $application = Application::query()->forUser($user)->select([
             'id','request_id','jenis_surat','nama','nik','no_kk','tempat_lahir','tanggal_lahir',
             'jenis_kelamin','alamat','rt','rw','telepon','nama_usaha','jenis_usaha','alamat_usaha',
             'keperluan','status','catatan','created_at','updated_at',
@@ -87,8 +90,9 @@ class StaffController extends Controller {
             ->leftJoin('users', 'users.id', '=', 'events.user_id')
             ->where('events.application_id', $application->id)
             ->orderBy('events.created_at')->orderBy('events.id')
-            ->get(['events.from_status','events.to_status','events.note','users.name as staff_name','events.created_at'])
+            ->get(['events.action','events.from_status','events.to_status','events.note','users.name as staff_name','events.created_at'])
             ->map(fn ($event) => [
+                'action'=>$event->action,
                 'from_status'=>$event->from_status,
                 'to_status'=>$event->to_status,
                 'note'=>$event->note,
@@ -99,15 +103,12 @@ class StaffController extends Controller {
             'request_id'=>$application->request_id,
             'jenis_surat'=>$application->jenis_surat,
             'nama'=>$application->nama,
+            // NIK/KK utuh untuk semua peran panel: dibutuhkan untuk verifikasi (keputusan pengguna 20 Okt 2026).
             'nik'=>$application->nik,
             'no_kk'=>$application->no_kk,
-            'tempat_lahir'=>$application->tempat_lahir,
-            'tanggal_lahir'=>$application->tanggal_lahir->format('Y-m-d'),
-            'jenis_kelamin'=>$application->jenis_kelamin,
             'alamat'=>$application->alamat,
             'rt'=>$application->rt,
             'rw'=>$application->rw,
-            'telepon'=>$application->telepon,
             'nama_usaha'=>$application->nama_usaha,
             'jenis_usaha'=>$application->jenis_usaha,
             'alamat_usaha'=>$application->alamat_usaha,
@@ -116,9 +117,18 @@ class StaffController extends Controller {
             'catatan'=>$application->catatan,
             'created_at'=>$application->created_at,
             'updated_at'=>$application->updated_at,
-            'allowed_transitions'=>ApplicationStatus::allowedFor($application->status, $user->role),
+            'allowed_transitions'=>$application->allowedTransitions($user),
+            'can_reset_access_code'=>$user->canResetAccessCode() && $application->status !== 'COMPLETED',
             'history'=>$history,
         ];
+        if (! $user->isNeighborhoodHead()) {
+            $detail += [
+                'telepon'=>$application->telepon,
+                'tempat_lahir'=>$application->tempat_lahir,
+                'tanggal_lahir'=>$application->tanggal_lahir->format('Y-m-d'),
+                'jenis_kelamin'=>$application->jenis_kelamin,
+            ];
+        }
         // Fail closed: do not return private data if recording the access fails.
         DB::table('audit_logs')->insert([
             'user_id'=>$user->id, 'action'=>'application.viewed', 'subject_type'=>'application',
@@ -128,15 +138,18 @@ class StaffController extends Controller {
     }
     public function update(Request $request, Application $application): JsonResponse {
         $user = $request->user();
-        if (! ApplicationStatus::isPanelRole($user->role)) return $this->forbidden();
+        if (! $user->canAccessPanel()) return $this->forbidden();
+        if (! $application->isInTerritory($user)) return $this->forbidden();
         $data = $request->validate(['status'=>['required',Rule::in(ApplicationStatus::values())], 'catatan'=>['nullable','string','max:1000']]);
         $note = blank($data['catatan'] ?? null) ? null : trim($data['catatan']);
         $result = DB::transaction(function () use ($application, $data, $note, $user) {
             // Re-read under lock so a stale client cannot move an already-changed status.
             $fresh = Application::whereKey($application->getKey())->lockForUpdate()->firstOrFail();
+            if (! $fresh->isInTerritory($user)) return $this->forbidden();
             $from = $fresh->status;
-            if (! ApplicationStatus::isTransition($from, $data['status'])) return response()->json(['message'=>'Transisi status tidak valid.'], 422);
-            if (! ApplicationStatus::canTransition($from, $data['status'], $user->role)) return response()->json(['message'=>'Peran Anda tidak berwenang melakukan perubahan status ini.'], 403);
+            $type = LetterType::from($fresh->jenis_surat);
+            if (! ApplicationStatus::isTransition($from, $data['status'], $type)) return response()->json(['message'=>'Transisi status tidak valid.'], 422);
+            if (! ApplicationStatus::canTransition($from, $data['status'], $user->role, $type)) return response()->json(['message'=>'Peran Anda tidak berwenang melakukan perubahan status ini.'], 403);
             if (ApplicationStatus::requiresNote($data['status']) && $note === null) return response()->json(['message'=>'Catatan wajib diisi.','errors'=>['catatan'=>['Catatan wajib diisi.']]], 422);
             $fresh->update(['status'=>$data['status'],'catatan'=>$note]);
             DB::table('application_events')->insert(['application_id'=>$fresh->id,'user_id'=>$user->id,'from_status'=>$from,'to_status'=>$data['status'],'note'=>$note,'created_at'=>now()]);
@@ -145,8 +158,37 @@ class StaffController extends Controller {
         if ($result instanceof JsonResponse) return $result;
         return response()->json([
             'success'=>true,'request_id'=>$result->request_id,'status'=>$result->status,'catatan'=>$result->catatan,
-            'allowed_transitions'=>ApplicationStatus::allowedFor($result->status, $user->role),
+            'allowed_transitions'=>$result->allowedTransitions($user),
         ]);
+    }
+    /** Kode lama langsung tidak berlaku; kode baru hanya ada di respons ini, tidak pernah di log. */
+    public function resetAccessCode(Request $request, string $request_id): JsonResponse {
+        $user = $request->user();
+        if (! $user->canResetAccessCode()) return $this->forbidden();
+        Validator::make(['request_id'=>$request_id], [
+            'request_id'=>['required','string','max:64','regex:/\AREQ-[0-9]{4}-[A-Z0-9]+\z/'],
+        ])->validate();
+        $result = DB::transaction(function () use ($user, $request_id) {
+            // Di luar wilayah = 404, sama seperti detail.
+            $application = Application::query()->forUser($user)->where('request_id', $request_id)->lockForUpdate()->firstOrFail();
+            if ($application->status === 'COMPLETED') {
+                return response()->json(['message'=>'Permohonan sudah selesai; kode akses tidak dapat dibuat ulang.'], 422);
+            }
+            $code = AccessCode::generate();
+            $application->update(['lookup_secret_hash'=>AccessCode::hash($code)]);
+            DB::table('application_events')->insert([
+                'application_id'=>$application->id, 'user_id'=>$user->id, 'action'=>'ACCESS_CODE_RESET',
+                'from_status'=>$application->status, 'to_status'=>$application->status, 'created_at'=>now(),
+            ]);
+            DB::table('audit_logs')->insert([
+                'user_id'=>$user->id, 'action'=>'application.access_code_reset', 'subject_type'=>'application',
+                'subject_id'=>$application->id, 'created_at'=>now(),
+            ]);
+            return $code;
+        });
+        if ($result instanceof JsonResponse) return $result;
+        RateLimiter::clear('lookup:'.$request_id);
+        return response()->json(['success'=>true,'request_id'=>$request_id,'lookup_secret'=>$result])->header('Cache-Control', 'private, no-store');
     }
     private function forbidden(): JsonResponse {
         return response()->json(['message'=>'Akses ditolak.'], 403)->header('Cache-Control', 'private, no-store');

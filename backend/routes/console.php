@@ -13,10 +13,13 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Membuat akun panel lokal; kata sandi diminta tersembunyi dan tidak pernah disimpan di repositori.
-Artisan::command('staff:create {username} {--role=staff} {--name=} {--email=}', function (string $username) {
+Artisan::command('staff:create {username} {--role=staff} {--name=} {--email=} {--rt=} {--rw=}', function (string $username) {
     $role = $this->option('role');
     $data = ['username' => $username, 'role' => $role, 'name' => $this->option('name') ?: $username, 'email' => $this->option('email') ?: "$username@example.test"];
+    $data += ['rt' => $this->option('rt'), 'rw' => $this->option('rw')];
     $validator = Validator::make($data, [
+        'rt' => ['required_if:role,rt_head', 'nullable', 'string', 'regex:/\A[0-9]{1,3}\z/'],
+        'rw' => ['required_if:role,rt_head,rw_head', 'nullable', 'string', 'regex:/\A[0-9]{1,3}\z/'],
         'username' => ['required', 'max:64', 'regex:/\A[a-z0-9][a-z0-9_-]*\z/', 'unique:users,username'],
         'role' => ['required', Rule::in(ApplicationStatus::PANEL_ROLES)],
         'name' => ['required', 'string', 'max:255'],
@@ -34,7 +37,7 @@ Artisan::command('staff:create {username} {--role=staff} {--name=} {--email=}', 
     User::create($data + ['password' => $password]);
     $this->info("Akun $username ($role) dibuat.");
     return 0;
-})->purpose('Buat akun panel petugas (staff, village_head, admin)');
+})->purpose('Buat akun panel petugas (staff, village_head, admin, rt_head, rw_head)');
 
 // Hapus token petugas yang sudah kedaluwarsa lebih dari 24 jam.
 Schedule::command('sanctum:prune-expired --hours=24')->daily();

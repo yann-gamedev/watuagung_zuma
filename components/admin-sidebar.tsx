@@ -12,6 +12,8 @@ export const adminLinks = [
   { title: "Dashboard", href: "/admin", Icon: LayoutDashboard },
   { title: "Permohonan", href: "/admin/permohonan", Icon: ClipboardList },
   { title: "Persetujuan", href: "/admin/persetujuan", Icon: FileCheck2 },
+  { title: "Antrean RT", href: "/admin/antrean-rt", Icon: ClipboardList },
+  { title: "Antrean RW", href: "/admin/antrean-rw", Icon: ClipboardList },
   { title: "Siap diambil", href: "/admin/surat", Icon: FileCheck2 },
 ] as const;
 
@@ -28,7 +30,12 @@ type Props = { open: boolean; onClose: () => void };
 export const AdminSidebar = forwardRef<HTMLElement, Props>(function AdminSidebar({ open, onClose }, ref) {
   const path = normalizePath(usePathname());
   const { user } = useAdminSession();
-  const links = adminLinks.filter((link) => link.href !== "/admin/persetujuan" || user?.role === "village_head");
+  const queue = user?.role === "rt_head" ? "/admin/antrean-rt" : user?.role === "rw_head" ? "/admin/antrean-rw" : null;
+  const links = adminLinks.filter((link) => {
+    if (queue) return link.href === "/admin" || link.href === queue;
+    if (link.href === "/admin/antrean-rt" || link.href === "/admin/antrean-rw") return false;
+    return link.href !== "/admin/persetujuan" || user?.role === "village_head";
+  });
   return (
     <aside ref={ref} id="admin-sidebar" className="admin-sidebar" data-open={open} aria-label="Menu petugas">
       <div className="admin-sidebar-top">

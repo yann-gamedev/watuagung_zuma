@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Domain\ApplicationStatus;
+use App\Domain\LetterType;
 use App\Models\Application;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,7 +38,7 @@ class StatusWorkflowTest extends TestCase
         return Application::create([
             'request_id' => 'REQ-2026-'.Str::upper((string) Str::ulid()),
             'lookup_secret_hash' => hash('sha256', $secret),
-            'jenis_surat' => 'DOMISILI', 'nama' => 'Warga Contoh',
+            'jenis_surat' => 'SKU', 'nama' => 'Warga Contoh',
             'nik' => '0000000000000000', 'no_kk' => '0000000000000000',
             'tempat_lahir' => 'Contoh', 'tanggal_lahir' => '2000-01-01', 'jenis_kelamin' => 'Perempuan',
             'alamat' => 'Alamat fiktif', 'rt' => '01', 'rw' => '02', 'telepon' => '08000000000',
@@ -53,7 +54,7 @@ class StatusWorkflowTest extends TestCase
     /** @return iterable<string, array{string, string, string}> */
     public static function allowedTransitions(): iterable
     {
-        foreach (ApplicationStatus::rules() as $from => $targets) {
+        foreach (ApplicationStatus::rules(LetterType::Sku) as $from => $targets) {
             foreach ($targets as $to => $roles) {
                 foreach ($roles as $role) yield "$role: $from -> $to" => [$from, $to, $role];
             }
@@ -70,7 +71,7 @@ class StatusWorkflowTest extends TestCase
         $this->changeStatus($application, $to, $note)->assertOk()
             ->assertJsonPath('status', $to)
             ->assertJsonPath('catatan', $note)
-            ->assertJsonPath('allowed_transitions', ApplicationStatus::allowedFor($to, $role));
+            ->assertJsonPath('allowed_transitions', ApplicationStatus::allowedFor($to, $role, LetterType::Sku));
 
         $this->assertSame($to, $application->fresh()->status);
         $this->assertDatabaseHas('application_events', [
@@ -87,9 +88,9 @@ class StatusWorkflowTest extends TestCase
             $application = $this->application($from);
             foreach (ApplicationStatus::values() as $to) {
                 foreach (self::ROLES as $role) {
-                    if (ApplicationStatus::canTransition($from, $to, $role)) continue;
+                    if (ApplicationStatus::canTransition($from, $to, $role, LetterType::Sku)) continue;
                     Sanctum::actingAs($users[$role], ['applications:manage']);
-                    $expected = ApplicationStatus::isTransition($from, $to) ? 403 : 422;
+                    $expected = ApplicationStatus::isTransition($from, $to, LetterType::Sku) ? 403 : 422;
                     $this->changeStatus($application, $to, 'Catatan fiktif')->assertStatus($expected);
                     $checked++;
                 }
@@ -168,7 +169,7 @@ class StatusWorkflowTest extends TestCase
         foreach (['READY_FOR_PICKUP', 'COMPLETED'] as $status) {
             $application = $this->application($status);
             $this->postJson('/api/v1/applications/status', ['request_id' => $application->request_id, 'lookup_secret' => 'rahasia-fiktif'])
-                ->assertOk()->assertExactJson(['success' => true, 'request_id' => $application->request_id, 'status' => $status, 'catatan' => null]);
+                ->assertOk()->assertExactJson(['success' => true, 'request_id' => $application->request_id, 'status' => $status, 'catatan' => null, 'jenis_surat' => 'SKU']);
         }
     }
 
@@ -284,7 +285,7 @@ class StatusWorkflowTest extends TestCase
         $token = $this->postJson('/api/v1/staff/login', ['username' => 'kades-fiktif', 'password' => 'test-password-only'])
             ->assertOk()->assertJsonPath('user.role', 'village_head')->json('token');
         $this->withToken($token)->getJson('/api/v1/staff/me')->assertOk()
-            ->assertExactJson(['name' => 'Kepala Desa Fiktif', 'username' => 'kades-fiktif', 'role' => 'village_head']);
+            ->assertExactJson(['name' => 'Kepala Desa Fiktif', 'username' => 'kades-fiktif', 'role' => 'village_head', 'rt' => null, 'rw' => null]);
     }
 
     public function test_staff_create_command_prompts_for_hidden_password(): void

@@ -3,9 +3,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { ArrowRight, CheckCircle2, ClipboardCheck, Clock3, FileCheck2, FileClock, CircleX, CircleAlert } from "lucide-react";
+import { ArrowRight, CheckCircle2, ClipboardCheck, Clock3, FileCheck2, FileClock, CircleX, CircleAlert, UserCheck, ShieldCheck } from "lucide-react";
 import { news } from "@/lib/data";
-import type { Status } from "@/types/pelayanan";
+import type { ServiceCode, Status } from "@/types/pelayanan";
+import { requiresNeighborhoodApproval } from "@/lib/letter-workflow";
 import { SiteHeader, normalizePath } from "@/components/site-header";
 export function Footer() {
   return (
@@ -128,6 +129,8 @@ export function NewsCard({
 }
 export const statusLabels: Record<Status, string> = {
   SUBMITTED: "Diterima",
+  RT_APPROVED: "Disetujui RT, menunggu RW",
+  RW_APPROVED: "Pengantar RT/RW sah, menunggu kantor desa",
   VERIFIED: "Diverifikasi",
   PROCESSING: "Diproses",
   WAITING_APPROVAL: "Menunggu persetujuan",
@@ -138,6 +141,8 @@ export const statusLabels: Record<Status, string> = {
   NEED_REVISION: "Perlu perbaikan",
 };
 export const statusDescriptions: Record<Status, string> = {
+  RT_APPROVED: "Ketua RT telah menyetujui. Permohonan menunggu pemeriksaan Ketua RW di wilayah Anda.",
+  RW_APPROVED: "Ketua RT dan RW telah menyetujui. Permohonan menunggu verifikasi petugas kantor desa.",
   SUBMITTED: "Pengajuan telah diterima. Simpan bukti pengajuan dan cek status secara berkala untuk mengetahui hasil pemeriksaan petugas.",
   VERIFIED: "Data pengajuan telah diverifikasi. Cek status secara berkala untuk mengetahui proses penyiapan surat.",
   PROCESSING: "Surat sedang disiapkan. Cek kembali status pengajuan untuk mengetahui tahap berikutnya.",
@@ -150,6 +155,8 @@ export const statusDescriptions: Record<Status, string> = {
 };
 const statusIcons = {
   SUBMITTED: ClipboardCheck,
+  RT_APPROVED: UserCheck,
+  RW_APPROVED: ShieldCheck,
   VERIFIED: FileCheck2,
   PROCESSING: FileClock,
   WAITING_APPROVAL: Clock3,
@@ -159,12 +166,12 @@ const statusIcons = {
   REJECTED: CircleX,
   NEED_REVISION: CircleAlert,
 };
-export function StatusBadge({ status }: { status: Status }) {
+export function StatusBadge({ status, jenisSurat }: { status: Status; jenisSurat?: ServiceCode }) {
   const Icon = statusIcons[status];
   return (
     <span className={"status-badge status-" + status}>
       <Icon size={22} aria-hidden="true" />
-      {statusLabels[status]}
+      {status === "SUBMITTED" && requiresNeighborhoodApproval(jenisSurat) ? "Menunggu verifikasi RT" : statusLabels[status]}
     </span>
   );
 }

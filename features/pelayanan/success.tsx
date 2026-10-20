@@ -85,10 +85,10 @@ export function Success() {
       <div className="receipt-warning">
         <CircleAlert size={24} aria-hidden="true" />
         <div>
-          <strong>{isDemo ? "Simpan nomor pengajuan ini." : "Simpan nomor dan kode akses ini. Kode akses tidak bisa dipulihkan."}</strong>
+          <strong>{isDemo ? "Simpan nomor pengajuan ini." : "Simpan nomor dan kode akses ini."}</strong>
           <p>{isDemo
             ? "Status simulasi hanya tersedia di browser yang sama dan tidak berubah otomatis. Menghapus penyimpanan browser akan menghapus riwayat. Simulasi tidak memerlukan kode akses."
-            : "Simpan di tempat aman. Kode akses hanya tersedia di tab ini dan tidak dapat dipulihkan saat ini."}</p>
+            : "Simpan di tempat aman; kode hanya tampil di tab ini. Jika hilang, Ketua RT/RW atau kantor desa dapat membuatkan kode baru setelah memeriksa KTP/KK Anda."}</p>
           {!isDemo && !secret && <p>Kode akses tidak tersedia di tab ini. Gunakan kode yang telah Anda simpan atau hubungi kantor desa untuk arahan.</p>}
         </div>
       </div>
