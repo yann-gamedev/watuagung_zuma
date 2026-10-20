@@ -1,0 +1,36 @@
+.accountMenu { position: relative; }
+.accountMenu summary { list-style: none; cursor: pointer; }
+.accountMenu summary::-webkit-details-marker { display: none; }
+.accountPanel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  min-width: 220px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--white);
+  box-shadow: 0 6px 20px rgba(23, 54, 26, .12);
+}
+.accountPanel .btn { width: 100%; justify-content: flex-start; }
+.dialog {
+  /* Tailwind reset sets margin:0 on every element, which disables native dialog centering. */
+  margin: auto;
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  color: var(--ink);
+  background: var(--white);
+  font-size: 16px;
+}
+.dialog::backdrop { background: rgba(16, 38, 15, .55); }
+.dialog h2 { margin-bottom: 8px; font-size: 21px; font-weight: 800; letter-spacing: -0.02em; }
+.dialog > p { margin-bottom: 20px; color: var(--muted); }
+@media (max-width: 600px) {
+  /* Menu Akun berada dekat tepi kiri; panel selebar 220px tidak boleh keluar layar. */
+  .accountPanel { right: auto; left: 0; }
+}
