@@ -2,11 +2,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUpRight, LogOut, Menu } from "lucide-react";
+import { ArrowUpRight, KeyRound, LogOut, Menu } from "lucide-react";
 import { apiBase } from "@/services/pelayanan";
 import { AdminSidebar, adminPageTitle } from "@/components/admin-sidebar";
 import { normalizePath } from "@/components/site-header";
 import { AdminLoginForm } from "./login-form";
+import { ChangePasswordForm } from "./change-password";
 import { useAdminSession } from "./session";
 import styles from "./neighborhood.module.css";
 
@@ -51,7 +52,23 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     );
   }
   if (session.status === "signed-out" || !session.user) return <CenterScreen><AdminLoginForm /></CenterScreen>;
+  if (session.user.must_change_password) return <ForcedPasswordChange />;
   return <AdminFrame>{children}</AdminFrame>;
+}
+
+/** Akun dengan kata sandi sementara tidak boleh memakai panel sebelum menggantinya. */
+function ForcedPasswordChange() {
+  const { logout } = useAdminSession();
+  return (
+    <CenterScreen>
+      <div className="center-card admin-login">
+        <h1>Buat kata sandi baru</h1>
+        <p>Kata sandi sementara hanya berlaku untuk masuk pertama. Buat kata sandi sendiri minimal 10 karakter sebelum memakai panel.</p>
+        <ChangePasswordForm />
+        <button type="button" className="btn btn-secondary mt-4" onClick={() => void logout()}>Keluar</button>
+      </div>
+    </CenterScreen>
+  );
 }
 
 function AdminFrame({ children }: { children: React.ReactNode }) {
@@ -60,9 +77,19 @@ function AdminFrame({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [prevPath, setPrevPath] = useState(path);
   const [leaving, setLeaving] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
+  const passwordDialogRef = useRef<HTMLDialogElement>(null);
+
+  // <dialog> native: fokus masuk, Esc menutup, dan fokus kembali otomatis.
+  useEffect(() => {
+    const dialog = passwordDialogRef.current;
+    if (!dialog) return;
+    if (passwordOpen && !dialog.open) dialog.showModal();
+    if (!passwordOpen && dialog.open) dialog.close();
+  }, [passwordOpen]);
 
   // Tutup panel saat berpindah halaman.
   if (prevPath !== path) {
@@ -137,6 +164,19 @@ function AdminFrame({ children }: { children: React.ReactNode }) {
             <p><strong>{user?.name}</strong><span>{user?.role === "rt_head" ? `Ketua RT ${user.rt ?? "—"} / RW ${user.rw ?? "—"}` : user?.role === "rw_head" ? `Ketua RW ${user.rw ?? "—"}` : user ? roleLabels[user.role] : ""}</span></p>
             <div className="admin-actions">
               <Link href="/" className="btn btn-secondary">Lihat website <ArrowUpRight size={22} aria-hidden="true" /></Link>
+              <details className="admin-account-menu">
+                <summary className="btn btn-secondary"><KeyRound size={22} aria-hidden="true" /> Akun</summary>
+                <div className="admin-account-panel">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={(event) => {
+                      setPasswordOpen(true);
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                    }}
+                  >Ganti kata sandi</button>
+                </div>
+              </details>
               <button id="staff-logout" type="button" className="btn btn-secondary" disabled={leaving} onClick={() => void signOut()}>
                 <LogOut size={22} aria-hidden="true" /> Keluar
               </button>
@@ -145,6 +185,12 @@ function AdminFrame({ children }: { children: React.ReactNode }) {
         </header>
         <main id="main" className="admin-main">{children}</main>
       </div>
+      <dialog ref={passwordDialogRef} className="admin-dialog" aria-labelledby="admin-password-title" onClose={() => setPasswordOpen(false)}>
+        <h2 id="admin-password-title">Ganti kata sandi</h2>
+        <p>Setelah kata sandi diganti, sesi lain milik akun ini akan keluar.</p>
+        <ChangePasswordForm onDone={() => setPasswordOpen(false)} />
+        <button type="button" className="btn btn-secondary mt-4" onClick={() => setPasswordOpen(false)}>Tutup</button>
+      </dialog>
     </div>
   );
 }

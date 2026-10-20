@@ -92,7 +92,7 @@ Bergantung pada M2, kecuali fondasi sesi dan kerangka (disetujui pengguna untuk 
 - [x] Pencarian berdasarkan nomor pengajuan — juga nama pemohon (nama di `q` disetujui pengguna), filter status/jenis surat, urutan, dan pagination dengan query string.
 - [x] Halaman detail pengajuan: data pemohon untuk tiga peran panel, riwayat status dari `application_events`, aksi dari `allowed_transitions`, dan audit `application.viewed` di `audit_logs`.
 - [x] Antrean kepala desa: daftar yang menunggu persetujuan (`/admin/persetujuan`, dikerjakan bersama M2)
-- [ ] Manajemen akun petugas (khusus `admin`)
+- [ ] Manajemen akun petugas (khusus `admin`) — tambah/ubah/nonaktifkan akun, reset kata sandi sementara, ganti kata sandi sendiri, batas satu ketua RT/RW aktif per wilayah, dan peringatan wilayah tanpa ketua aktif
 
 ## M4 — Pengaduan warga
 

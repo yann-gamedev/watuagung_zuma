@@ -14,6 +14,7 @@ const profileSchema = z.object({
   role: z.enum(["staff", "village_head", "admin", "rt_head", "rw_head"]),
   rt: z.string().nullable(),
   rw: z.string().nullable(),
+  must_change_password: z.boolean(),
 });
 
 export type AdminSessionStatus = "checking" | "signed-out" | "signed-in" | "unreachable";
@@ -25,6 +26,7 @@ type AdminSession = State & {
   logout: () => Promise<void>;
   retry: () => void;
   request: <T>(path: string, options?: RequestInit) => Promise<T>;
+  changePassword: (oldPassword: string, newPassword: string) => Promise<void>;
 };
 
 const AdminSessionContext = createContext<AdminSession | null>(null);
@@ -117,7 +119,19 @@ export function AdminSessionProvider({ children }: { children: React.ReactNode }
   const request = useCallback(<T,>(path: string, options?: RequestInit) =>
     adminRequest<T>({ token: tokenRef.current ?? "", onUnauthorized: expire }, path, options), [expire]);
 
-  const value = useMemo<AdminSession>(() => ({ ...state, login, logout, retry, request }), [state, login, logout, retry, request]);
+  /** Setelah berhasil, flag must_change_password dibaca ulang dari server. */
+  const changePassword = useCallback(async (oldPassword: string, newPassword: string) => {
+    const token = tokenRef.current ?? "";
+    await adminRequest({ token, onUnauthorized: expire }, "/staff/me/password", {
+      method: "POST",
+      body: JSON.stringify({ old_password: oldPassword, password: newPassword }),
+    });
+    const user = await fetchProfile(token);
+    if (tokenRef.current !== token) return;
+    setState({ status: "signed-in", token, user, notice: "" });
+  }, [expire]);
+
+  const value = useMemo<AdminSession>(() => ({ ...state, login, logout, retry, request, changePassword }), [state, login, logout, retry, request, changePassword]);
   return <AdminSessionContext.Provider value={value}>{children}</AdminSessionContext.Provider>;
 }
 

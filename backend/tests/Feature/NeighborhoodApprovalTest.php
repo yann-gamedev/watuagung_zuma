@@ -233,7 +233,7 @@ class NeighborhoodApprovalTest extends TestCase
             ->assertOk()->assertJsonPath('user.rt', '001')->assertJsonPath('user.rw', '002')->json('token');
         $this->app['auth']->forgetGuards();
         $this->withToken($token)->getJson('/api/v1/staff/me')->assertOk()
-            ->assertExactJson(['name' => $user->name, 'username' => $user->username, 'role' => 'rt_head', 'rt' => '001', 'rw' => '002']);
+            ->assertExactJson(['name' => $user->name, 'username' => $user->username, 'role' => 'rt_head', 'rt' => '001', 'rw' => '002', 'must_change_password' => false]);
 
         DB::table('users')->where('id', $user->id)->update(['rt' => null]);
         $this->app['auth']->forgetGuards();

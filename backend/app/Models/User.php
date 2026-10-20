@@ -11,16 +11,18 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-#[Fillable(['name', 'username', 'email', 'password', 'role', 'rt', 'rw'])]
+#[Fillable(['name', 'username', 'email', 'password', 'role', 'rt', 'rw', 'is_active', 'must_change_password', 'last_login_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
+    /** Default aman sebelum baris disimpan; migration juga memberi default yang sama. */
+    protected $attributes = ['is_active' => true, 'must_change_password' => false];
     /** Get the attributes that should be cast.
      * @return array<string, string>
      */
     protected function casts(): array {
-        return ['email_verified_at'=>'datetime','password'=>'hashed','rt'=>AreaCode::class,'rw'=>AreaCode::class];
+        return ['email_verified_at'=>'datetime','password'=>'hashed','rt'=>AreaCode::class,'rw'=>AreaCode::class,'is_active'=>'boolean','must_change_password'=>'boolean','last_login_at'=>'datetime'];
     }
 
     protected static function booted(): void {
@@ -49,7 +51,8 @@ class User extends Authenticatable {
     }
 
     public function canAccessPanel(): bool {
-        return ApplicationStatus::isPanelRole($this->role) && $this->hasValidTerritory();
+        // Akun nonaktif langsung ditolak walau token lamanya belum tercabut.
+        return $this->is_active && ApplicationStatus::isPanelRole($this->role) && $this->hasValidTerritory();
     }
 }
 
