@@ -23,6 +23,13 @@ export class AdminNetworkError extends Error {
  * (services/pelayanan.ts) sengaja tidak dipakai agar status 401 bisa dibedakan.
  */
 export async function adminFetch<T>(path: string, token: string, options: RequestInit = {}): Promise<T> {
+  const response = await send(path, token, options);
+  // Berkas (PDF/PNG) dikembalikan sebagai Blob; token tetap di header, tidak pernah di URL.
+  if (!response.headers.get("Content-Type")?.includes("json")) return (await response.blob()) as T;
+  return (await response.json().catch(() => ({}))) as T;
+}
+
+async function send(path: string, token: string, options: RequestInit): Promise<Response> {
   if (!apiBase) throw new AdminNetworkError("Panel petugas tidak aktif pada demo.");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
@@ -32,7 +39,8 @@ export async function adminFetch<T>(path: string, token: string, options: Reques
       ...options,
       headers: {
         Accept: "application/json",
-        "Content-Type": "application/json",
+        // FormData menentukan Content-Type multipart sendiri.
+        ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
         ...options.headers,
         Authorization: `Bearer ${token}`,
       },
@@ -46,15 +54,15 @@ export async function adminFetch<T>(path: string, token: string, options: Reques
     clearTimeout(timeout);
   }
   if (response.status === 401) throw new AdminUnauthorizedError();
-  const body = (await response.json().catch(() => ({}))) as { message?: string; errors?: Record<string, string[]> };
   if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { message?: string; errors?: Record<string, string[]> };
     if (response.status === 403) throw new Error("Akun ini tidak memiliki akses untuk tindakan tersebut.");
     // Pesan bawaan Laravel untuk 404 berbahasa Inggris dan menyebut nama model internal.
     if (response.status === 404) throw new Error("Permohonan tidak ditemukan. Periksa nomor atau kembali ke daftar.");
     if (response.status === 422 && body.errors) throw new Error(Object.values(body.errors).flat().join(" "));
     throw new Error(body.message || "Layanan belum dapat dihubungi. Coba lagi nanti.");
   }
-  return body as T;
+  return response;
 }
 
 export type AdminRequestSession = {

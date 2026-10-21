@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Api;
 use App\Domain\AccessCode;
 use App\Domain\ApplicationStatus;
+use App\Domain\Letter;
 use App\Domain\LetterType;
 use App\Domain\LetterNumber;
 use App\Http\Controllers\Controller;
@@ -153,6 +154,7 @@ class StaffController extends Controller {
                         'number'=>$letter->number, 'status'=>$letter->status, 'void_reason'=>$letter->void_reason,
                         'issued_at'=>Carbon::parse($letter->issued_at)->toISOString(),
                     ]),
+                'letter'=>LetterController::summary(Letter::find($application)),
             ];
         }
         // Fail closed: do not return private data if recording the access fails.
@@ -181,11 +183,17 @@ class StaffController extends Controller {
             if (ApplicationStatus::requiresNote($data['status']) && $note === null) return response()->json(['message'=>'Catatan wajib diisi.','errors'=>['catatan'=>['Catatan wajib diisi.']]], 422);
             if ($from === 'PROCESSING' && $data['status'] === 'WAITING_APPROVAL') LetterNumber::issue($fresh, $user, $issuedAt);
             if ($from === 'WAITING_APPROVAL' && in_array($data['status'], ['REJECTED', 'NEED_REVISION'], true)) LetterNumber::void($fresh, $note);
+            // Siapa dan kapan Kepala Desa menyetujui, beserta kode verifikasi QR.
+            if ($data['status'] === 'APPROVED') Letter::approve($fresh, $user);
             $fresh->update(['status'=>$data['status'],'catatan'=>$note]);
             DB::table('application_events')->insert(['application_id'=>$fresh->id,'user_id'=>$user->id,'from_status'=>$from,'to_status'=>$data['status'],'note'=>$note,'created_at'=>now()]);
             return $fresh;
         }, 3);
         if ($result instanceof JsonResponse) return $result;
+        if ($result->status === 'APPROVED') {
+            // Persetujuan sudah tersimpan; bila PDF gagal dibuat, unduhan pertama akan mencoba lagi.
+            try { Letter::generate($result); } catch (\Throwable $e) { report($e); }
+        }
         return response()->json([
             'success'=>true,'request_id'=>$result->request_id,'status'=>$result->status,'catatan'=>$result->catatan,
             'allowed_transitions'=>$result->allowedTransitions($user),

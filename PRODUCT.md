@@ -40,7 +40,8 @@ Tujuan pelayanan harus dibedakan dari kemampuan yang sudah tersedia. Tidak ada t
 - Informasi publik: profil desa, sejarah, visi-misi, perangkat desa, berita, agenda, potensi, transparansi, kontak, BUMDes, UMKM, dan statistik.
 - Alur pelayanan: pilih jenis surat → baca persyaratan → isi formulir → terima nomor pengajuan (dan kode akses pada mode API) → cek status → ambil surat di kantor desa.
 - Alur persetujuan (disetujui 20 Oktober 2026): DOMISILI, SKTM, dan pengantar KTP/KK melewati Ketua RT → Ketua RW → petugas desa → kepala desa. SKU tidak berubah dan langsung ke petugas desa. Pengajuan yang sudah melewati tahap awal sebelum fitur ini tidak diulang dari RT/RW.
-- Persetujuan RT/RW tetap dicatat di sistem; belum ada PDF, tanda tangan elektronik (TTE), stempel digital, atau notifikasi.
+- Persetujuan RT/RW tetap dicatat di sistem; tidak ada surat pengantar PDF, tanda tangan elektronik (TTE), stempel digital, atau notifikasi.
+- **[BARU] Penerbitan surat (21 Oktober 2026):** surat sah setelah Kepala Desa menyetujui (`APPROVED`). Sistem mencatat siapa dan kapan, lalu membuat PDF final dari template sementara dengan QR verifikasi. Karena template resmi desa belum diterima, petugas juga dapat mengunggah surat yang disusun manual (QR ditempel, ditandatangani basah, distempel, lalu dipindai) untuk menggantikan PDF otomatis. PDF hanya untuk kantor desa dan Kepala Desa; warga tetap mengambil surat fisik di kantor desa.
 - Empat formulir: SKU, domisili, SKTM, dan pengantar KTP/KK.
 - Prototipe Vercel berjalan sebagai demo statis dengan data fiktif, bukan layanan resmi. Status pengajuan demo tidak bergerak otomatis.
 - Bukti simulasi hanya tersedia di browser/origin yang sama; menghapus penyimpanan browser menghapus riwayat. Alur demo hanya menambah jenis surat pada bukti tersimpan dan tidak menyimpan identitas pemohon; bukti demo lama tanpa jenis surat tidak menampilkan linimasa.
@@ -60,11 +61,17 @@ Tujuan pelayanan harus dibedakan dari kemampuan yang sudah tersedia. Tidak ada t
 - Fondasi tabel resident terenkripsi, seeder dummy, dan feature test backend.
 - Autofill NIK memakai tiga identitas dummy frontend. Ini bukan akses Dukcapil, bukan verifikasi identitas, dan belum terhubung ke database resident.
 
+- **[BARU] Surat PDF dan verifikasi QR:** draf PDF bertanda DRAF untuk kantor, PDF final ber-QR saat `APPROVED`, unggah surat manual hasil pindaian, dan halaman publik `/verifikasi/` yang hanya menampilkan nomor surat, jenis surat, tanggal terbit, nama tersamar, serta status sah/dibatalkan. Kop, nama Kepala Desa, dan isi template masih `[PLACEHOLDER]`.
+
+### **[BARU] Catatan hukum: QR verifikasi bukan TTE**
+
+QR verifikasi **bukan** Tanda Tangan Elektronik tersertifikasi. TTE yang sah setara tanda tangan basah membutuhkan sertifikat dari Penyelenggara Sertifikasi Elektronik (misalnya BSrE). Sampai integrasi itu ada, surat tetap dicetak dan ditandatangani basah serta distempel oleh Kepala Desa, dan QR hanya berfungsi sebagai alat cek keaslian. Jangan menulis di halaman mana pun bahwa surat "ditandatangani secara elektronik".
+
 ### Belum tersedia
 
 - Pengaduan warga.
 - Unggah dokumen persyaratan.
-- Penerbitan surat/PDF.
+- Template surat resmi desa dan Tanda Tangan Elektronik tersertifikasi (BSrE).
 - Pengelolaan konten (profil, berita, BUMDes, UMKM) melalui backend; konten masih tersimpan di `lib/data.ts`.
 - Pemulihan kode akses / OTP.
 

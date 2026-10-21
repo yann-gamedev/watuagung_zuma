@@ -8,7 +8,7 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import { z } from "zod";
 import { StatusBadge, statusLabels } from "@/components/site";
 import { services } from "@/lib/data";
-import { statuses, type StaffAccessCodeResponse, type StaffApplicationDetail, type StaffStatusResponse, type Status } from "@/types/pelayanan";
+import { statuses, type LetterFile, type StaffAccessCodeResponse, type StaffApplicationDetail, type StaffStatusResponse, type Status } from "@/types/pelayanan";
 import { AdminUnauthorizedError } from "./api";
 import { useAdminSession } from "./session";
 import { buildApplicationsHref, parseApplicationFilters, parseApplicationSection } from "./application-filters";
@@ -30,6 +30,7 @@ const detailSchema = z.object({
   nama_usaha: z.string().nullable(), jenis_usaha: z.string().nullable(), alamat_usaha: z.string().nullable(),
   keperluan: z.string(), catatan: z.string().nullable(), can_reset_access_code: z.boolean(),
   letter_numbers: z.array(z.object({ number: z.string(), status: z.enum(["issued", "void"]), void_reason: z.string().nullable(), issued_at: z.string() })).optional(),
+  letter: z.object({ approved_at: z.string(), source: z.enum(["generated", "uploaded"]).nullable(), sha256: z.string().nullable(), file_updated_at: z.string().nullable() }).nullable().optional(),
   history: z.array(z.object({ action: z.enum(["ACCESS_CODE_RESET"]).nullable(), from_status: z.enum(statuses).nullable(), to_status: z.enum(statuses),
     note: z.string().nullable(), staff_name: z.string().nullable(), created_at: z.string() })),
 });
@@ -38,6 +39,71 @@ function lowerLabel(status: Status) {
 }
 function dateTime(value: string) {
   return new Date(value).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" });
+}
+const draftStatuses: Status[] = ["PROCESSING", "WAITING_APPROVAL"];
+const finalStatuses: Status[] = ["APPROVED", "READY_FOR_PICKUP", "COMPLETED"];
+const uploadStatuses: Status[] = ["APPROVED", "READY_FOR_PICKUP"];
+
+/** Draf/surat final/QR: diambil dengan token di header lalu dibuka dari blob, bukan dari URL ber-token. */
+function LetterFiles({ detail, role }: { detail: StaffApplicationDetail; role: string }) {
+  const { request } = useAdminSession();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [letter, setLetter] = useState(detail.letter ?? null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const office = role === "staff" || role === "admin";
+  const base = `/staff/applications/${encodeURIComponent(detail.request_id)}`;
+  const draft = draftStatuses.includes(detail.status);
+  const final = finalStatuses.includes(detail.status) && letter;
+  if (!draft && !final) return null;
+
+  async function open(path: string, filename: string, download: boolean) {
+    setBusy(true); setError(""); setNotice("");
+    // Jendela dibuka sebelum await agar tidak diblokir browser.
+    const view = download ? null : window.open("", "_blank");
+    try {
+      const url = URL.createObjectURL(await request<Blob>(path));
+      if (view) view.location.href = url;
+      else { const link = document.createElement("a"); link.href = url; link.download = filename; link.click(); }
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      view?.close();
+      if (!(e instanceof AdminUnauthorizedError)) setError(e instanceof Error ? e.message : "Gagal mengambil berkas.");
+    } finally { setBusy(false); }
+  }
+  async function upload(file: File) {
+    setBusy(true); setError(""); setNotice("");
+    const body = new FormData(); body.append("file", file);
+    try {
+      const result = await request<{ letter: LetterFile }>(`${base}/letter.pdf`, { method: "POST", body });
+      setLetter(result.letter); setNotice("Surat hasil pindaian tersimpan dan menggantikan PDF otomatis.");
+    } catch (e) {
+      if (!(e instanceof AdminUnauthorizedError)) setError(e instanceof Error ? e.message : "Gagal mengunggah surat.");
+    } finally { setBusy(false); if (fileRef.current) fileRef.current.value = ""; }
+  }
+  return <section className={styles.card}><h2>Surat</h2>
+    {draft ? <p>Draf memakai format sementara dan bertanda DRAF. Surat final dibuat setelah Kepala Desa menyetujui.</p> : letter && <>
+      <p>Disetujui Kepala Desa <time dateTime={letter.approved_at}>{dateTime(letter.approved_at)}</time>.{" "}
+        {letter.source === "uploaded" ? "Berkas: surat hasil pindaian yang diunggah petugas." : "Berkas: PDF otomatis format sementara."}</p>
+      {letter.sha256 && <p className={styles.identity}>SHA-256: {letter.sha256}</p>}
+      <p>QR hanya untuk memeriksa keaslian, bukan tanda tangan elektronik. Surat tetap ditandatangani basah dan distempel.</p>
+    </>}
+    {notice && <p className={styles.notice} role="status">{notice}</p>}
+    {error && <p className="error-box" role="alert">{error}</p>}
+    <div className={styles.buttons}>
+      {draft && <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void open(`${base}/letter.pdf`, `draf-${detail.request_id}.pdf`, false)}>Lihat draf PDF</button>}
+      {final && <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void open(`${base}/letter.pdf`, `surat-${detail.request_id}.pdf`, true)}>Unduh surat final</button>}
+      {final && office && <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void open(`${base}/letter-qr.png`, `qr-${detail.request_id}.png`, true)}>Unduh QR verifikasi</button>}
+    </div>
+    {final && office && uploadStatuses.includes(detail.status) && <>
+      <label htmlFor="letter-upload">Unggah surat hasil pindaian (PDF, maks. 5 MB)</label>
+      <p id="letter-upload-help">Untuk surat yang disusun manual: tempel QR verifikasi, cetak, tanda tangani dan stempel, lalu pindai. Berkas ini menggantikan PDF otomatis.</p>
+      <input ref={fileRef} id="letter-upload" type="file" accept="application/pdf" aria-describedby="letter-upload-help" disabled={busy}
+        onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file); }} />
+    </>}
+    {busy && <p role="status">Memproses berkas...</p>}
+  </section>;
 }
 
 export function ApplicationDetail() {
@@ -196,6 +262,7 @@ function DetailContent({ id }: { id: string }) {
                 {letter.number.includes("[PLACEHOLDER]") && <dd>Format sementara, menunggu ketentuan resmi desa.</dd>}
               </div>)}</dl> : <p>Belum ada nomor surat yang tercatat. Nomor diberikan saat diajukan ke Kepala Desa; permohonan lama tidak diberi nomor secara retroaktif.</p>}
             </section>}
+            {!neighborhood && user && <LetterFiles key={`${detail.status}-${detail.letter?.file_updated_at}`} detail={detail} role={user.role} />}
             <section className={styles.card}><h2>Riwayat status</h2>
               {detail.history.length ? <ol className={styles.timeline}>{detail.history.map((event, index) => <li key={`${event.created_at}-${index}`}>
                 <h3>{event.action === "ACCESS_CODE_RESET" ? "Kode akses dibuat ulang" : <>{event.from_status ? `${statusLabels[event.from_status]} → ` : ""}{statusLabels[event.to_status]}</>}</h3>

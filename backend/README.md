@@ -70,6 +70,10 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | POST | `/staff/applications/{request_id}/lookup-secret` | Staff, admin, rt_head, rw_head (10/menit) | Membuat ulang kode akses; hanya untuk status non-COMPLETED. Kode lama langsung tidak berlaku. Kode baru hanya ada di respons ini. |
 | GET | `/staff/applications/{request_id}` | Token lima peran panel | Detail data pemohon, `allowed_transitions`, dan `history`; ketua RT/RW hanya wilayahnya dengan field terbatas; setiap akses berhasil dicatat di `audit_logs` |
 | PATCH | `/staff/applications/{request_id}/status` | Token petugas | Body `status` dan `catatan` opsional; respons memuat `status`, `catatan`, dan `allowed_transitions` baru |
+| GET | `/staff/applications/{request_id}/letter.pdf` | Staff, admin, village_head (30/menit) | Draf (PROCESSING/WAITING_APPROVAL) atau surat final (sejak APPROVED); diaudit |
+| POST | `/staff/applications/{request_id}/letter.pdf` | Staff, admin (10/menit) | Multipart `file` PDF ≤ 5 MB; mengganti PDF otomatis dengan surat hasil pindaian |
+| GET | `/staff/applications/{request_id}/letter-qr.png` | Staff, admin | Gambar QR verifikasi untuk ditempel pada surat manual |
+| GET | `/verify/{kode}` | Publik, 30 permintaan/menit | Metadata surat tersamar untuk halaman verifikasi QR |
 
 Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Untuk SKU, `nama_usaha`, `jenis_usaha`, dan `alamat_usaha` wajib diisi. Validasi yang gagal mengembalikan HTTP 422 dengan objek `errors`.
 
@@ -112,6 +116,21 @@ Filter digabung dengan AND; pasangan pencarian nomor/nama dikelompokkan dengan O
 - Detail pengajuan menambah `letter_numbers: [{ number, status, void_reason, issued_at }]` hanya untuk tiga peran kantor, berurutan kronologis berdasarkan ID. RT/RW tidak menerima field ini. Pengajuan tanpa nomor menerima array kosong.
 - Cek status publik menambah `letter_number: string | null`: hanya nomor `issued` saat `APPROVED`, `READY_FOR_PICKUP`, atau `COMPLETED`. Status lain, nomor batal, dan pengajuan lama tanpa nomor menghasilkan `null`; riwayat nomor tidak dikirim ke publik.
 - Jalankan `php artisan migrate` untuk migration `2026_10_23_000000_create_letter_numbers`. **Tidak ada backfill** untuk pengajuan lama yang sudah menunggu persetujuan/disetujui; alur lama tetap dapat dilanjutkan tanpa nomor. Fitur ini belum membuat PDF, TTE, stempel digital, atau notifikasi.
+
+### Surat PDF dan verifikasi QR
+
+Dependensi: `barryvdh/laravel-dompdf` (PDF dari Blade) dan `bacon/bacon-qr-code` (QR PNG lewat ekstensi GD). Jalankan `php artisan migrate` untuk `2026_10_24_000000_create_letters`.
+
+- Template Blade di `resources/views/letters/` (`layout` + `sku`, `domisili`, `sktm`, `ktp_kk`). Kop, kabupaten, kecamatan, alamat kantor, dan nama Kepala Desa dari `config/letters.php` `desa` masih **`[PLACEHOLDER]`**; footer "Format sementara" dihapus setelah template resmi diterapkan.
+- **Draf:** `GET …/letter.pdf` saat `PROCESSING`/`WAITING_APPROVAL` membuat PDF bertanda **DRAF** tanpa QR, tidak disimpan. Audit `letter.draft_viewed`.
+- **Persetujuan:** `WAITING_APPROVAL → APPROVED` oleh Kepala Desa menyisipkan baris `letters` (`approved_by`, `approved_at`, `verification_code` 32 karakter acak, unik) dalam transaksi yang sama. Setelah commit PDF final dibuat dari template dengan QR `LETTER_VERIFY_URL?kode=<kode>`; bila gagal, persetujuan tetap tersimpan dan PDF dibuat saat unduhan pertama.
+- **Final:** sejak `APPROVED` (juga `READY_FOR_PICKUP`, `COMPLETED`). Berkas disimpan di disk privat `local` (`storage/app/private/letters/`), **dienkripsi dengan APP_KEY** karena memuat NIK/alamat; `sha256` adalah hash PDF asli. Setiap unduhan → audit `letter.downloaded`. Status lain → 404.
+- **Unggah manual:** staff/admin, saat `APPROVED`/`READY_FOR_PICKUP`. Field `file`, ≤ 5 MB, isi wajib diawali `%PDF-`. Menggantikan PDF otomatis (file lama dihapus), kode QR tidak berubah, `source=uploaded`, `uploaded_by`, audit `letter.uploaded`. Status lain → 422.
+- **QR:** `GET …/letter-qr.png` (staff/admin) untuk ditempel pada surat yang disusun manual.
+- Peran lain (RT/RW) → 403; tanpa token → 401; nomor tidak valid → 422.
+- Detail kantor menambah `letter: { approved_at, source, sha256, file_updated_at } | null`; kode verifikasi dan path tidak dikirim. RT/RW tidak menerima field ini.
+- **Verifikasi publik** `GET /verify/{kode}`: hanya `{ number, jenis_surat, issued_at, nama, status }`. `nama` disamarkan (`Siti Wulandari` → `S*** W********`); `status` `valid`, atau `revoked` bila nomor surat terakhir dibatalkan. Tanpa NIK, KK, alamat, telepon, isi surat, atau nomor pengajuan. Kode tidak ditemukan/format salah → 404. `Cache-Control: no-store`.
+- QR **bukan** Tanda Tangan Elektronik tersertifikasi (lihat `PRODUCT.md`). Mengganti `APP_KEY` membuat PDF tersimpan tidak terbaca.
 
 ### Detail pengajuan dan audit akses
 
@@ -169,7 +188,7 @@ Baris berikutnya (`NEED_REVISION` dan seterusnya) sama dengan tabel SKU.
 - Status dibaca ulang dengan kunci baris di dalam transaksi, sehingga klien dengan data usang tidak bisa mengulang transisi. Setiap perubahan dicatat di `application_events` beserta `user_id`.
 - Semua peran memakai satu ability token `applications:manage`; peran diperiksa ulang pada setiap permintaan.
 
-`APPROVED` **belum** berarti surat/PDF telah dibuat; `READY_FOR_PICKUP` ditandai petugas setelah surat fisik siap. `RT_APPROVED`/`RW_APPROVED` hanya catatan persetujuan di sistem: tidak ada PDF pengantar, TTE, stempel digital, atau notifikasi.
+`APPROVED` mencatat persetujuan Kepala Desa dan membuat PDF final ber-QR (lihat bagian Surat PDF); `READY_FOR_PICKUP` ditandai petugas setelah surat fisik siap. `RT_APPROVED`/`RW_APPROVED` hanya catatan persetujuan di sistem: tidak ada PDF pengantar, TTE, stempel digital, atau notifikasi.
 
 Migration `2026_10_20_000000_add_neighborhood_territories` menambah kolom `rt`/`rw` nullable di `users` dan hanya menormalkan `rt`/`rw` pengajuan lama ke 3 digit. Status pengajuan lama tidak diubah: pengajuan DOMISILI/SKTM/KTP_KK yang sudah melewati `SUBMITTED` tetap berjalan tanpa diulang dari RT/RW.
 
@@ -182,7 +201,7 @@ Migration `2026_10_20_000000_add_neighborhood_territories` menambah kolom `rt`/`
 - Token petugas berlaku `SANCTUM_EXPIRATION` menit sejak login (bawaan 480 menit = 8 jam kerja; atur di `.env`, lalu `php artisan config:clear` bila konfigurasi di-cache). Token kedaluwarsa atau dicabut menghasilkan 401.
 - Frontend menyimpan token di `sessionStorage` tab dan memvalidasinya lewat `/staff/me`; menutup tab menghapus sesi. Jangan simpan token dalam URL atau localStorage.
 - Token kedaluwarsa dihapus dari database oleh `sanctum:prune-expired --hours=24` yang dijadwalkan harian di `routes/console.php`. Scheduler harus dijalankan: di server tambahkan cron `* * * * * php artisan schedule:run`; secara lokal gunakan `php artisan schedule:work`. Cek jadwal dengan `php artisan schedule:list`.
-- Belum ada PDF, unggah dokumen, OTP, atau pengelolaan konten. Jangan menguji dengan data pribadi nyata.
+- Belum ada unggah dokumen persyaratan, OTP, TTE, atau pengelolaan konten. Jangan menguji dengan data pribadi nyata.
 
 ## Sebelum produksi
 
