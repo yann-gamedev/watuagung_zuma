@@ -1982,6 +1982,28 @@ p {
 .service-preparation li + li {
   margin-top: 8px;
 }
+.service-steps {
+  margin-top: 48px;
+}
+.service-steps h2 {
+  font-size: 26px;
+  line-height: 1.2;
+}
+.service-steps-note {
+  max-width: 36rem;
+  margin-top: 24px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.55;
+}
+@media (min-width: 901px) {
+  .service-steps {
+    margin-top: 96px;
+  }
+  .service-steps h2 {
+    font-size: 38px;
+  }
+}
 .service-page .status-strip {
   justify-content: space-between;
   flex-wrap: wrap;
