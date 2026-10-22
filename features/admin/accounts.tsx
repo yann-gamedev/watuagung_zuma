@@ -5,6 +5,7 @@ import { Copy, Plus, RefreshCw, RotateCcw } from "lucide-react";
 import type { StaffAccountWarning, StaffRole, StaffUser, StaffUsersResponse } from "@/types/pelayanan";
 import { useAdminSession } from "./session";
 import styles from "./accounts.module.css";
+import shellStyles from "./shell.module.css";
 
 const roleLabels: Record<StaffRole, string> = {
   staff: "Petugas",
@@ -410,7 +411,7 @@ function Dialog({ open, onClose, title, children }: { open: boolean; onClose: ()
   }, [open]);
 
   return (
-    <dialog ref={ref} className="admin-dialog" aria-labelledby={id} onClose={onClose}>
+    <dialog ref={ref} className={`${shellStyles.dialog} ${styles.dialog}`} aria-labelledby={id} onClose={onClose}>
       <h2 id={id}>{title}</h2>
       {children}
     </dialog>

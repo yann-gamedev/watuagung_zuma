@@ -51,3 +51,7 @@ next-env.d.ts
 /composer.phar
 /backend/database/database.sqlite
 
+# Private Claude instructions/settings at any depth (case-insensitive).
+[Cc][Ll][Aa][Uu][Dd][Ee].[Mm][Dd]
+.[Cc][Ll][Aa][Uu][Dd][Ee]/
+

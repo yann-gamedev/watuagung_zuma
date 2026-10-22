@@ -19,6 +19,30 @@ Website desa dan prototipe pelayanan administrasi. Proyek ini terdiri dari front
 
 Panduan endpoint dan persiapan Laravel terdapat di [backend/README.md](backend/README.md).
 
+## File Claude lokal dan pengaman push
+
+`CLAUDE.md` dan folder `.claude/` di semua tingkat folder (tanpa membedakan huruf besar/kecil) tidak boleh dilacak atau dikirim ke GitHub. Markdown lain tetap diperbolehkan. Penghapusan dari Git tidak menghapus salinan lokal maupun riwayat yang sudah dipublikasikan.
+
+Aktifkan pengaman di **setiap clone** dari root repositori:
+
+```powershell
+git config --local core.hooksPath .githooks
+node scripts/test-private-files.mjs
+```
+
+Hook `pre-push` memeriksa isi akhir dan perubahan pada commit yang akan dikirim, termasuk file yang ditambahkan lalu dihapus. Untuk branch baru, commit yang sudah tercatat pada remote tujuan dikecualikan dari pemeriksaan riwayat; jalankan `git fetch` agar referensi remote mutakhir. Node.js wajib tersedia; pemeriksaan yang gagal membatalkan push. Hook lokal dapat dilewati dengan `--no-verify`, bukan pengganti aturan server GitHub.
+
+Untuk menonaktifkan atribusi otomatis Claude pada commit/PR berikutnya, gabungkan pengaturan ini ke `.claude/settings.json` **lokal**, tanpa menimpa pengaturan lain:
+
+```json
+{
+  "attribution": { "commit": "", "pr": "" },
+  "includeCoAuthoredBy": false
+}
+```
+
+Ini tidak menghapus atribusi Claude dari commit atau daftar kontributor lama.
+
 ## Menjalankan di komputer lokal
 
 Siapkan Node.js 22.13+ dan PHP 8.3+. Jalankan backend dan frontend dalam **dua terminal terpisah**. Perintah berikut ditulis untuk PowerShell di Windows.

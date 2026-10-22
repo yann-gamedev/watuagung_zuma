@@ -9,6 +9,33 @@
   max-width: 36rem;
 }
 
+.dialog {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.dialog > h2 {
+  margin-bottom: 20px;
+}
+
+.dialog :global(.fields) {
+  gap: 24px;
+}
+
+.dialog :global(.field) {
+  min-width: 0;
+}
+
+.dialog label {
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.dialog :focus-visible {
+  outline: 3px solid var(--leaf);
+  outline-offset: 4px;
+}
+
 .panel {
   min-width: 0;
   padding: 24px;
@@ -209,7 +236,7 @@
   .actions,
   .actions .btn,
   .formActions,
-  .formActions .btn {
+  .formActions :global(.btn) {
     width: 100%;
   }
 }
