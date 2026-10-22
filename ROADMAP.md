@@ -1,10 +1,30 @@
 # Watuagung — Roadmap Pengembangan
 
-> Disusun 15 Oktober 2026 dari kondisi repositori saat itu. Urutan modul mengikuti ketergantungan; jangan memulai modul sebelum modul yang dibutuhkannya selesai. Tandai `[x]` saat selesai dan terverifikasi.
+> Disusun 15 Oktober 2026; status disinkronkan 22 Oktober 2026 terhadap kode pada `2f788bf` dan catatan progres. Urutan modul mengikuti ketergantungan; jangan memulai modul sebelum modul yang dibutuhkannya selesai.
+>
+> `[x]` berarti butir tersebut selesai dengan bukti verifikasi yang dicatat, bukan seluruh modul siap produksi. `[ ]` berarti belum selesai: belum dibuat, menunggu pengujian, atau menunggu keputusan/data. Implementasi dan pengujian lanjutan dipisahkan agar tidak tertukar. Hasil tes di bawah adalah riwayat sesi terkait, bukan hasil menjalankan ulang tes saat sinkronisasi ini.
 
-## Kondisi awal
+## Ringkasan status terkini
 
-**Sudah ada:**
+| Modul | Status | Sisa utama |
+|---|---|---|
+| M0 — Fondasi | Sebagian selesai | Aturan backend, logo penuh/512px, logo sederhana |
+| M1 — UI | Mayoritas implementasi selesai | Verifikasi berita (masih dikunci pengguna) dan review visual tertunda |
+| M2 — Status/peran | Selesai sesuai checklist | Perluasan RT/RW dicatat di M2a |
+| M2a — RT/RW | Implementasi dan uji API selesai | Review visual antrean 390px/1440px |
+| M3 — Dashboard | Sebagian selesai; manajemen akun sudah ada | Ringkasan per status, uji manual akun dan review visual |
+| M3a — Register | Implementasi selesai | Uji konkurensi multiproses dan browser dengan Laravel |
+| M4 — Pengaduan | Belum dibuat | Kategori/penanggung jawab desa, backend dan frontend |
+| M5 — CMS | Belum dibuat; menunggu K2/K4 | Hosting, pengelola konten, backend dan frontend |
+| M6 — Lampiran persyaratan | Belum dibuat | Unggah privat, batas file, retensi; berbeda dari unggah surat final M7 |
+| M7 — PDF/QR | Implementasi dengan template sementara selesai | Format resmi desa, uji browser Laravel dan pindai QR; TTE di luar lingkup |
+| M8 — Produksi | Belum siap operasional | Infrastruktur, privasi/retensi, prosedur bantuan, verifikasi keamanan |
+
+Sumber: kode/route API, file yang terlacak Git, `docs/progres-2026-10-21.md`, `docs/progres-2026-10-22.md`, dan verifikasi sesi perbaikan layout (`603b267`, `2f788bf`). Status ini menggambarkan branch kerja lokal, bukan bukti semua perubahan telah digabung ke `main` atau di-deploy.
+
+## Kondisi awal — arsip 15 Oktober 2026
+
+**Sudah ada saat itu (bukan daftar kemampuan terkini):**
 
 - `POST /api/v1/applications`: pengajuan 4 jenis surat, rate limit 5/menit, field sensitif terenkripsi.
 - `POST /api/v1/applications/status`: cek status dengan nomor + kode akses (di-hash), rate limit 10/menit.
@@ -31,9 +51,11 @@
 
 ## M0 — Dokumen dan fondasi
 
-- [ ] Commit `PRODUCT.md`, `DESIGN.md`, `ROADMAP.md`, dan `AGENTS.md` ke repo
-- [ ] Putuskan nasib `backend/AGENTS.md` / `backend/CLAUDE.md` (bootstrap Laravel Boost): pasang Boost dengan sadar, atau ganti dengan aturan backend sendiri
-- [ ] Simpan logo di `public/brand/` (penuh + versi teroptimasi 512px dan 128px)
+- [x] Commit `PRODUCT.md`, `DESIGN.md`, `ROADMAP.md`, dan `AGENTS.md` ke repo — semuanya sudah terlacak Git.
+- [x] Pengaman file Claude (`8f057f5`): abaikan `CLAUDE.md` dan `.claude/` di semua tingkat folder tanpa membedakan huruf besar/kecil; file Claude lama dilepas dari pelacakan tanpa menghapus salinan lokal. Hook `pre-push` dan self-test tersedia; aktif di clone ini, perlu aktivasi di clone lain. Markdown lain tetap boleh di-push. Hook lokal bukan larangan server GitHub dan tidak menghapus riwayat lama.
+- [ ] Putuskan aturan `backend/AGENTS.md` yang masih berisi bootstrap Laravel Boost: pasang Boost dengan persetujuan dependensi, atau ganti dengan aturan backend sendiri. File `CLAUDE.md` tetap privat dan tidak menjadi dokumen repo.
+- [x] Logo teroptimasi 128px tersimpan dan terlacak di `public/brand/logo-watuagung-128.png`.
+- [ ] Lengkapi logo penuh dan versi teroptimasi 512px di `public/brand/` — belum terlacak di lokasi ini.
 - [ ] Minta desainer membuat logo versi sederhana (siluet satu warna) untuk favicon dan header kecil
 
 ## M1 — Redesign UI (frontend saja)
@@ -45,7 +67,7 @@ Dasar: `DESIGN.md` + kanvas mockup. Tidak menyentuh `backend/`. Satu butir = sat
 - [x] Footer baru dengan logo dan atribusi foto
 - [x] Beranda: hero, panel tugas, daftar layanan, cara mengajukan — implementasi, lint, tsc, build, dan tes demo selesai; pemeriksaan visual 390px/1440px diambil alih pengguna, menunggu hasil review.
 - [x] Beranda: profil singkat, kabar desa, BUMDes/UMKM, kontak — implementasi, lint, tsc, build, tautan dan pengukuran layout 390px/1440px selesai; review visual screenshot tertunda karena tab browser alat tidak terlihat.
-- [x] Halaman `/pelayanan` dan detail layanan (persyaratan lengkap) — daftar bersama beranda, panel “Siapkan dulu”, PageHeading ringkas; lint, tsc, build, pemeriksaan 390px/1440px lulus.
+- [x] Halaman `/pelayanan` dan detail layanan (persyaratan lengkap) — daftar bersama beranda, panel “Siapkan dulu”, PageHeading ringkas; lint, tsc, build, pemeriksaan 390px/1440px lulus. Perbaikan “Cara mengajukan surat” (`603b267`) memakai tiga langkah bernomor dan catatan alur terpisah; lint, tsc, build serta pengukuran layout 390px/1440px lulus, screenshot perbaikan belum diperiksa.
 - [x] Formulir pengajuan: hanya tampilan, logika tetap — kelompok field, input dan error terbaca; pengajuan SKU fiktif tanpa URL API sampai halaman sukses terverifikasi di browser.
 - [x] Halaman sukses dan cek status: hanya tampilan, logika tetap — salin terpisah, peringatan kode akses, badge dan linimasa 5 tahap; lint, tsc, build, tes demo, alur simulasi, serta pemeriksaan visual 390px/1440px lulus. UI mode API diuji dengan respons tiruan, bukan backend langsung.
 - [x] Halaman informasi (`[slug]`: profil, sejarah, visi-misi, perangkat desa, pengumuman, agenda, potensi, transparansi, kontak) — kartu terbaca, tombol bawah profil dipertahankan, kontak placeholder; lint, tsc, build seluruh 9 slug dan pengukuran 390px/1440px lulus. Baris navigasi di bawah PageHeading dihapus sesuai koreksi pengguna; screenshot profil/perangkat desa diperiksa ulang. Isi dan susunan kartu profil dipertahankan.
@@ -54,6 +76,8 @@ Dasar: `DESIGN.md` + kanvas mockup. Tidak menyentuh `backend/`. Satu butir = sat
 - [x] Penjelasan "Pengaduan — segera hadir" di `/kontak` — badge dan arahan menyampaikan pengaduan langsung ke kantor desa, tanpa formulir palsu atau route baru.
 - [x] Panel admin: sesuaikan token dan tipografi saja — forest/cream, logo 128px ditampilkan 56px, tabel 15–16px, sidebar hanya mode API; lint, tsc, build, build demo dan pemeriksaan 390px/1440px lulus dengan API tiruan. Logika login/filter/status tetap.
 - [x] Audit polish M1 di luar berita — CSS berkurang bersih 262 baris, dua eyebrow ekonomi dihapus, 1.254 tautan internal valid; pengecualian hex/teks kecil dicatat di `docs/progres-2026-10-17.md`. Halaman berita tetap dikunci pengguna; M1 keseluruhan belum dinyatakan selesai.
+
+- [ ] Tuntaskan review visual 390px/1440px yang masih tertunda: beranda atas/bawah dan perbaikan langkah `/pelayanan`. Pengukuran layout bukan pengganti pemeriksaan visual; verifikasi berita tetap butir terpisah di atas.
 
 **Selesai jika:** lint, tsc, dan build lulus; dicek di 390px dan 1440px; tidak ada perubahan perilaku formulir/API.
 
@@ -81,7 +105,8 @@ Bergantung pada M2 dan M3 (detail permohonan). Disetujui pengguna 20 Oktober 202
 - [x] Antrean `/admin/antrean-rt` dan `/admin/antrean-rw` dengan pilihan menunggu keputusan/riwayat baca-saja sesuai `DESIGN.md`
 - [x] Migration hanya menormalkan kode wilayah; pengajuan lama yang sudah berjalan tidak diulang dari RT/RW
 - [x] `staff:create` menerima `--rt`/`--rw`; dokumentasi `backend/README.md` dan `docs/integrasi.md` diperbarui
-- [ ] Verifikasi: `php artisan test`, lint, tsc, build, build demo, test:demo lulus (20 Okt 2026); uji API manual SKTM sampai COMPLETED lulus; **pemeriksaan visual 390px/1440px menunggu pengguna**
+- [x] Verifikasi teknis: `php artisan test`, lint, tsc, build, build demo, test:demo lulus (20 Okt 2026); uji API manual SKTM sampai COMPLETED lulus.
+- [ ] Pemeriksaan visual antrean RT/RW pada 390px/1440px — menunggu pengguna.
 
 ## M3 — Dashboard admin
 
@@ -90,9 +115,12 @@ Bergantung pada M2, kecuali fondasi sesi dan kerangka (disetujui pengguna untuk 
 - [x] Fondasi: sesi petugas persisten per tab (`sessionStorage` + `GET /staff/me`), token kedaluwarsa 480 menit (`SANCTUM_EXPIRATION`) dan prune terjadwal, 401 kembali ke login dengan pesan; kerangka sidebar + bilah atas + panel geser ≤ 900px; menu hanya Dashboard/Permohonan/Surat disetujui. Backend test, lint, tsc, build, build:demo, dan pemeriksaan browser 390px/1440px dengan Laravel lokal lulus.
 - [ ] Ringkasan jumlah pengajuan per status (endpoint baru) — sesi A4
 - [x] Pencarian berdasarkan nomor pengajuan — juga nama pemohon (nama di `q` disetujui pengguna), filter status/jenis surat, urutan, dan pagination dengan query string.
-- [x] Halaman detail pengajuan: data pemohon untuk tiga peran panel, riwayat status dari `application_events`, aksi dari `allowed_transitions`, dan audit `application.viewed` di `audit_logs`.
+- [x] Halaman detail pengajuan: data pemohon untuk staff/admin/village_head, riwayat status dari `application_events`, aksi dari `allowed_transitions`, dan audit `application.viewed` di `audit_logs`. Akses RT/RW dengan pembatasan wilayah dan data ditambahkan di M2a.
 - [x] Antrean kepala desa: daftar yang menunggu persetujuan (`/admin/persetujuan`, dikerjakan bersama M2)
-- [ ] Manajemen akun petugas (khusus `admin`) — tambah/ubah/nonaktifkan akun, reset kata sandi sementara, ganti kata sandi sendiri, batas satu ketua RT/RW aktif per wilayah, dan peringatan wilayah tanpa ketua aktif
+- [x] Implementasi manajemen akun petugas (khusus `admin`) — tambah/ubah/nonaktifkan akun, reset kata sandi sementara, ganti kata sandi sendiri, batas satu ketua RT/RW aktif per wilayah, dan peringatan wilayah tanpa ketua aktif. Backend dicakup `StaffAccountsTest`; lint, tsc, build, build demo dan test:demo lulus setelah perbaikan build (lihat `docs/progres-2026-10-22.md`).
+- [x] Perbaikan layout dialog reset kata sandi (`2f788bf`): memakai gaya dialog bersama; lint, tsc, build lulus. Pengukuran markup contoh dengan CSS hasil build pada 390px/1440px menunjukkan dialog terpusat tanpa overflow; bukan uji alur backend atau pemeriksaan screenshot.
+- [ ] Uji manual akun dengan Laravel: admin membuat akun → login dengan kata sandi sementara → wajib ganti kata sandi → reset kata sandi/nonaktifkan akun → pastikan sesi lama tidak berlaku.
+- [ ] Pemeriksaan visual halaman akun dan dialog pada 390px/1440px dengan alur aplikasi sebenarnya.
 
 ## M3a — Penomoran dan buku registrasi surat
 
@@ -102,7 +130,9 @@ Dipisahkan dari M7/PDF atas persetujuan pengguna 21 Oktober 2026; bergantung pad
 - [x] Nomor batal beserta alasan saat Kepala Desa menolak/meminta perbaikan; nomor tidak dipakai ulang. Tidak ada penomoran retroaktif untuk permohonan lama.
 - [x] API buku registrasi untuk staff/admin/village_head; detail kantor memuat riwayat nomor, cek status warga memuat nomor aktif sejak APPROVED.
 - [x] `/admin/register`: filter tahun/jenis, pagination, tanda nomor batal; tanpa ekspor/PDF.
-- [x] Tes backend (155 tes, 1.668 assertions), lint, tsc, build, build demo, test:demo, dan pemeriksaan register 390px/1440px dengan API tiruan lulus. Belum uji konkurensi multiproses atau browser end-to-end Laravel.
+- [x] Tes backend (155 tes, 1.668 assertions pada sesi register), lint, tsc, build, build demo, test:demo, dan pemeriksaan register 390px/1440px dengan API tiruan lulus.
+- [ ] Uji penomoran simultan multiproses; ulangi pengujian pada database produksi setelah K3 diputuskan.
+- [ ] Uji browser end-to-end register dengan Laravel langsung (bukan API tiruan).
 
 ## M4 — Pengaduan warga
 
@@ -141,7 +171,8 @@ Bergantung pada K5 dan M2.
 - [x] Draf PDF bertanda DRAF untuk staff/admin/village_head saat PROCESSING/WAITING_APPROVAL; PDF final ber-QR saat `APPROVED`, disimpan terenkripsi di storage privat dengan SHA-256; siapa/kapan Kepala Desa menyetujui dicatat; setiap unduhan diaudit
 - [x] Unggah surat manual hasil pindaian (staff/admin) yang menggantikan PDF otomatis dengan kode QR yang sama; unduh PNG QR untuk ditempel
 - [x] Verifikasi publik `GET /verify/{kode}` (30/menit) dan halaman statis `/verifikasi/`: nomor, jenis, tanggal terbit, nama tersamar, sah/dibatalkan; catatan hukum TTE/BSrE di `PRODUCT.md`
-- [ ] Uji manual end-to-end dengan Laravel lokal (alur persetujuan → unduh → unggah → pindai QR) dan pemeriksaan visual 390px/1440px — menunggu pengguna
+- [x] Verifikasi teknis sesi PDF: `php artisan test` (177 tes, 1.838 assertions), lint, tsc, build, build demo, test:demo dan `test-admin-filters` lulus; PDF contoh empat jenis + draf diperiksa visual. Bukti di `docs/progres-2026-10-21.md`.
+- [ ] Uji manual end-to-end dengan Laravel lokal (alur persetujuan → unduh → unggah → pindai QR dengan ponsel) dan pemeriksaan visual halaman terkait pada 390px/1440px — menunggu pengguna. Pastikan migration dan `LETTER_VERIFY_URL` pada lingkungan uji sudah sesuai.
 - [ ] Data dari desa: contoh surat asli tiap jenis, format nomor, nama dan jabatan penandatangan
 - [ ] TTE tersertifikasi (BSrE) — di luar lingkup sampai ada kerja sama resmi
 
@@ -152,7 +183,8 @@ Wajib selesai sebelum menerima data warga nyata.
 - [ ] Hosting backend + database produksi (K2, K3)
 - [ ] HTTPS, CORS sesuai domain, backup terjadwal
 - [ ] Kebijakan retensi dan penghapusan data pemohon (sesuai UU PDP)
-- [ ] Pemulihan kode akses (OTP WhatsApp/SMS) atau alur bantuan di kantor desa
+- [x] Implementasi bantuan buat ulang kode akses: `POST /staff/applications/{request_id}/lookup-secret` dan dialog di detail permohonan untuk staff/admin/RT/RW, sesuai wilayah; kode lama tidak berlaku, kode baru ditampilkan sekali, riwayat dan audit dicatat. Feature test, lint, tsc dan build lulus pada sesi kode akses (lihat `docs/progres-2026-10-21.md`). Ini bukan OTP/pemulihan mandiri.
+- [ ] Uji manual bantuan kode akses dan tetapkan prosedur operasional pemeriksaan KTP/KK serta petugas yang melayani sebelum produksi. OTP WhatsApp/SMS belum dibuat; tidak wajib bila jalur bantuan sudah dipilih dan diverifikasi.
 - [ ] Halaman kebijakan privasi
 - [ ] Uji keamanan dasar: rate limit, otorisasi per peran, field sensitif tidak bocor di respons atau log
 
