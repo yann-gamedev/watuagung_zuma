@@ -2,20 +2,47 @@
 
 Backend ini melayani formulir administrasi dan panel petugas dari frontend Next.js pada direktori induk. Teknologi: PHP 8.3+, Laravel 13, Sanctum, dan SQLite untuk pengembangan. Tidak ada data warga contoh yang otomatis dimasukkan ke database.
 
+Panduan terkait: [README utama](../README.md), [indeks dokumentasi](../docs/README.md), [kontrak integrasi](../docs/integrasi.md), dan [status roadmap](../ROADMAP.md).
+
+## Struktur backend
+
+| Lokasi | Isi |
+| --- | --- |
+| `app/Domain/` | Aturan status/peran, wilayah, kode akses, nomor surat, dan PDF |
+| `app/Http/Controllers/Api/` | Endpoint pelayanan dan panel petugas |
+| `app/Models/` | Model dan perlindungan data sensitif |
+| `routes/` | Route API/web, CLI akun, dan jadwal pembersihan token |
+| `database/` | Migration dan fixture/seeder fiktif; SQLite lokal tidak dilacak |
+| `resources/views/letters/` | Template Blade surat sementara |
+| `config/` | Konfigurasi aplikasi, CORS, sesi, dan penerbitan surat |
+| `storage/` | Berkas privat, cache, dan log lokal; jangan dipublikasikan |
+| `tests/` | Pengujian fitur dan unit |
+| `vendor/` | Dependensi Composer yang dihasilkan saat install |
+
 ## Persiapan lokal
 
-Buka terminal PowerShell di folder `backend/`. Jika Composer tersedia global, jalankan `composer install`. Jika tidak, gunakan Composer lokal di induk proyek (`php ..\composer.phar install`) bila file tersebut tersedia. Lanjutkan dengan:
+Buka terminal PowerShell di folder `backend/`. Siapkan PHP 8.3+, Composer, dan ekstensi yang diminta dependensi, termasuk SQLite dan GD untuk QR PNG:
 
 ```powershell
-php ..\composer.phar install
-Copy-Item .env.example .env
+composer install
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+```
+
+Hanya pada instalasi baru yang belum memiliki `APP_KEY`:
+
+```powershell
 php artisan key:generate
-New-Item database/database.sqlite -ItemType File -Force
+```
+
+Lanjutkan tanpa menimpa database yang sudah ada:
+
+```powershell
+if (!(Test-Path database/database.sqlite)) { New-Item database/database.sqlite -ItemType File }
 php artisan migrate
 php artisan serve --host=127.0.0.1 --port=8000
 ```
 
-Ganti baris pertama dengan `composer install` jika sudah terpasang global. `composer.phar`, `.env`, dan database SQLite lokal tidak masuk Git. Jangan menimpa `.env` yang sudah digunakan, atau mengganti `APP_KEY` setelah ada data: field terenkripsi tidak dapat dibaca dengan kunci baru. URL pemeriksaan kesehatan: http://127.0.0.1:8000/up.
+Jika Composer tidak tersedia global tetapi file lokal ada, ganti `composer install` dengan `php ..\composer.phar install`. `composer.phar`, `.env`, dan database SQLite lokal tidak masuk Git. Jangan menimpa `.env` yang sudah digunakan, atau mengganti `APP_KEY` setelah ada data: field terenkripsi tidak dapat dibaca dengan kunci baru. URL pemeriksaan kesehatan: http://127.0.0.1:8000/up.
 
 Perintah yang berguna (dijalankan dari folder `backend/`):
 
@@ -39,7 +66,7 @@ php artisan staff:create kades-lokal --role=village_head --name="Kepala Desa Lok
 php artisan staff:create admin-lokal --role=admin --name="Admin Lokal"
 ```
 
-`--email` opsional (bawaan `<username>@example.test`). `rt_head` wajib `--rt` dan `--rw`; `rw_head` wajib `--rw`; isinya 1–3 digit dan disimpan sebagai 3 digit (`1` → `001`). Kolom `rt`/`rw` pada `users` nullable untuk peran lain. Ketua RT/RW tanpa wilayah lengkap tidak bisa masuk panel. Nama, username, dan nomor wilayah di atas hanya contoh, **bukan** akun bawaan. Untuk mengubah peran akun lama, gunakan `php artisan tinker`, lalu `App\Models\User::where('username', 'nama-akun')->update(['role' => 'village_head']);`. Perubahan peran berlaku seketika pada token yang sudah aktif.
+`--email` opsional (bawaan `<username>@example.test`). `rt_head` wajib `--rt` dan `--rw`; `rw_head` wajib `--rw`; isinya 1–3 digit dan disimpan sebagai 3 digit (`1` → `001`). Kolom `rt`/`rw` pada `users` nullable untuk peran lain. Ketua RT/RW tanpa wilayah lengkap tidak bisa masuk panel. Nama, username, dan nomor wilayah di atas hanya contoh, **bukan** akun bawaan. Buat admin pertama melalui CLI; untuk pengelolaan berikutnya gunakan panel **Akun** (`/admin/akun`) agar validasi wilayah, perlindungan admin, dan audit diterapkan.
 
 Sejak migration `2026_10_22_000000_add_staff_account_fields_to_users_table`, admin dapat mengelola akun dari panel **Akun**. Email menjadi nullable; akun baru wajib memakai username. Kolom baru: `is_active` (default true), `must_change_password` (default false), dan `last_login_at`. Kata sandi sementara dari panel minimal 10 karakter (CLI tetap 12) dan wajib diganti saat login pertama. Akun nonaktif ditolak dengan pesan yang sama seperti kredensial salah; menonaktifkan akun mencabut semua tokennya. Satu wilayah hanya boleh punya satu `rt_head` aktif (RT+RW) dan satu `rw_head` aktif (RW); nonaktifkan ketua lama sebelum membuat pengganti. Admin tidak dapat menonaktifkan atau menurunkan perannya sendiri, dan sistem selalu menyisakan minimal satu admin aktif. Audit mencatat `user.created`, `user.updated`, dan `user.password_reset` di `audit_logs`.
 
@@ -77,7 +104,7 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 
 Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Untuk SKU, `nama_usaha`, `jenis_usaha`, dan `alamat_usaha` wajib diisi. Validasi yang gagal mengembalikan HTTP 422 dengan objek `errors`.
 
-### Akun petugas
+### Kontrak manajemen akun
 
 - `GET /staff/users` hanya untuk `admin`; peran lain dan tamu mendapat 403/401. Tidak ada endpoint hapus akun: gunakan `is_active=false` agar riwayat status tetap merujuk ke akun itu.
 - `warnings` berisi `{ role, rt, rw, pending }` untuk permohonan `SUBMITTED` di RT/RW tanpa `rt_head` aktif atau `RT_APPROVED` di RW tanpa `rw_head` aktif. Angka `pending` adalah jumlah permohonan yang tertahan.
@@ -115,11 +142,11 @@ Filter digabung dengan AND; pasangan pencarian nomor/nama dikelompokkan dengan O
 - `config/letters.php` mengatur format `{kode_klasifikasi}/{urut}/{kode_desa}/{bulan_romawi}/{tahun}`. `urut` angka tanpa padding, bulan I–XII, tahun dari waktu penerbitan server sesuai `config/app.php` (saat ini UTC). `kode_desa` dan `kode_klasifikasi` (bersumber dari `LetterType::classificationCode()`) masih **`[PLACEHOLDER]`**, bukan kode resmi. Tetapkan kode yang disahkan sebelum penggunaan nyata. Nomor tersimpan tidak berubah bila konfigurasi kemudian diubah.
 - Detail pengajuan menambah `letter_numbers: [{ number, status, void_reason, issued_at }]` hanya untuk tiga peran kantor, berurutan kronologis berdasarkan ID. RT/RW tidak menerima field ini. Pengajuan tanpa nomor menerima array kosong.
 - Cek status publik menambah `letter_number: string | null`: hanya nomor `issued` saat `APPROVED`, `READY_FOR_PICKUP`, atau `COMPLETED`. Status lain, nomor batal, dan pengajuan lama tanpa nomor menghasilkan `null`; riwayat nomor tidak dikirim ke publik.
-- Jalankan `php artisan migrate` untuk migration `2026_10_23_000000_create_letter_numbers`. **Tidak ada backfill** untuk pengajuan lama yang sudah menunggu persetujuan/disetujui; alur lama tetap dapat dilanjutkan tanpa nomor. Fitur ini belum membuat PDF, TTE, stempel digital, atau notifikasi.
+- Jalankan `php artisan migrate` untuk migration `2026_10_23_000000_create_letter_numbers`. **Tidak ada backfill** untuk pengajuan lama yang sudah menunggu persetujuan/disetujui; alur lama tetap dapat dilanjutkan tanpa nomor. Modul register tidak membuat PDF sendiri; penerbitan PDF tersedia melalui modul di bawah. TTE tersertifikasi, stempel digital, dan notifikasi belum tersedia.
 
 ### Surat PDF dan verifikasi QR
 
-Dependensi: `barryvdh/laravel-dompdf` (PDF dari Blade) dan `bacon/bacon-qr-code` (QR PNG lewat ekstensi GD). Jalankan `php artisan migrate` untuk `2026_10_24_000000_create_letters`.
+Dependensi: `barryvdh/laravel-dompdf` (PDF dari Blade) dan `bacon/bacon-qr-code` (QR PNG lewat ekstensi GD). Jalankan `php artisan migrate` untuk `2026_10_24_000000_create_letters`. Atur `LETTER_VERIFY_URL` di `.env` ke URL frontend `/verifikasi/` yang dapat dijangkau pemindai; localhost komputer tidak dapat diakses langsung dari ponsel lain.
 
 - Template Blade di `resources/views/letters/` (`layout` + `sku`, `domisili`, `sktm`, `ktp_kk`). Kop, kabupaten, kecamatan, alamat kantor, dan nama Kepala Desa dari `config/letters.php` `desa` masih **`[PLACEHOLDER]`**; footer "Format sementara" dihapus setelah template resmi diterapkan.
 - **Draf:** `GET …/letter.pdf` saat `PROCESSING`/`WAITING_APPROVAL` membuat PDF bertanda **DRAF** tanpa QR, tidak disimpan. Audit `letter.draft_viewed`.
@@ -205,7 +232,9 @@ Migration `2026_10_20_000000_add_neighborhood_territories` menambah kolom `rt`/`
 
 ## Sebelum produksi
 
-Gunakan HTTPS, `APP_DEBUG=false`, database persisten dengan backup, dan kelola `APP_KEY` secara aman. Deploy Laravel terpisah dari Vercel frontend; atur `APP_URL` dan `FRONTEND_ORIGINS` ke domain sebenarnya, jalankan migrasi, lalu tes ulang pengajuan sampai perubahan status. Prioritas pengembangan selanjutnya adalah sesi petugas berbasis cookie HttpOnly, penerbitan dokumen/PDF, verifikasi kepemilikan untuk pemulihan kode akses, dan migrasi konten publik yang telah diverifikasi.
+Belum siap menerima data warga nyata. Putuskan hosting/database sesuai K2/K3 pada [roadmap](../ROADMAP.md), lalu siapkan HTTPS, `APP_DEBUG=false`, backup dan uji pemulihan, kebijakan privasi/retensi, scheduler, serta pengelolaan `APP_KEY` yang aman. Demo Vercel tidak menjalankan Laravel.
+
+Atur `APP_URL`, `FRONTEND_ORIGINS`, dan `LETTER_VERIFY_URL` ke alamat lingkungan target; jalankan migration dan uji alur lengkap beserta pembatasan peran/wilayah. PDF dan bantuan buat ulang kode akses sudah diimplementasikan, tetapi template/nomor resmi, prosedur pemeriksaan identitas, uji browser Laravel, dan pemindaian QR masih perlu dituntaskan. Autentikasi saat ini memakai bearer token dan `sessionStorage`; perubahan ke cookie HttpOnly bukan fitur yang sudah tersedia atau keputusan arsitektur yang telah ditetapkan.
 
 ## Fondasi penduduk dummy
 

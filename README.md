@@ -1,38 +1,159 @@
 # Sistem Informasi dan Pelayanan Digital Desa Watuagung
 
-Website desa dan prototipe pelayanan administrasi. Proyek ini terdiri dari frontend Next.js/React dan API Laravel dalam satu repositori. Konten, angka statistik, dan contoh layanan saat ini belum merupakan data resmi desa.
+Portal informasi desa dan prototipe pelayanan administrasi: frontend Next.js dan API Laravel dalam satu repositori. **Konten desa masih contoh; gunakan data fiktif. Belum siap menerima data warga nyata.**
+
+## Mulai dari sini
+
+- [Indeks dokumentasi](docs/README.md) — panduan, struktur folder, dan catatan progres.
+- [Roadmap dan status pekerjaan](ROADMAP.md) — implementasi selesai, pengujian tertunda, dan keputusan yang dibutuhkan.
+- [Panduan backend](backend/README.md) — setup Laravel, akun, endpoint, dan keamanan.
+- [Integrasi frontend–API](docs/integrasi.md) — kontrak data dan perbedaan mode API/demo.
+- [Konteks produk](PRODUCT.md), [sistem desain](DESIGN.md), dan [aturan kontribusi](AGENTS.md).
 
 ## Fitur saat ini
 
-- Informasi publik: beranda, profil, sejarah, visi-misi, struktur pemerintahan, berita, pengumuman, agenda, potensi, statistik, transparansi, dan kontak.
-- Empat formulir pelayanan: SKU, domisili, SKTM, serta pengantar KTP/KK.
-- Pengajuan dan cek status melalui API Laravel. Warga menerima nomor pengajuan dan kode akses rahasia yang diperlukan untuk melihat status.
-- Panel petugas di `/admin`: login, daftar pengajuan, filter status, perubahan status, dan logout. Dokumen surat/PDF belum dibuat.
+- Informasi publik: profil, berita, pengumuman, agenda, potensi, BUMDes, statistik, transparansi, dan kontak; konten belum dikelola melalui CMS.
+- Pengajuan SKU, domisili, SKTM, dan pengantar KTP/KK; cek status API memakai nomor pengajuan dan kode akses rahasia.
+- Lima peran panel: Ketua RT, Ketua RW, Petugas, Kepala Desa, dan Admin. RT/RW dibatasi wilayahnya.
+- Daftar/detail pengajuan, pencarian/filter, riwayat status, audit akses, serta antrean persetujuan.
+- Manajemen akun oleh Admin: tambah/ubah/nonaktifkan, reset kata sandi sementara, dan wajib ganti kata sandi. Sesi bertahan saat refresh melalui `sessionStorage` tab, dengan validasi server dan batas kedaluwarsa.
+- Penomoran otomatis, buku register, draf/final PDF, unggah surat manual hasil pindaian, dan verifikasi QR. **Template dan format nomor masih sementara; QR bukan TTE tersertifikasi.** Warga tetap mengambil surat fisik.
+- Bantuan buat ulang kode akses melalui petugas/RT/RW setelah pemeriksaan identitas; bukan pemulihan mandiri melalui OTP.
 
-## Teknologi dan struktur
+Domisili, SKTM, dan KTP/KK: **warga → RT → RW → petugas desa → Kepala Desa → petugas menyiapkan surat → diambil warga**. SKU langsung ke petugas desa tanpa RT/RW. Hanya Kepala Desa yang memutuskan persetujuan akhir.
 
-| Bagian | Teknologi | Lokasi |
-| --- | --- | --- |
-| Frontend | Next.js 16, React 19, TypeScript | `app/`, `components/`, `features/`, `services/` |
-| Backend | Laravel 13, Sanctum, PHP 8.3+ | `backend/` |
-| Database pengembangan | SQLite | `backend/database/database.sqlite` (tidak masuk Git) |
+## Struktur repositori
 
-Panduan endpoint dan persiapan Laravel terdapat di [backend/README.md](backend/README.md).
+| Lokasi | Tanggung jawab |
+| --- | --- |
+| `app/` | Route dan layout Next.js App Router |
+| `components/`, `components/ui/` | Komponen bersama dan komponen UI shadcn |
+| `features/admin/`, `features/pelayanan/` | Panel petugas dan alur pelayanan warga |
+| `services/`, `types/` | Transport API/simulasi dan kontrak data frontend |
+| `lib/`, `hooks/` | Validasi, alur surat, data contoh, utilitas, dan hook React |
+| `public/` | Aset publik, logo, dan foto; atribusi foto tetap ada di footer |
+| `backend/` | API Laravel, migration, template surat, storage privat, dan tes |
+| `docs/` | Panduan integrasi, indeks, dan catatan progres |
+| `scripts/`, `.githooks/` | Build/demo, pemeriksaan, dan pengaman Git |
+| `vendor/` | CSS pihak ketiga beserta lisensinya; bukan dependensi Composer backend |
+| `build/`, `db/`, `drizzle/`, `examples/` | Tooling Sites/Vite/Cloudflare dan contoh D1; bukan database pelayanan Laravel |
 
-## File Claude lokal dan pengaman push
+Konfigurasi `vite.config.ts`, `drizzle.config.ts`, dan `.openai/` terkait tooling alternatif masih dipertahankan; alur npm utama memakai Next.js. `build/` berisi sumber plugin, **bukan** folder hasil build yang boleh dihapus sembarangan. `.next/`, `out/`, `node_modules/`, dan `backend/vendor/` adalah hasil build/dependensi lokal, bukan tempat menulis fitur.
 
-`CLAUDE.md` dan folder `.claude/` di semua tingkat folder (tanpa membedakan huruf besar/kecil) tidak boleh dilacak atau dikirim ke GitHub. Markdown lain tetap diperbolehkan. Penghapusan dari Git tidak menghapus salinan lokal maupun riwayat yang sudah dipublikasikan.
+## Menjalankan lokal
 
-Aktifkan pengaman di **setiap clone** dari root repositori:
+Prasyarat: **Node.js ≥ 22.13, PHP ≥ 8.3, Composer**, dan ekstensi PHP yang diperlukan dependensi (termasuk SQLite dan GD untuk QR PNG). Contoh perintah memakai PowerShell. Jalankan backend dan frontend pada **dua terminal terpisah**.
+
+### 1. Backend Laravel
+
+Dari folder `backend/`, untuk instalasi baru:
+
+```powershell
+composer install
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+```
+
+Jika Composer tidak ada di PATH tetapi `composer.phar` lokal tersedia, gunakan `php ..\composer.phar install`. **Hanya untuk instalasi baru yang belum memiliki APP_KEY**, jalankan:
+
+```powershell
+php artisan key:generate
+```
+
+Lanjutkan:
+
+```powershell
+if (!(Test-Path database/database.sqlite)) { New-Item database/database.sqlite -ItemType File }
+php artisan migrate
+php artisan serve --host=127.0.0.1 --port=8000
+```
+
+Jangan menimpa `.env`, database, atau mengganti `APP_KEY` setelah data terenkripsi tersimpan. Health check: http://127.0.0.1:8000/up. Untuk QR, sesuaikan `LETTER_VERIFY_URL` di `.env` backend dengan alamat halaman frontend `/verifikasi/` yang dapat dijangkau pemindai; localhost komputer tidak dapat dibuka langsung dari ponsel lain.
+
+### 2. Frontend Next.js
+
+Dari root repositori:
+
+```powershell
+npm ci
+if (!(Test-Path .env.local)) { Copy-Item .env.example .env.local }
+```
+
+Untuk mode API, isi `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1` dan pastikan `NEXT_PUBLIC_DEMO_MODE` bukan `true`. Lalu:
+
+```powershell
+npm run dev
+```
+
+Buka http://127.0.0.1:3000. Restart dev server setelah mengubah environment. Origin frontend harus diizinkan dalam `FRONTEND_ORIGINS` backend; lihat [integrasi frontend](backend/README.md#integrasi-frontend). Variabel `NEXT_PUBLIC_*` terlihat di browser: jangan isi dengan rahasia.
+
+Tanpa URL API, formulir publik memakai simulasi browser dan panel petugas tidak aktif. `npm run start` saat ini juga menjalankan **dev server**, bukan server produksi.
+
+### 3. Akun dan alur uji
+
+Tidak ada akun/kata sandi bawaan. Dari `backend/`, buat admin lokal pertama:
+
+```powershell
+php artisan staff:create admin-lokal --role=admin --name="Admin Lokal"
+```
+
+Kata sandi diminta secara tersembunyi. Selanjutnya login di `/admin` dan kelola akun melalui `/admin/akun`; lihat [panduan akun](backend/README.md#akun-petugas) untuk peran dan wilayah.
+
+1. Ajukan surat dengan data fiktif di `/pelayanan`.
+2. Pada mode API, simpan nomor pengajuan **dan kode akses** dari halaman berhasil. Jangan masukkan kode akses ke URL.
+3. Buka `/pelayanan/status` untuk memeriksa perkembangan. Jika kode hilang, bantuan buat ulang tersedia melalui RT/RW atau kantor desa dengan pemeriksaan KTP/KK; kode lama akan tidak berlaku.
+4. Proses pengajuan dengan akun sesuai peran sampai selesai. Surat yang memerlukan RT/RW harus memakai wilayah yang cocok dengan akun penguji.
+5. Uji PDF/unggah manual/QR dengan Laravel langsung; checklist pengujian yang belum tuntas ada di [roadmap](ROADMAP.md).
+
+## Verifikasi pengembangan
+
+Dari root repositori:
+
+```powershell
+npm run lint
+npx tsc --noEmit
+npm run build
+npm run build:demo
+npm run test:demo
+node scripts/test-admin-filters.mjs
+node scripts/test-private-files.mjs
+```
+
+Dari `backend/`: `php artisan test`. Perubahan UI juga diperiksa pada lebar **390px dan 1440px**. Build/test lokal tidak membuktikan deployment maupun alur produksi berhasil.
+
+## Demo Vercel tanpa backend
+
+`vercel.json` memakai `npm run build:demo` untuk static export. Script memaksa demo dan mengabaikan URL API lama, termasuk localhost di dashboard Vercel.
+
+- Root Directory: root repositori; Framework Preset: Next.js.
+- Build Command: `npm run build:demo`; instalasi: `npm ci`; Node.js 22.x atau 24.x yang didukung Vercel.
+- Output Directory: **default, Override nonaktif**. Jangan isi `out`: adapter Next.js perlu membaca manifest `.next`.
+- Tidak membutuhkan PHP, Composer, database, atau backend Laravel.
+- Panel petugas dan verifikasi surat tidak tersedia. Simulasi tidak menerbitkan surat atau memproses layanan pemerintah.
+- Maksimal 50 bukti simulasi disimpan di browser/origin yang sama, tanpa identitas pemohon. Menghapus storage menghapus riwayat; status tidak bergerak otomatis.
+
+Untuk demo lokal:
+
+```powershell
+$env:NEXT_PUBLIC_DEMO_MODE="true"
+npm run dev
+```
+
+Sebelum kembali ke mode API, hentikan server, hapus override sesi PowerShell dengan `Remove-Item Env:NEXT_PUBLIC_DEMO_MODE`, pastikan `.env.local` tidak memaksa demo, lalu jalankan ulang. Setelah deploy, periksa formulir, cek status, refresh route bertingkat, mobile, dan pembatasan panel pada **URL Vercel sebenarnya**.
+
+## File lokal dan pengaman push
+
+`CLAUDE.md` dan folder `.claude/` di semua tingkat folder, tanpa membedakan huruf besar/kecil, tidak boleh dilacak atau dikirim ke GitHub. **Markdown lainnya tetap diperbolehkan.** Salinan lokal dipertahankan; riwayat yang sudah terbit tidak dihapus.
+
+Aktifkan hook di **setiap clone**, dari root:
 
 ```powershell
 git config --local core.hooksPath .githooks
 node scripts/test-private-files.mjs
 ```
 
-Hook `pre-push` memeriksa isi akhir dan perubahan pada commit yang akan dikirim, termasuk file yang ditambahkan lalu dihapus. Untuk branch baru, commit yang sudah tercatat pada remote tujuan dikecualikan dari pemeriksaan riwayat; jalankan `git fetch` agar referensi remote mutakhir. Node.js wajib tersedia; pemeriksaan yang gagal membatalkan push. Hook lokal dapat dilewati dengan `--no-verify`, bukan pengganti aturan server GitHub.
+Hook `pre-push` memeriksa isi akhir dan perubahan commit yang akan dikirim, termasuk file yang ditambahkan lalu dihapus. Untuk branch baru, commit yang sudah tercatat pada remote tujuan dikecualikan dari pemeriksaan riwayat; jalankan `git fetch` agar referensi mutakhir. Node.js wajib tersedia; kegagalan pemeriksaan membatalkan push. Hook lokal dapat dilewati dengan `--no-verify`, bukan pengganti aturan server GitHub.
 
-Untuk menonaktifkan atribusi otomatis Claude pada commit/PR berikutnya, gabungkan pengaturan ini ke `.claude/settings.json` **lokal**, tanpa menimpa pengaturan lain:
+Gabungkan pengaturan berikut ke `.claude/settings.json` **lokal**, tanpa menimpa pengaturan lain, untuk menonaktifkan atribusi otomatis Claude pada commit/PR berikutnya:
 
 ```json
 {
@@ -41,89 +162,8 @@ Untuk menonaktifkan atribusi otomatis Claude pada commit/PR berikutnya, gabungka
 }
 ```
 
-Ini tidak menghapus atribusi Claude dari commit atau daftar kontributor lama.
+Pengaturan ini tidak menghapus atribusi lama. Jangan commit `.env`, database, token, file build, atau folder `assets/` lokal yang belum disetujui. Gunakan branch per tugas dan Conventional Commits; jangan push/deploy tanpa permintaan.
 
-## Menjalankan di komputer lokal
+## Batas prototipe
 
-Siapkan Node.js 22.13+ dan PHP 8.3+. Jalankan backend dan frontend dalam **dua terminal terpisah**. Perintah berikut ditulis untuk PowerShell di Windows.
-
-### 1. Backend Laravel
-
-Di folder `backend/`, pasang dependensi. Jika Composer belum ada di PATH, gunakan `php ..\composer.phar install` apabila file Composer lokal tersedia. Lalu siapkan aplikasi:
-
-```powershell
-php ..\composer.phar install
-Copy-Item .env.example .env
-php artisan key:generate
-if (!(Test-Path database/database.sqlite)) { New-Item database/database.sqlite -ItemType File }
-php artisan migrate
-php artisan serve --host=127.0.0.1 --port=8000
-```
-
-Jika Composer tersedia global, ganti baris pertama dengan `composer install`. Jangan menjalankan `key:generate` ulang setelah ada data terenkripsi. Cek backend di http://127.0.0.1:8000/up. Terminal server ini perlu tetap berjalan.
-
-### 2. Frontend Next.js
-
-Di **folder utama repositori**, siapkan `.env.local`:
-
-```powershell
-Copy-Item .env.example .env.local
-```
-
-Isi `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1` dalam `.env.local`, kemudian jalankan:
-
-```powershell
-npm ci
-npm run dev
-```
-
-Buka http://127.0.0.1:3000. Setelah mengubah `.env.local`, hentikan dan jalankan ulang `npm run dev`. Pastikan alamat frontend sama dengan salah satu origin yang diizinkan oleh backend (lihat [panduan CORS](backend/README.md#integrasi-frontend-saat-ini)).
-
-Jika `NEXT_PUBLIC_API_URL` dibiarkan kosong, formulir publik memakai mode simulasi di browser dan panel petugas tidak aktif. Gunakan **data fiktif saja** untuk pengujian.
-
-## Cara mencoba alur utama
-
-1. Buka `/pelayanan`, pilih layanan, lalu isi dan kirim formulir dengan data fiktif.
-2. Di halaman berhasil, **salin nomor pengajuan dan kode akses**. Kode akses tidak dimasukkan ke URL dan tidak dapat dipulihkan bila hilang.
-3. Buka `/pelayanan/status`, masukkan keduanya, lalu lihat status pengajuan.
-4. Untuk mencoba `/admin`, buat akun petugas lokal terlebih dahulu melalui langkah di [panduan backend](backend/README.md#akun-petugas), lalu login. Ubah status sebuah pengajuan dan periksa kembali statusnya sebagai warga.
-
-Untuk menjalankan tes API, gunakan `php artisan test` dari folder `backend/`. Untuk memeriksa frontend dari folder utama, gunakan `npx tsc --noEmit` dan `npm run build`.
-
-## Preview dan deployment Vercel (demo tanpa backend)
-
-Target deployment saat ini adalah **prototipe statis**, bukan layanan administrasi produksi. Konfigurasi `vercel.json` menjalankan `npm run build:demo`; preset Next.js menangani hasil static export secara otomatis. Script ini memaksa mode demo serta mengabaikan URL API lama, termasuk URL localhost yang mungkin masih ada di dashboard Vercel.
-
-- Root Directory: root repositori (bukan `backend`).
-- Framework Preset: Next.js; Build Command: `npm run build:demo`.
-- Output Directory: **default, Override nonaktif**. Jangan isi `out`: adapter Next.js perlu membaca manifest internal dari `.next`, meskipun hasil export statis tersedia di `out`.
-- Gunakan Node.js 22.x atau 24.x yang didukung Vercel. Install dengan `npm ci`.
-- Hapus override build/output lama di dashboard jika berbeda dengan konfigurasi repo.
-- Tidak perlu PHP, Composer, database, atau API Laravel untuk deployment ini.
-- Panel petugas sengaja nonaktif. Pengajuan hanya menyimpan nomor/status simulasi di browser, bukan identitas pemohon.
-- Gunakan data fiktif. Simulasi tidak menerbitkan surat dan tidak diproses pemerintah desa.
-- Maksimal 50 bukti simulasi disimpan pada browser/origin yang sama; penghapusan storage menghapus riwayat. Status simulasi baru tetap diterima, tidak bergerak otomatis.
-
-Verifikasi sebelum push:
-
-```powershell
-npm run lint
-npm run test:demo
-npx tsc --noEmit
-npm run build:demo
-```
-
-Untuk mencoba demo lokal dengan dev server:
-
-```powershell
-$env:NEXT_PUBLIC_DEMO_MODE="true"
-npm run dev
-```
-
-Setelah deploy, uji empat formulir, autofill NIK dummy, halaman sukses, cek status, refresh URL bertingkat, tampilan mobile, dan halaman admin pada **URL Vercel sebenarnya**. Build lokal yang berhasil belum membuktikan konfigurasi hosting remote benar.
-
-Mode API lokal tetap tersedia melalui `npm run dev`/`npm run build` jika `NEXT_PUBLIC_DEMO_MODE` bukan `true` dan `NEXT_PUBLIC_API_URL` terisi. Backend tidak termasuk cakupan kesiapan demo Vercel; jangan mengaktifkan mode API untuk warga tanpa menyelesaikan review backend dan integrasi terpisah.
-
-## Batas prototipe dan langkah berikutnya
-
-Data publik masih contoh dan situs sengaja belum diindeks sampai informasi resmi diverifikasi. Belum ada pembuatan PDF, unggah dokumen, pemulihan kode akses/OTP, atau pengelolaan konten melalui backend. Token petugas hanya disimpan dalam memori halaman; login ulang diperlukan setelah refresh. Sebelum digunakan warga, diperlukan pengamanan dan uji produksi, autentikasi yang lebih kuat, kebijakan retensi data, serta verifikasi seluruh konten resmi.
+Belum ada pengaduan warga, CMS, unggah **lampiran persyaratan warga**, atau OTP mandiri. Unggah surat final oleh petugas sudah ada dan merupakan fitur berbeda. Template resmi, konten desa, hosting/database produksi, backup, kebijakan privasi/retensi, serta uji keamanan dan operasional masih perlu dituntaskan sesuai [ROADMAP.md](ROADMAP.md). QR hanya membantu verifikasi; surat tetap memerlukan tanda tangan basah dan stempel sampai ada TTE tersertifikasi.
