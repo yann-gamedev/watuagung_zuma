@@ -17,13 +17,21 @@ export default function Page() {
           Gunakan data fiktif.
         </div>
         <ServiceList fullRequirements />
-        <section aria-labelledby="service-steps-title">
+        <section className="service-steps" aria-labelledby="service-steps-title">
           <h2 id="service-steps-title">Cara mengajukan surat</h2>
-          <ol>
-            <li>Pilih surat, baca persyaratan, lalu isi formulir.</li>
-            <li>Simpan nomor dan kode akses. Domisili, SKTM, dan KTP/KK diperiksa Ketua RT, lalu Ketua RW, petugas desa, dan Kepala Desa. SKU langsung ke kantor desa.</li>
-            <li>Cek status dan datang ke kantor desa setelah surat siap diambil.</li>
+          <ol className="home-steps-list" role="list">
+            {[
+              ["Pilih dan ajukan surat", "Baca persyaratan surat yang Anda butuhkan, lalu isi formulir."],
+              ["Simpan bukti pengajuan", "Simpan nomor pengajuan dan kode akses untuk mengecek perkembangan surat."],
+              ["Cek status dan ambil surat", "Datang ke kantor desa setelah status surat dinyatakan siap diambil."],
+            ].map(([title, description], index) => (
+              <li key={title}>
+                <span className="home-step-number" aria-hidden="true">{index + 1}</span>
+                <div><h3>{title}</h3><p>{description}</p></div>
+              </li>
+            ))}
           </ol>
+          <p className="service-steps-note"><strong>Alur pemeriksaan:</strong> Domisili, SKTM, dan KTP/KK diperiksa Ketua RT, Ketua RW, petugas desa, lalu Kepala Desa. SKU langsung ke kantor desa tanpa pemeriksaan RT/RW.</p>
         </section>
         <div className="status-strip">
           <div>
