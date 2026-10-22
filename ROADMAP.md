@@ -23,7 +23,7 @@
 | K2 | Hosting produksi: tetap static export (Vercel) + API terpisah, atau Next.js server penuh? | M5, M8 | Belum |
 | K3 | Database produksi: tetap SQLite atau PostgreSQL/MySQL? | M8 | Belum |
 | K4 | Siapa di desa yang mengisi dan memperbarui konten? | M5 | Belum |
-| K5 | Library PDF (perlu persetujuan dependensi) | M7 | Belum |
+| K5 | Library PDF (perlu persetujuan dependensi) | M7 | **Disetujui 21 Oktober 2026:** `barryvdh/laravel-dompdf` + `bacon/bacon-qr-code` |
 
 > **Catatan K2:** demo Vercel saat ini berupa static export. Konten dari API (M5) tidak akan muncul tanpa build ulang, kecuali konten diambil di sisi browser atau hosting diganti ke server. Putuskan K2 sebelum M5.
 
@@ -135,10 +135,15 @@ Bergantung pada K2 dan K4.
 
 Bergantung pada K5 dan M2.
 
-- [ ] Template per jenis surat sesuai format resmi desa (kop, nomor, penandatangan)
+- [x] Template Blade sementara untuk empat jenis surat (`backend/resources/views/letters/`); kop, kabupaten/kecamatan, alamat, dan nama Kepala Desa masih `[PLACEHOLDER]`. Empat PDF contoh dan draf diperiksa visual (21 Okt 2026).
+- [ ] Template per jenis surat sesuai format resmi desa (kop, nomor, penandatangan) — menunggu contoh surat asli; sementara petugas dapat mengunggah surat manual
 - [ ] Format penomoran surat resmi dari desa — mesin penomoran/register dipisahkan ke M3a; kode klasifikasi dan kode desa masih `[PLACEHOLDER]`
-- [ ] PDF dibuat saat status `APPROVED`; hanya petugas yang bisa mengunduh dan mencetak
+- [x] Draf PDF bertanda DRAF untuk staff/admin/village_head saat PROCESSING/WAITING_APPROVAL; PDF final ber-QR saat `APPROVED`, disimpan terenkripsi di storage privat dengan SHA-256; siapa/kapan Kepala Desa menyetujui dicatat; setiap unduhan diaudit
+- [x] Unggah surat manual hasil pindaian (staff/admin) yang menggantikan PDF otomatis dengan kode QR yang sama; unduh PNG QR untuk ditempel
+- [x] Verifikasi publik `GET /verify/{kode}` (30/menit) dan halaman statis `/verifikasi/`: nomor, jenis, tanggal terbit, nama tersamar, sah/dibatalkan; catatan hukum TTE/BSrE di `PRODUCT.md`
+- [ ] Uji manual end-to-end dengan Laravel lokal (alur persetujuan → unduh → unggah → pindai QR) dan pemeriksaan visual 390px/1440px — menunggu pengguna
 - [ ] Data dari desa: contoh surat asli tiap jenis, format nomor, nama dan jabatan penandatangan
+- [ ] TTE tersertifikasi (BSrE) — di luar lingkup sampai ada kerja sama resmi
 
 ## M8 — Kesiapan produksi
 

@@ -52,6 +52,25 @@ export interface StaffApplicationDetail extends StaffApplication, Omit<Submissio
   history: StaffApplicationEvent[];
   /** Hanya peran kantor; nomor batal tetap tersimpan. */
   letter_numbers?: LetterNumber[];
+  /** Hanya peran kantor; null sampai Kepala Desa menyetujui. */
+  letter?: LetterFile | null;
+}
+/** Surat final; kode verifikasi tidak pernah dikirim ke panel. */
+export interface LetterFile {
+  approved_at: string;
+  /** null bila PDF otomatis belum berhasil dibuat; dibuat ulang saat diunduh. */
+  source: "generated" | "uploaded" | null;
+  sha256: string | null;
+  file_updated_at: string | null;
+}
+/** GET /verify/{kode}, publik: tanpa NIK, alamat, isi surat, atau nomor pengajuan. */
+export interface LetterVerification {
+  number: string | null;
+  jenis_surat: ServiceCode;
+  issued_at: string;
+  /** Contoh "S*** W********". */
+  nama: string;
+  status: "valid" | "revoked";
 }
 /** Kode baru hanya ada di respons ini; jangan simpan ke storage atau log. */
 export interface StaffAccessCodeResponse {
