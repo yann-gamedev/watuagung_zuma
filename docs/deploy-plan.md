@@ -59,7 +59,7 @@ Daftar lengkap ada di `ROADMAP.md` § "Data yang harus diminta ke desa". Yang me
 - [ ] **(BLOKIR)** Contoh surat asli tiap jenis, kop surat, kode klasifikasi, kode desa, format nomor, nama dan jabatan penandatangan (mengganti semua `[PLACEHOLDER]` di `backend/config/letters.php` dan `resources/views/letters/`).
 - [ ] **(BLOKIR)** Persyaratan resmi dan estimasi waktu tiap jenis surat.
 - [ ] **(BLOKIR)** Daftar RT/RW dan nama ketua yang berwenang, nama petugas desa, kepala desa, admin.
-- [ ] **(BLOKIR)** Konten profil: alamat kantor, jam layanan, kontak, visi-misi, perangkat desa, foto berizin. Sebagian: alamat kantor dan identitas wilayah dari RKP Desa 2027 sudah tampil (`content/profile-contact`, `docs/progres-2026-10-24.md`); sisanya belum.
+- [ ] **(BLOKIR)** Konten profil: alamat kantor, jam layanan, kontak, visi-misi, perangkat desa, foto berizin. Sebagian: alamat kantor dan identitas wilayah dari RKP Desa 2027 sudah tampil (`content/profile-contact`, `docs/progres-2026-10-24.md`); perangkat desa dan BPD dari Tabel 2.9/2.10 sudah tampil tanpa foto (`content/officials`); sisanya belum.
 - [ ] Masa retensi data pemohon dan surat (disetujui desa).
 - [ ] Prosedur bantuan kode akses di kantor (siapa melayani, dokumen yang diperiksa).
 

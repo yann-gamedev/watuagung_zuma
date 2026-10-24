@@ -182,19 +182,23 @@ export const pages: Record<
     blocks: [
       {
         title: "Kepala Desa",
-        text: "Nama pejabat akan diisi setelah konfirmasi data resmi.",
+        text: "Didik Hariyanto · masa jabatan 2024–2031",
       },
       {
         title: "Sekretariat Desa",
-        text: "Sekretaris Desa • Kaur Tata Usaha dan Umum • Kaur Keuangan • Kaur Perencanaan",
+        text: "Sekretaris Desa: Cucu Bagus Dediyanto • Kaur Umum: Tyas Ning Aris • Kaur Keuangan: Sumarto • Kaur Perencanaan: Mahmud Hady • Kaur Kesejahteraan: Gunawan",
       },
       {
         title: "Pelaksana Teknis",
-        text: "Kasi Pemerintahan • Kasi Kesejahteraan • Kasi Pelayanan",
+        text: "Kasi Pemerintahan: Tulus Santoso • Kasi Pelayanan: M. Tu'en",
       },
       {
         title: "Pelaksana Kewilayahan",
-        text: "Kepala Dusun dan unsur kewilayahan. Susunan contoh ini perlu disesuaikan dengan organisasi desa.",
+        text: "Kepala Dusun Watuagung: Sulandra • Kepala Dusun Talang: Sulis • Kepala Dusun Sekar: Yudi Prasetyawan",
+      },
+      {
+        title: "Badan Permusyawaratan Desa",
+        text: "Ketua: Nariono • Wakil Ketua: Katuwi S. Rizal • Sekretaris: Kasiyanto • Anggota: Tatik Hartini, Cahyo Nur Hadi, Moh. Anas Wahyudin, Khoirul Abadi. Sumber susunan di halaman ini: RKP Desa Watuagung 2027.",
       },
     ],
   },
