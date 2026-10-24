@@ -133,7 +133,7 @@ export const pages: Record<
       },
       {
         title: "Informasi wilayah",
-        text: "Data kecamatan, kabupaten, luas wilayah, dan batas administratif akan dilengkapi berdasarkan dokumen resmi desa. Seluruh isi prototipe ini merupakan contoh.",
+        text: "Desa Watuagung berada di Kecamatan Prigen, Kabupaten Pasuruan, Provinsi Jawa Timur, pada bentang alam dataran pegunungan dan berjarak ±11 km dari kecamatan. Wilayahnya terdiri atas 3 dusun (Watuagung, Talang, Sekar) dengan 10 RW dan 31 RT. Batas wilayah: utara Desa Gunting (Kec. Prigen), timur Desa Karangrejo (Kec. Purwosari), selatan Desa Jatiarjo (Kec. Prigen), barat Desa Dayurejo (Kec. Prigen). Luas wilayah sedang dikonfirmasi. Sumber: RKP Desa Watuagung 2027.",
       },
     ],
   },
@@ -277,7 +277,7 @@ export const pages: Record<
     blocks: [
       {
         title: "Kantor Desa Watuagung",
-        text: "Alamat lengkap, kecamatan, kabupaten, dan titik peta akan ditambahkan setelah verifikasi. Prototipe ini belum menetapkan lokasi desa.",
+        text: "Jl. Taman Safari Indonesia II, Dusun Watuagung RT 001/RW 001, Kecamatan Prigen, Kabupaten Pasuruan, Jawa Timur",
       },
       {
         title: "Jam pelayanan · Contoh",
