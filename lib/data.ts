@@ -290,3 +290,71 @@ export const pages: Record<
     ],
   },
 };
+
+// Sumber: docs/data-desa-rkp-2027.md bagian 4. Perbarui di sini saja; /statistik hanya merender.
+export const statistics = {
+  source:
+    "Sumber: RKP Desa Watuagung 2027 — data Kasi Pemerintahan Sept 2025 dan Data Potensi Sosial Ekonomi Desa 2025.",
+  population: 4819,
+  households: 1582,
+  hamlets: 3,
+  rt: 31,
+  rw: 10,
+  householdsByHamlet: [
+    ["Watuagung", 863],
+    ["Talang", 464],
+    ["Sekar", 255],
+  ],
+  groups: [
+    {
+      title: "Kelompok usia",
+      source: "Kasi Pemerintahan, September 2025.",
+      rows: [
+        ["0–5 tahun", 220],
+        ["6–10 tahun", 365],
+        ["11–15 tahun", 384],
+        ["16–20 tahun", 391],
+        ["21–25 tahun", 397],
+        ["26–30 tahun", 373],
+        ["31–35 tahun", 451],
+        ["36–40 tahun", 443],
+        ["41–45 tahun", 358],
+        ["46–50 tahun", 369],
+        ["51–55 tahun", 384],
+        ["56 tahun ke atas", 684],
+      ],
+    },
+    {
+      title: "Pendidikan terakhir",
+      source: "Data Potensi Sosial Ekonomi Desa 2025.",
+      rows: [
+        ["Belum sekolah", 443],
+        ["Usia 7–45 tidak pernah sekolah", 243],
+        ["SD tidak tamat", 657],
+        ["SD/sederajat", 1374],
+        ["SLTP/sederajat", 974],
+        ["SLTA/sederajat", 893],
+        ["D-1", 2],
+        ["D-3", 32],
+        ["S-1", 187],
+        ["S-2", 10],
+        ["S-3", 4],
+      ],
+    },
+    {
+      title: "Mata pencaharian",
+      source: "Data Potensi Sosial Ekonomi Desa 2025.",
+      rows: [
+        ["Petani/pekebun", 1870],
+        ["Karyawan swasta", 1162],
+        ["Buruh tani", 697],
+        ["Mengurus rumah tangga", 412],
+        ["PNS", 309],
+        ["Wiraswasta", 260],
+        ["Guru honorer", 76],
+        ["Bidan/perawat", 16],
+        ["TNI/Polri", 6],
+      ],
+    },
+  ],
+} as const;
