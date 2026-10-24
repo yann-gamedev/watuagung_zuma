@@ -152,8 +152,26 @@ export const pages: Record<
       },
       {
         title: "Kepala desa dari masa ke masa",
-        // ponytail: satu paragraf bertitik koma karena blok hanya teks; jadikan daftar bila komponen mendukung.
-        text: "Oentong Koesoemodirdjo, Petinggi pendiri desa (Abad XIX); Astro Redjo (Abad XIX); Tirto Soebronto (s.d. 1942); Idris Kerto Soedjono (1942–1967); Abdul Ghani Kerto Oetomo (1967–1975); Moh. Sa'i, Pj. (1975–1978); Ad Hardjo Setyo Atmodjo (1979–1990); Mgs Hardjo Sutopo (1991–1998); Pujiharjo Mangku Projo (1999–2002); Mokhamad Usman Ef, S.Pd. (2003–2016); Nanang Setyawan, S.E., Pj. (2016–2017); Drs. Kusminto (2017–2023); Didik Hariyanto (2024–2031). Sumber: RKP Desa Watuagung 2027.",
+        // ponytail: satu baris per orang via white-space: pre-line; jadikan <ul> bila blok mendukung daftar.
+        text: [
+          "Oentong Koesoemodirdjo, Petinggi pendiri desa (Abad XIX)",
+          "Astro Redjo (Abad XIX)",
+          "Tirto Soebronto (s.d. 1942)",
+          "Idris Kerto Soedjono (1942–1967)",
+          "Abdul Ghani Kerto Oetomo (1967–1975)",
+          "Moh. Sa'i, Pj. (1975–1978)",
+          "Ad Hardjo Setyo Atmodjo (1979–1990)",
+          "Mgs Hardjo Sutopo (1991–1998)",
+          "Pujiharjo Mangku Projo (1999–2002)",
+          "Mokhamad Usman Ef, S.Pd. (2003–2016)",
+          "Nanang Setyawan, S.E., Pj. (2016–2017)",
+          "Drs. Kusminto (2017–2023)",
+          "Didik Hariyanto (2024–2031)",
+          "",
+          "Sumber: RKP Desa Watuagung 2027.",
+        ]
+          .join("\n")
+          .replace(/–/g, "\u2060–\u2060"), // word joiner: rentang tahun tidak terpotong di ponsel
       },
     ],
   },
