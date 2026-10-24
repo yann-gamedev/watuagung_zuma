@@ -86,7 +86,30 @@ php artisan test
 
 Jika DLL `php_pdo_pgsql.dll` sudah tersedia di Windows tetapi belum aktif, alternatif tanpa perubahan `php.ini` global adalah membuat direktori konfigurasi sementara berisi file `pgsql.ini` dengan `extension=pdo_pgsql`, lalu set `$env:PHP_INI_SCAN_DIR` ke direktori itu sebelum menjalankan perintah. Ini juga berlaku pada proses anak PHPUnit; `php -d extension=pdo_pgsql artisan test` saja tidak meneruskan ekstensi ke proses anak. Pulihkan environment shell setelah selesai.
 
-Suite menguji trigger kegagalan transaksi dan SQL penguncian sesuai driver. Ini **bukan** bukti konkurensi multiproses atau kesiapan produksi; uji simultan M3a masih terpisah.
+Suite menguji trigger kegagalan transaksi dan SQL penguncian sesuai driver. Ini **bukan** bukti konkurensi multiproses atau kesiapan produksi; uji simultan M3a dijalankan terpisah di bawah.
+
+### Uji penomoran PostgreSQL multiproses (M3a)
+
+`tests/Concurrency/letter-number.php` adalah skrip CLI mandiri, **tidak ikut `php artisan test`** (`phpunit.xml` hanya memuat Unit/Feature). Lokasi ini menjaga bootstrap dan fixture dekat backend tanpa menambah command aplikasi atau dependensi. Memakai Symfony Process yang sudah terpasang; PHP CLI harus mengaktifkan `proc_open` dan `pdo_pgsql` pada induk **serta proses anak**.
+
+Siapkan `.env.testing.pgsql`, database lokal `watuagung_test`, dan pewarisan kunci lokal sesuai bagian sebelumnya. User PostgreSQL perlu hak membuat schema dan kapasitas minimal 31 koneksi bebas. Skrip menolak selain `APP_ENV=testing`, koneksi PostgreSQL lokal, database `watuagung_test`, atau konfigurasi yang masih di-cache; `DB_URL` harus kosong. Jangan menjalankan suite lain bersamaan.
+
+Dari `backend/`, pada blok `try` pewarisan kunci di atas, **ganti perintah fresh/test** dengan:
+
+```powershell
+foreach ($run in 1..3) {
+    Write-Output "Run $run/3"
+    php tests/Concurrency/letter-number.php
+    if ($LASTEXITCODE -ne 0) { throw 'Uji konkurensi gagal; berhenti dan minta persetujuan sebelum mengubah penomoran.' }
+}
+```
+
+- Setiap jalan membuat schema acak `concurrency_<hex>`, menjalankan migration dan membuat 30 permohonan fiktif `PROCESSING` lintas empat jenis surat, serta 30 petugas. Cast terenkripsi model tetap dipakai. Tabel `public` tidak dihapus/diubah; tidak memakai `migrate:fresh`.
+- Menjalankan **30 proses PHP terpisah** yang memanggil `StaffController::update()` asli. Bukan salinan algoritma `LetterNumber`, bukan simulasi transaksi berurutan. Autentikasi HTTP/middleware tidak dicakup skrip ini.
+- Induk menahan lock tabel counter yang awalnya kosong; `pg_locks` harus membuktikan **30 sesi PostgreSQL menunggu bersamaan** sebelum lock dilepas. Ini menguji perebutan pembuatan counter pertama sekaligus urutan berikutnya. Tidak menyisipkan counter awal atau menambah retry di skrip; retry transaksi bawaan controller tetap berlaku.
+- Tanggal fiktif dibekukan ke 24 Oktober 2026 pukul 12.00 WIB pada semua proses agar tidak melintasi tahun. Memeriksa 30 nomor unik, urutan tepat 1..30, satu counter tahun 2026 bernilai 30, satu nomor per permohonan, serta 30 status dan event beserta petugas penerbitnya.
+- Batas waktu barrier 45 detik, SQL/lock 60 detik, dan proses anak 90 detik. Gagal/timeout → exit 1; output exception/worker tidak dicetak agar SQL, data sensitif, dan rahasia tidak bocor. Schema dibersihkan dalam `finally`, juga saat gagal. Bila proses induk dihentikan paksa, schema sementara mungkin tertinggal; periksa secara manual, jangan menghapus schema lain.
+- Tiga hasil PASS adalah bukti skenario lokal tersebut, bukan pembuktian matematis untuk semua beban, uji server produksi, atau uji HTTP end-to-end. Jika satu jalan gagal, hentikan rangkaian dan laporkan sebelum mengubah `LetterNumber`.
 
 ### Akun petugas
 

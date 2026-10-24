@@ -27,7 +27,7 @@
 
 ### Alasan K3 — PostgreSQL, bukan SQLite atau MySQL
 
-- Penomoran surat (`App\Domain\LetterNumber`) dan perubahan status memakai `lockForUpdate()`. **SQLite mengabaikan penguncian baris ini**; keamanan nomor bergantung pada kunci seluruh database, dan uji konkurensi multiproses M3a belum dijalankan. PostgreSQL menjalankan `SELECT … FOR UPDATE` sebenarnya.
+- Penomoran surat (`App\Domain\LetterNumber`) dan perubahan status memakai `lockForUpdate()`. **SQLite mengabaikan penguncian baris ini**; keamanan nomor bergantung pada kunci seluruh database. PostgreSQL menjalankan `SELECT … FOR UPDATE` sebenarnya; uji konkurensi multiproses M3a lulus tiga kali pada PostgreSQL 18.6 lokal (24 Oktober 2026), lihat Fase 2.
 - Kode sudah ditulis kompatibel PostgreSQL (`LOWER(...) LIKE ? ESCAPE '!'` di `StaffController`).
 - Backup konsisten saat aplikasi berjalan dengan `pg_dump`; dokumentasi proyek sejak awal menargetkan PostgreSQL.
 - MySQL tidak memberi keuntungan tambahan untuk kasus ini, dan menambah satu variasi lagi yang perlu diuji.
@@ -67,7 +67,7 @@ Daftar lengkap ada di `ROADMAP.md` § "Data yang harus diminta ke desa". Yang me
 
 ### Database
 - [x] **(BLOKIR)** Jalankan seluruh `php artisan test` terhadap PostgreSQL lokal (`DB_CONNECTION=pgsql`), perbaiki yang gagal. Panduan dan `.env.testing.pgsql.example` tersedia: PostgreSQL 18.6 lulus 179 tes / 1.858 assertions; SQLite lulus 179 tes / 1.856 assertions (24 Oktober 2026, `docs/progres-2026-10-24.md`). Pengguna mengizinkan verifikasi database Fase 2 mendahului pemblokir Fase 0–1; bukan persetujuan K2/K6.
-- [ ] **(BLOKIR)** Uji penomoran simultan multiproses pada PostgreSQL (butir M3a): banyak permintaan `PROCESSING → WAITING_APPROVAL` paralel tidak boleh menghasilkan nomor ganda atau loncat.
+- [x] **(BLOKIR)** Uji penomoran simultan multiproses pada PostgreSQL (butir M3a): tiga kali lulus pada PostgreSQL 18.6 lokal, masing-masing 30 proses PHP / 30 sesi database menunggu bersamaan sebelum dilepas; 30 transisi `PROCESSING → WAITING_APPROVAL`, nomor unik 1..30 tanpa celah, satu counter tahunan bernilai 30. Skrip `backend/tests/Concurrency/letter-number.php`; hasil 24 Oktober 2026 di `docs/progres-2026-10-24.md`. Bukan uji server produksi.
 - [x] Pastikan semua migration berjalan bersih dari nol di PostgreSQL (`migrate:fresh`) dan `migrate:rollback` tidak merusak. Seluruh 13 migration lulus fresh, rollback (panggilan kedua: `Nothing to rollback`), lalu migrate ulang pada database uji kosong PostgreSQL 18.6; tidak ada migration gagal (24 Oktober 2026).
 
 ### Privasi dan enkripsi

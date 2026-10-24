@@ -13,7 +13,7 @@
 | M2 — Status/peran | Selesai sesuai checklist | Perluasan RT/RW dicatat di M2a |
 | M2a — RT/RW | Implementasi dan uji API selesai | Review visual antrean 390px/1440px |
 | M3 — Dashboard | Sebagian selesai; manajemen akun sudah ada | Ringkasan per status, uji manual akun dan review visual |
-| M3a — Register | Implementasi selesai | Uji konkurensi multiproses dan browser dengan Laravel |
+| M3a — Register | Implementasi dan uji konkurensi PostgreSQL selesai | Uji browser dengan Laravel |
 | M4 — Pengaduan | Belum dibuat | Kategori/penanggung jawab desa, backend dan frontend |
 | M5 — CMS | Belum dibuat; menunggu K2/K4 | Hosting, pengelola konten, backend dan frontend |
 | M6 — Lampiran persyaratan | Belum dibuat | Unggah privat, batas file, retensi; berbeda dari unggah surat final M7 |
@@ -132,7 +132,7 @@ Dipisahkan dari M7/PDF atas persetujuan pengguna 21 Oktober 2026; bergantung pad
 - [x] `/admin/register`: filter tahun/jenis, pagination, tanda nomor batal; tanpa ekspor/PDF.
 - [x] Tes backend (155 tes, 1.668 assertions pada sesi register), lint, tsc, build, build demo, test:demo, dan pemeriksaan register 390px/1440px dengan API tiruan lulus.
 - [x] Zona waktu aplikasi dari `APP_TIMEZONE`, bawaan `Asia/Jakarta`; dua tes regresi 31 Desember 23.59 WIB dan 1 Januari 00.01 WIB memastikan tahun/urutan benar. `php artisan test`: 179 tes / 1.856 assertions lulus (24 Oktober 2026; lihat `docs/progres-2026-10-24.md`).
-- [ ] Uji penomoran simultan multiproses; ulangi pengujian pada database produksi setelah K3 diputuskan.
+- [x] Uji penomoran simultan multiproses pada PostgreSQL (pilihan K3): tiga kali lulus di PostgreSQL 18.6 lokal, masing-masing 30 proses PHP dan 30 sesi database menunggu bersamaan sebelum dilepas; nomor unik 1..30 tanpa celah, satu counter tahunan bernilai 30. Skrip mandiri `backend/tests/Concurrency/letter-number.php`; bukti di `docs/progres-2026-10-24.md`. Bukan verifikasi server produksi.
 - [ ] Uji browser end-to-end register dengan Laravel langsung (bukan API tiruan).
 
 ## M4 — Pengaduan warga
