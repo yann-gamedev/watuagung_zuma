@@ -8,6 +8,7 @@ use App\Models\Application;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
@@ -70,6 +71,51 @@ class LetterRegisterTest extends TestCase
         $this->assertDatabaseHas('letter_numbers', ['year' => 2027, 'sequence' => 1, 'number' => '[PLACEHOLDER]/1/[PLACEHOLDER]/I/2027']);
         $this->assertDatabaseHas('letter_number_counters', ['year' => 2026, 'sequence' => 4]);
         $this->assertDatabaseHas('letter_number_counters', ['year' => 2027, 'sequence' => 1]);
+    }
+
+    public function test_number_at_2359_wib_on_december_31_uses_the_current_year(): void
+    {
+        $this->travelTo(Carbon::parse('2026-12-31 23:59:00', 'Asia/Jakarta'));
+        $this->act();
+        $application = $this->application();
+
+        $this->change($application, 'WAITING_APPROVAL')->assertOk();
+
+        $this->assertDatabaseHas('letter_numbers', [
+            'application_id' => $application->id, 'year' => 2026, 'sequence' => 1,
+            'number' => '[PLACEHOLDER]/1/[PLACEHOLDER]/XII/2026',
+            'issued_at' => '2026-12-31 23:59:00',
+        ]);
+        $this->getJson('/api/v1/staff/letter-register')->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.issued_at', '2026-12-31T16:59:00.000000Z');
+    }
+
+    public function test_number_at_0001_wib_on_january_1_restarts_at_one_for_the_new_year(): void
+    {
+        $this->travelTo(Carbon::parse('2026-12-31 23:59:00', 'Asia/Jakarta'));
+        $this->act();
+        $this->change($this->application(), 'WAITING_APPROVAL')->assertOk();
+        $this->change($this->application(), 'WAITING_APPROVAL')->assertOk();
+
+        $this->travelTo(Carbon::parse('2027-01-01 00:01:00', 'Asia/Jakarta'));
+        $application = $this->application();
+        $this->change($application, 'WAITING_APPROVAL')->assertOk();
+
+        $this->assertDatabaseHas('letter_numbers', [
+            'application_id' => $application->id, 'year' => 2027, 'sequence' => 1,
+            'number' => '[PLACEHOLDER]/1/[PLACEHOLDER]/I/2027',
+            'issued_at' => '2027-01-01 00:01:00',
+        ]);
+        $this->assertDatabaseHas('letter_number_counters', ['year' => 2026, 'sequence' => 2]);
+        $this->assertDatabaseHas('letter_number_counters', ['year' => 2027, 'sequence' => 1]);
+        $this->getJson('/api/v1/staff/letter-register')->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.number', '[PLACEHOLDER]/1/[PLACEHOLDER]/I/2027')
+            ->assertJsonPath('data.0.issued_at', '2026-12-31T17:01:00.000000Z');
+        $this->getJson('/api/v1/staff/applications/'.$application->request_id)->assertOk()
+            ->assertJsonPath('letter_numbers.0.issued_at', '2026-12-31T17:01:00.000000Z')
+            ->assertJsonPath('history.0.created_at', '2026-12-31T17:01:00.000000Z');
     }
 
     public function test_configuration_and_roman_months_are_used(): void

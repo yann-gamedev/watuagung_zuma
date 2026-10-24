@@ -58,12 +58,12 @@ Jalankan migration penambahan username sebelum memakai frontend baru. Akun lama 
 
 ## Nomor surat dan buku registrasi
 
-- Nomor dialokasikan dalam transaksi yang sama dengan `PROCESSING → WAITING_APPROVAL`. Satu urutan untuk semua jenis surat per tahun, reset pada pergantian tahun sesuai zona waktu aplikasi (`config/app.php`, saat ini UTC). Nomor yang dibatalkan tidak digunakan ulang.
+- Nomor dialokasikan dalam transaksi yang sama dengan `PROCESSING → WAITING_APPROVAL`. Satu urutan untuk semua jenis surat per tahun, reset pada pergantian tahun sesuai zona waktu aplikasi (`config/app.php`, env `APP_TIMEZONE` dengan bawaan `Asia/Jakarta`): pukul 00.00 WIB tanggal 1 Januari. Nomor yang dibatalkan tidak digunakan ulang.
 - Format dari `backend/config/letters.php`: `{kode_klasifikasi}/{urut}/{kode_desa}/{bulan_romawi}/{tahun}`. Klasifikasi per jenis di `LetterType`; kode klasifikasi dan kode desa masih `[PLACEHOLDER]`, bukan data resmi.
 - `WAITING_APPROVAL → REJECTED/NEED_REVISION` oleh Kepala Desa membatalkan nomor aktif dengan alasan dari catatan wajib. Pengajuan ulang setelah perbaikan mendapat nomor baru. Riwayat nomor lama tetap disimpan; permohonan lama tidak diberi nomor retroaktif.
 - **GET `/staff/letter-register`**: token ability `applications:manage`, akun aktif berperan `staff`, `admin`, atau `village_head`; tanpa token 401, RT/RW/peran/ability salah 403. Query opsional `year` (bilangan bulat 1000–9999, bawaan tahun server), `jenis_surat` (SKU/DOMISILI/SKTM/KTP_KK), `page` (≥1). Filter digabung AND; paginator 20 baris. Kesalahan validasi 422.
 - Item daftar hanya `{ number, issued_at, jenis_surat, nama, status }`; `status` adalah `issued` atau `void`, bukan status permohonan. Tidak memuat NIK, KK, telepon, alamat, kode akses, maupun alasan bebas. Respons `Cache-Control: private, no-store`.
-- Detail kantor menambahkan `letter_numbers: [{ number, status, void_reason, issued_at }]`; tidak dikirim kepada RT/RW. `void_reason` nullable. Tanggal ISO 8601. Tipe frontend: `LetterNumber`, `LetterRegisterEntry`, `LetterRegisterPage`.
+- Detail kantor menambahkan `letter_numbers: [{ number, status, void_reason, issued_at }]`; tidak dikirim kepada RT/RW. `void_reason` nullable. Tanggal API tetap ISO 8601 UTC (instan yang sama, bukan waktu lokal tanpa zona). Tipe frontend: `LetterNumber`, `LetterRegisterEntry`, `LetterRegisterPage`.
 - Cek status warga menambahkan `letter_number: string | null`; hanya nomor aktif pada `APPROVED`, `READY_FOR_PICKUP`, atau `COMPLETED`, selain itu null. Permohonan lama tanpa nomor tetap null. Kode akses tetap wajib; tidak ada riwayat nomor batal/alasan pembatalan baru pada respons publik.
 - Halaman statis `/admin/register/` mengambil data di browser memakai sesi panel, dengan filter tahun/jenis, pagination, dan tanda **Dibatalkan**. Tidak ada ekspor, PDF, atau penyimpanan data register di browser storage. Demo tetap menonaktifkan panel.
 

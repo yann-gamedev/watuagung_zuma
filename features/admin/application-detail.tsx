@@ -38,7 +38,7 @@ function lowerLabel(status: Status) {
   return actionLabels[status].replace(/^./, (letter) => letter.toLowerCase());
 }
 function dateTime(value: string) {
-  return new Date(value).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" });
+  return new Date(value).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Jakarta" });
 }
 const draftStatuses: Status[] = ["PROCESSING", "WAITING_APPROVAL"];
 const finalStatuses: Status[] = ["APPROVED", "READY_FOR_PICKUP", "COMPLETED"];

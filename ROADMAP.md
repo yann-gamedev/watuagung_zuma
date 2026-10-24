@@ -131,6 +131,7 @@ Dipisahkan dari M7/PDF atas persetujuan pengguna 21 Oktober 2026; bergantung pad
 - [x] API buku registrasi untuk staff/admin/village_head; detail kantor memuat riwayat nomor, cek status warga memuat nomor aktif sejak APPROVED.
 - [x] `/admin/register`: filter tahun/jenis, pagination, tanda nomor batal; tanpa ekspor/PDF.
 - [x] Tes backend (155 tes, 1.668 assertions pada sesi register), lint, tsc, build, build demo, test:demo, dan pemeriksaan register 390px/1440px dengan API tiruan lulus.
+- [x] Zona waktu aplikasi dari `APP_TIMEZONE`, bawaan `Asia/Jakarta`; dua tes regresi 31 Desember 23.59 WIB dan 1 Januari 00.01 WIB memastikan tahun/urutan benar. `php artisan test`: 179 tes / 1.856 assertions lulus (24 Oktober 2026; lihat `docs/progres-2026-10-24.md`).
 - [ ] Uji penomoran simultan multiproses; ulangi pengujian pada database produksi setelah K3 diputuskan.
 - [ ] Uji browser end-to-end register dengan Laravel langsung (bukan API tiruan).
 

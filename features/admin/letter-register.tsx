@@ -98,7 +98,7 @@ function RegisterResults({ apiPath, focusResultsRef, onPage }: { apiPath: string
         <thead><tr>{["Nomor surat", "Tanggal", "Jenis surat", "Pemohon", "Status nomor"].map((label) => <th key={label} scope="col">{label}</th>)}</tr></thead>
         <tbody>{result.data.map((letter) => <tr key={letter.number}>
           <td>{letter.number}</td>
-          <td><time dateTime={letter.issued_at}>{new Date(letter.issued_at).toLocaleDateString("id-ID", { dateStyle: "long" })}</time></td>
+          <td><time dateTime={letter.issued_at}>{new Date(letter.issued_at).toLocaleDateString("id-ID", { dateStyle: "long", timeZone: "Asia/Jakarta" })}</time></td>
           <td>{applicationServiceLabels[letter.jenis_surat]}</td><td>{letter.nama}</td>
           <td><span className={`status-badge status-${letter.status === "void" ? "REJECTED" : "VERIFIED"}`}>
             {letter.status === "void" ? <CircleX size={22} aria-hidden="true" /> : <CircleCheck size={22} aria-hidden="true" />}
