@@ -52,6 +52,42 @@ php artisan route:list --path=api
 php artisan config:clear
 ```
 
+### Tes SQLite dan PostgreSQL
+
+`phpunit.xml` tetap memakai SQLite `:memory:`. PostgreSQL 16+ dipilih untuk produksi; verifikasi lokal terakhir memakai PostgreSQL 18.6 (179 tes / 1.858 assertions) dan SQLite (179 tes / 1.856 assertions), lihat [catatan progres](../docs/progres-2026-10-24.md).
+
+**Hanya gunakan database lokal khusus `watuagung_test`: `migrate:fresh` dan suite tes menghapus seluruh isinya.** Buat database kosong tersebut dengan user lokal yang sudah disiapkan, misalnya `createdb -h 127.0.0.1 -p 5432 -U <user-lokal> -W watuagung_test`. Jangan memakai database pengembangan/produksi berisi data yang perlu disimpan.
+
+1. Pastikan PHP CLI memuat `pdo_pgsql` (`php -m`). Tidak perlu paket Composer tambahan.
+2. Salin `.env.testing.pgsql.example` menjadi `.env.testing.pgsql` bila belum ada; isi kredensial lokal di file itu, bukan di `phpunit.xml` atau file contoh. Jangan commit file kredensial.
+3. Pastikan tidak ada cache konfigurasi (`php artisan config:clear`) atau override `DB_*`/`APP_ENV` pada shell. Jangan menyimpan konfigurasi PostgreSQL di `.env.testing`, agar tes SQLite tidak memuat konfigurasi tersebut.
+4. Gunakan `APP_KEY` lokal yang **sudah ada** melalui environment proses ketika menjalankan tes PostgreSQL; jangan membuat, mengganti, mencetak, atau menyalin nilainya ke file contoh. Contoh PowerShell berikut membaca baris kunci lokal tanpa menampilkannya (format `.env` satu baris standar):
+
+```powershell
+$keyLine = Get-Content .env | Where-Object { $_ -match '^APP_KEY=' } | Select-Object -First 1
+if (!$keyLine) { throw 'APP_KEY lokal yang sudah ada diperlukan; jangan membuat kunci baru.' }
+$env:APP_KEY = ($keyLine -split '=', 2)[1].Trim().Trim('"').Trim("'")
+try {
+    php artisan migrate:fresh --env=testing.pgsql
+    if ($LASTEXITCODE -ne 0) { throw 'migrate:fresh gagal' }
+    php artisan test --env=testing.pgsql
+    if ($LASTEXITCODE -ne 0) { throw 'Tes PostgreSQL gagal' }
+} finally {
+    Remove-Item Env:APP_KEY
+    Remove-Variable keyLine
+}
+php artisan migrate:rollback --env=testing.pgsql
+# Ulangi rollback hingga "Nothing to rollback", lalu:
+php artisan migrate --env=testing.pgsql
+php artisan test
+```
+
+`--env=testing.pgsql` mempertahankan environment PostgreSQL saat Artisan menjalankan PHPUnit; tanpa opsi itu, bawaan SQLite di `phpunit.xml` berlaku. `APP_ENV=testing` di file contoh tetap diperlukan untuk perilaku lingkungan tes. `LOG_CHANNEL=null` mencegah kegagalan yang sengaja dipicu suite menulis query/fixture ke log.
+
+Jika DLL `php_pdo_pgsql.dll` sudah tersedia di Windows tetapi belum aktif, alternatif tanpa perubahan `php.ini` global adalah membuat direktori konfigurasi sementara berisi file `pgsql.ini` dengan `extension=pdo_pgsql`, lalu set `$env:PHP_INI_SCAN_DIR` ke direktori itu sebelum menjalankan perintah. Ini juga berlaku pada proses anak PHPUnit; `php -d extension=pdo_pgsql artisan test` saja tidak meneruskan ekstensi ke proses anak. Pulihkan environment shell setelah selesai.
+
+Suite menguji trigger kegagalan transaksi dan SQL penguncian sesuai driver. Ini **bukan** bukti konkurensi multiproses atau kesiapan produksi; uji simultan M3a masih terpisah.
+
 ### Akun petugas
 
 Jalankan `php artisan migrate` terlebih dahulu untuk menambahkan kolom username unik. Akun lama tetap tersimpan dengan username null dan login email melalui API masih didukung. Form admin sekarang menggunakan username; tetapkan username unik pada akun lama sebelum memakainya. Format: 1–64 karakter huruf kecil/angka, `_`, atau `-`, diawali huruf kecil/angka. Tidak ada akun/kata sandi bawaan.

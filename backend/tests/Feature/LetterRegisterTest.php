@@ -284,18 +284,25 @@ class LetterRegisterTest extends TestCase
         $application = $this->application();
         $this->act();
         config(['app.debug' => false]);
-        DB::unprepared("CREATE TRIGGER fail_letter_event BEFORE INSERT ON application_events BEGIN SELECT RAISE(ABORT, 'Test failure'); END");
+        $pgsql = DB::getDriverName() === 'pgsql';
+        if ($pgsql) {
+            DB::unprepared("CREATE FUNCTION pg_temp.fail_letter_event() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Test failure'; END; $$");
+        }
+        $createTrigger = $pgsql
+            ? 'CREATE TRIGGER fail_letter_event BEFORE INSERT ON application_events FOR EACH ROW EXECUTE FUNCTION pg_temp.fail_letter_event()'
+            : "CREATE TRIGGER fail_letter_event BEFORE INSERT ON application_events BEGIN SELECT RAISE(ABORT, 'Test failure'); END";
+        DB::unprepared($createTrigger);
         $this->change($application, 'WAITING_APPROVAL')->assertStatus(500);
         $this->assertSame('PROCESSING', $application->fresh()->status);
         $this->assertDatabaseCount('letter_numbers', 0);
         $this->assertDatabaseCount('letter_number_counters', 0);
         $this->assertDatabaseCount('application_events', 0);
-        DB::unprepared('DROP TRIGGER fail_letter_event');
+        DB::unprepared('DROP TRIGGER fail_letter_event'.($pgsql ? ' ON application_events' : ''));
         $this->change($application, 'WAITING_APPROVAL')->assertOk();
         $this->assertDatabaseHas('letter_numbers', ['sequence' => 1]);
 
         $this->act('village_head');
-        DB::unprepared("CREATE TRIGGER fail_letter_event BEFORE INSERT ON application_events BEGIN SELECT RAISE(ABORT, 'Test failure'); END");
+        DB::unprepared($createTrigger);
         $this->change($application, 'REJECTED', 'Alasan fiktif')->assertStatus(500);
         $this->assertSame('WAITING_APPROVAL', $application->fresh()->status);
         $this->assertDatabaseHas('letter_numbers', ['status' => 'issued', 'void_reason' => null]);
@@ -339,7 +346,7 @@ class LetterRegisterTest extends TestCase
         };
     }
 
-    public function test_sqlite_acquires_write_lock_before_transaction_reads_even_with_existing_counter(): void
+    public function test_driver_locks_application_and_counter_before_issuing_with_existing_counter(): void
     {
         $this->act();
         $this->change($this->application(), 'WAITING_APPROVAL')->assertOk();
@@ -347,11 +354,22 @@ class LetterRegisterTest extends TestCase
         $queries = [];
         DB::listen(function ($query) use (&$queries) { $queries[] = $query->sql; });
         $this->change($application, 'WAITING_APPROVAL')->assertOk();
-        $lock = array_search('update "letter_number_counters" set "year" = ? where "year" = ?', $queries);
-        $this->assertNotFalse($lock);
-        $freshRead = array_search('select * from "applications" where "applications"."id" = ? limit 1', $queries);
-        $this->assertNotFalse($freshRead);
-        $this->assertLessThan($freshRead, $lock);
+        if (DB::getDriverName() === 'sqlite') {
+            $lock = array_search('update "letter_number_counters" set "year" = ? where "year" = ?', $queries);
+            $freshRead = array_search('select * from "applications" where "applications"."id" = ? limit 1', $queries);
+            $this->assertNotFalse($lock);
+            $this->assertNotFalse($freshRead);
+            $this->assertLessThan($freshRead, $lock);
+        } else {
+            $applicationLock = array_search('select * from "applications" where "applications"."id" = ? limit 1 for update', $queries);
+            $counterLock = array_search('select * from "letter_number_counters" where "year" = ? limit 1 for update', $queries);
+            $counterUpdate = array_search('update "letter_number_counters" set "sequence" = ? where "year" = ?', $queries);
+            $this->assertNotFalse($applicationLock);
+            $this->assertNotFalse($counterLock);
+            $this->assertNotFalse($counterUpdate);
+            $this->assertLessThan($counterLock, $applicationLock);
+            $this->assertLessThan($counterUpdate, $counterLock);
+        }
         $this->assertDatabaseHas('letter_numbers', ['sequence' => 2]);
     }
 }
