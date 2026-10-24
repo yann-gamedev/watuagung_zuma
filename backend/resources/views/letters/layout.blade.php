@@ -42,7 +42,7 @@
     <tr><td>Nama</td><td>: {{ $a->nama }}</td></tr>
     <tr><td>NIK</td><td>: {{ $a->nik }}</td></tr>
     <tr><td>No. KK</td><td>: {{ $a->no_kk }}</td></tr>
-    <tr><td>Tempat, tanggal lahir</td><td>: {{ $a->tempat_lahir }}, {{ $a->tanggal_lahir->locale('id')->translatedFormat('j F Y') }}</td></tr>
+    <tr><td>Tempat, tanggal lahir</td><td>: {{ $a->tempat_lahir }}, {{ \Illuminate\Support\Carbon::parse($a->tanggal_lahir)->locale('id')->translatedFormat('j F Y') }}</td></tr>
     <tr><td>Jenis kelamin</td><td>: {{ $a->jenis_kelamin }}</td></tr>
     <tr><td>Alamat</td><td>: {{ $a->alamat }}, RT {{ $a->rt }} / RW {{ $a->rw }}, Desa Watuagung</td></tr>
 </table>
