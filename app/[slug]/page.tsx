@@ -28,7 +28,7 @@ export default async function Page({
     <PublicShell>
       <PageHeading {...page} />
       <section className="section container info-page">
-        {slug !== "profil" && (
+        {slug !== "profil" && slug !== "struktur-pemerintahan" && (
           <div className="notice">
             Konten contoh · Informasi resmi desa akan diperbarui setelah
             verifikasi.
