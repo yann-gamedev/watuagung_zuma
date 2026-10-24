@@ -14,7 +14,7 @@
 | M2a — RT/RW | Implementasi dan uji API selesai | Review visual antrean 390px/1440px |
 | M3 — Dashboard | Sebagian selesai; manajemen akun sudah ada | Ringkasan per status, uji manual akun dan review visual |
 | M3a — Register | Implementasi dan uji konkurensi PostgreSQL selesai | Uji browser dengan Laravel |
-| M4 — Pengaduan | Belum dibuat | Kategori/penanggung jawab desa, backend dan frontend |
+| M4 — Pengaduan | Dialihkan ke Google Form desa (24 Okt 2026); tautan selesai | URL Google Form dari desa (`NEXT_PUBLIC_COMPLAINT_FORM_URL`) |
 | M5 — CMS | Belum dibuat; menunggu K2/K4 | Hosting, pengelola konten, backend dan frontend |
 | M6 — Lampiran persyaratan | Belum dibuat | Unggah privat, batas file, retensi; berbeda dari unggah surat final M7 |
 | M7 — PDF/QR | Implementasi dengan template sementara selesai | Format resmi desa, uji browser Laravel dan pindai QR; TTE di luar lingkup |
@@ -137,13 +137,12 @@ Dipisahkan dari M7/PDF atas persetujuan pengguna 21 Oktober 2026; bergantung pad
 
 ## M4 — Pengaduan warga
 
-- [ ] Tabel `complaints`: nomor tiket, kode akses (hash), kategori, judul, isi, lokasi/RT-RW, kontak opsional (terenkripsi), status, catatan tindak lanjut
-- [ ] Riwayat di `complaint_events`
-- [ ] Status: `RECEIVED → IN_PROGRESS → RESOLVED`, atau `REJECTED` (catatan wajib)
-- [ ] Endpoint publik: kirim + cek status (pola sama dengan pengajuan surat, dengan rate limit)
-- [ ] Endpoint petugas: daftar, filter, ubah status
-- [ ] Frontend: formulir, halaman sukses, cek status; hapus badge "Segera hadir"
-- [ ] Data dari desa: daftar kategori pengaduan dan siapa yang menanganinya
+**Dialihkan ke Google Form milik desa (keputusan 24 Oktober 2026).** Pengaduan tidak dibangun di website; website hanya menautkan formulir.
+
+- [x] Env `NEXT_PUBLIC_COMPLAINT_FORM_URL` (hanya `https://forms.gle/` atau `https://docs.google.com/forms/`); bila ada, "Segera hadir" pengaduan diganti tautan "Sampaikan pengaduan" (tab baru, `rel="noopener noreferrer"`) di panel tugas beranda, menu desktop/ponsel, footer, dan `/kontak`, plus catatan larangan NIK/KK di `/kontak`. Tanpa iframe. Bila kosong tetap "Segera hadir". Bukti: `docs/progres-2026-10-24.md` (sesi Google Form).
+- [ ] URL Google Form resmi dari desa diisi di env build produksi
+- ~~Tabel `complaints`, riwayat `complaint_events`, status, endpoint publik/petugas, formulir dan cek status di website~~ — tidak dikerjakan (dialihkan ke Google Form)
+- ~~Data dari desa: daftar kategori pengaduan dan penanggung jawab~~ — dikelola desa di Google Form, tidak dikerjakan di website
 
 ## M5 — Pengelolaan konten (CMS)
 

@@ -67,9 +67,10 @@ Tujuan pelayanan harus dibedakan dari kemampuan yang sudah tersedia. Tidak ada t
 
 QR verifikasi **bukan** Tanda Tangan Elektronik tersertifikasi. TTE yang sah setara tanda tangan basah membutuhkan sertifikat dari Penyelenggara Sertifikasi Elektronik (misalnya BSrE). Sampai integrasi itu ada, surat tetap dicetak dan ditandatangani basah serta distempel oleh Kepala Desa, dan QR hanya berfungsi sebagai alat cek keaslian. Jangan menulis di halaman mana pun bahwa surat "ditandatangani secara elektronik".
 
+- **[BARU] Pengaduan warga melalui Google Form desa (24 Oktober 2026):** pengaduan tidak dibangun di website. Bila `NEXT_PUBLIC_COMPLAINT_FORM_URL` berisi URL Google Forms (`https://forms.gle/` atau `https://docs.google.com/forms/`), semua pintu masuk pengaduan menjadi tautan "Sampaikan pengaduan" yang dibuka di tab baru dengan keterangan bahwa formulir dikelola Pemerintah Desa Watuagung melalui Google Forms. Formulir tidak disematkan (tanpa iframe). `/kontak` mengingatkan warga agar tidak menulis NIK, nomor KK, atau data pribadi lain di formulir, dan datang ke kantor desa untuk hal mendesak. Bila URL kosong atau tidak valid, tetap tampil "Segera hadir". Data pengaduan disimpan di Google, bukan di sistem ini.
+
 ### Belum tersedia
 
-- Pengaduan warga.
 - Unggah dokumen persyaratan.
 - Template surat resmi desa dan Tanda Tangan Elektronik tersertifikasi (BSrE).
 - Pengelolaan konten (profil, berita, BUMDes, UMKM) melalui backend; konten masih tersimpan di `lib/data.ts`.
