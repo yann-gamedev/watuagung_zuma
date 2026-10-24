@@ -49,23 +49,30 @@ export default function Home() {
             <div className="home-bottom-label">PROFIL DESA</div>
             <h2 id="profile-title">Mengenal Desa Watuagung</h2>
             <p className="home-profile-summary">
-              [RINGKASAN PROFIL DESA — 2–3 kalimat dari dokumen resmi desa]
+              Desa Watuagung berada di Kecamatan Prigen, Kabupaten Pasuruan,
+              Jawa Timur, pada dataran pegunungan sekitar ±11 km dari
+              kecamatan. Wilayahnya terdiri atas 3 dusun (Watuagung, Talang,
+              dan Sekar) dengan 10 RW dan 31 RT.
             </p>
             <dl className="home-profile-stats">
               <div>
-                <dt>Penduduk</dt>
-                <dd>[JML]</dd>
+                <dt>Penduduk · Data Sept 2025</dt>
+                <dd>4.819 jiwa</dd>
               </div>
               <div>
                 <dt>Dusun</dt>
-                <dd>[JML]</dd>
+                <dd>3</dd>
               </div>
               <div>
                 <dt>Luas wilayah</dt>
                 <dd>[LUAS]</dd>
               </div>
             </dl>
-            <div className="home-profile-actions">
+            <p className="home-profile-summary">
+              Sumber: penduduk dari Kasi Pemerintahan Desa Watuagung, September
+              2025; dusun dari RKP Desa Watuagung 2027.
+            </p>
+            <div className="home-profile-actions mt-6">
               <Link href="/visi-misi" className="home-bottom-button home-bottom-gold">
                 Visi &amp; Misi
               </Link>

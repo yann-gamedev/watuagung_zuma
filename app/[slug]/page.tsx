@@ -28,16 +28,18 @@ export default async function Page({
     <PublicShell>
       <PageHeading {...page} />
       <section className="section container info-page">
-        <div className="notice">
-          Konten contoh · Informasi resmi desa akan diperbarui setelah
-          verifikasi.
-        </div>
+        {slug !== "profil" && (
+          <div className="notice">
+            Konten contoh · Informasi resmi desa akan diperbarui setelah
+            verifikasi.
+          </div>
+        )}
         {slug === "kontak" ? (
           <div className="info-contact">
             <article className="home-contact-card">
               <div>
                 <h2>Kantor Desa Watuagung</h2>
-                <p>[ALAMAT LENGKAP KANTOR DESA]</p>
+                <p>{page.blocks[0].text}</p>
                 <p>Buka [HARI &amp; JAM LAYANAN]</p>
                 <p>Telepon: [NOMOR TELEPON KANTOR DESA]</p>
                 <p>Email: [EMAIL KANTOR DESA]</p>
