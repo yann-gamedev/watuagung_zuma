@@ -41,7 +41,7 @@ Sumber: kode/route API, file yang terlacak Git, `docs/progres-2026-10-21.md`, `d
 |---|---|---|---|
 | K1 | DOMISILI/SKTM/KTP_KK: RT → RW → petugas desa → kepala desa → siap diambil; SKU tetap langsung petugas desa | M2, M2a | **Disetujui 20 Oktober 2026** |
 | K2 | Hosting produksi: tetap static export (Vercel) + API terpisah, atau Next.js server penuh? | M5, M8 | Belum |
-| K3 | Database produksi: tetap SQLite atau PostgreSQL/MySQL? | M8 | Belum |
+| K3 | Database produksi: PostgreSQL 16+; SQLite tetap untuk pengembangan cepat | M8 | **Disetujui 24 Oktober 2026**; suite dan migration diverifikasi pada PostgreSQL 18.6 lokal, bukan deployment produksi |
 | K4 | Siapa di desa yang mengisi dan memperbarui konten? | M5 | Belum |
 | K5 | Library PDF (perlu persetujuan dependensi) | M7 | **Disetujui 21 Oktober 2026:** `barryvdh/laravel-dompdf` + `bacon/bacon-qr-code` |
 
@@ -182,6 +182,7 @@ Bergantung pada K5 dan M2.
 Wajib selesai sebelum menerima data warga nyata.
 
 - [ ] Hosting backend + database produksi (K2, K3)
+- [x] Kompatibilitas PostgreSQL lokal (24 Oktober 2026): 179 tes / 1.858 assertions pada PostgreSQL 18.6; SQLite tetap lulus 179 tes / 1.856 assertions. Seluruh 13 migration lulus `migrate:fresh`, rollback sampai habis, lalu migrate ulang. Panduan di `backend/README.md`, bukti di `docs/progres-2026-10-24.md`; bukan verifikasi hosting atau konkurensi multiproses.
 - [ ] HTTPS, CORS sesuai domain, backup terjadwal
 - [ ] Kebijakan retensi dan penghapusan data pemohon (sesuai UU PDP)
 - [x] Implementasi bantuan buat ulang kode akses: `POST /staff/applications/{request_id}/lookup-secret` dan dialog di detail permohonan untuk staff/admin/RT/RW, sesuai wilayah; kode lama tidak berlaku, kode baru ditampilkan sekali, riwayat dan audit dicatat. Feature test, lint, tsc dan build lulus pada sesi kode akses (lihat `docs/progres-2026-10-21.md`). Ini bukan OTP/pemulihan mandiri.

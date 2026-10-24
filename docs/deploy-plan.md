@@ -19,7 +19,7 @@
 | # | Keputusan | Pilihan | Status |
 |---|---|---|---|
 | K2 | Hosting | Satu VPS: Nginx menyajikan static export Next.js **dan** Laravel pada origin yang sama (`/api/v1` → Laravel). Vercel tetap untuk demo/preview saja. | Usulan, tunggu persetujuan |
-| K3 | Database | **PostgreSQL 16+** di VPS yang sama, hanya mendengarkan `127.0.0.1`. | Usulan, tunggu persetujuan |
+| K3 | Database | **PostgreSQL 16+**; SQLite tetap didukung untuk pengembangan cepat. Rencana VPS yang sama, hanya mendengarkan `127.0.0.1`, mengikuti keputusan hosting K2. | Database disetujui 24 Oktober 2026; verifikasi lokal PostgreSQL 18.6 lulus |
 | K4 | Pengelola konten desa | Nama orang/jabatan di desa | Belum |
 | K6 | Lingkup rilis pertama | Lihat "Lingkup rilis 1" | Usulan, tunggu persetujuan |
 | K7 | Domain | Domain `.id` umum (tanpa dokumen) atas nama/email desa; `.desa.id` dibatalkan karena waktu | Belum dibeli |
@@ -66,9 +66,9 @@ Daftar lengkap ada di `ROADMAP.md` § "Data yang harus diminta ke desa". Yang me
 ## Fase 2 — Perubahan kode wajib
 
 ### Database
-- [ ] **(BLOKIR)** Jalankan seluruh `php artisan test` terhadap PostgreSQL lokal (`DB_CONNECTION=pgsql`), perbaiki yang gagal. Tambahkan langkah ini ke `backend/README.md`.
+- [x] **(BLOKIR)** Jalankan seluruh `php artisan test` terhadap PostgreSQL lokal (`DB_CONNECTION=pgsql`), perbaiki yang gagal. Panduan dan `.env.testing.pgsql.example` tersedia: PostgreSQL 18.6 lulus 179 tes / 1.858 assertions; SQLite lulus 179 tes / 1.856 assertions (24 Oktober 2026, `docs/progres-2026-10-24.md`). Pengguna mengizinkan verifikasi database Fase 2 mendahului pemblokir Fase 0–1; bukan persetujuan K2/K6.
 - [ ] **(BLOKIR)** Uji penomoran simultan multiproses pada PostgreSQL (butir M3a): banyak permintaan `PROCESSING → WAITING_APPROVAL` paralel tidak boleh menghasilkan nomor ganda atau loncat.
-- [ ] Pastikan semua migration berjalan bersih dari nol di PostgreSQL (`migrate:fresh`) dan `migrate:rollback` tidak merusak.
+- [x] Pastikan semua migration berjalan bersih dari nol di PostgreSQL (`migrate:fresh`) dan `migrate:rollback` tidak merusak. Seluruh 13 migration lulus fresh, rollback (panggilan kedua: `Nothing to rollback`), lalu migrate ulang pada database uji kosong PostgreSQL 18.6; tidak ada migration gagal (24 Oktober 2026).
 
 ### Privasi dan enkripsi
 - [ ] Enkripsi `tempat_lahir` dan `tanggal_lahir` di `applications` (cast `encrypted`, kolom `text`), dengan migration yang mengenkripsi baris lama. `nama` tetap teks biasa untuk pencarian (keputusan 18 Okt 2026).
