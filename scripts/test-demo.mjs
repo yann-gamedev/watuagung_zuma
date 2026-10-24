@@ -76,4 +76,9 @@ for (const type of ["DOMISILI", "SKTM", "KTP_KK"]) {
 }
 assert.equal((await pelayananService.getStatus("REQ-2026-000007")).jenis_surat, "SKTM");
 assert.equal((await pelayananService.getStatus("REQ-2026-000008")).jenis_surat, "SKTM");
-console.log("PASS: demo isolation, autofill fixtures, four services, calendar validation, status lookup, corrupted/blocked storage, identity privacy.");
+const { parseComplaintFormUrl } = await source("lib/complaint.ts");
+for (const url of ["https://forms.gle/Abc123", " https://docs.google.com/forms/d/e/x/viewform "])
+  assert.equal(parseComplaintFormUrl(url), url.trim());
+for (const url of [undefined, "", "https://forms.gle/", "http://forms.gle/Abc", "https://forms.gle.evil.com/x", "https://docs.google.com/document/d/x", "javascript:alert(1)", "https://evil.com/?https://forms.gle/x"])
+  assert.equal(parseComplaintFormUrl(url), "", String(url));
+console.log("PASS: demo isolation, autofill fixtures, four services, calendar validation, status lookup, corrupted/blocked storage, identity privacy, complaint form URL.");

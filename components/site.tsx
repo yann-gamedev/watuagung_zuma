@@ -8,6 +8,7 @@ import { news } from "@/lib/data";
 import type { ServiceCode, Status } from "@/types/pelayanan";
 import { requiresNeighborhoodApproval } from "@/lib/letter-workflow";
 import { SiteHeader, normalizePath } from "@/components/site-header";
+import { complaintFormUrl, complaintNote, externalLinkProps } from "@/lib/complaint";
 export function Footer() {
   return (
     <footer className="site-footer">
@@ -32,9 +33,16 @@ export function Footer() {
           <h3>Layanan</h3>
           <Link href="/pelayanan">Ajukan Surat</Link>
           <Link href="/pelayanan/status">Cek Status Surat</Link>
-          <Link href="/kontak">
-            Pengaduan <span className="footer-badge">Segera hadir</span>
-          </Link>
+          {complaintFormUrl ? (
+            <a href={complaintFormUrl} {...externalLinkProps}>
+              Sampaikan pengaduan <span className="footer-badge">Google Forms</span>
+              <span className="sr-only"> ({complaintNote} Dibuka di tab baru.)</span>
+            </a>
+          ) : (
+            <Link href="/kontak">
+              Pengaduan <span className="footer-badge">Segera hadir</span>
+            </Link>
+          )}
         </nav>
         <nav className="footer-links" aria-label="Profil di footer">
           <h3>Profil</h3>

@@ -2,15 +2,20 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronRight, Menu, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { ChevronRight, ExternalLink, Menu, X } from "lucide-react";
+import { complaintFormUrl, complaintNote, externalLinkProps } from "@/lib/complaint";
 
 /** Pathname tanpa garis miring di akhir (next.config memakai trailingSlash). */
 export function normalizePath(path: string | null) {
   return (path ?? "/").replace(/\/+$/, "") || "/";
 }
 
-type MenuLink = { label: string; href: string; soon?: boolean };
+type MenuLink = { label: string; href: string; soon?: boolean; external?: boolean };
+
+const complaintLink: MenuLink = complaintFormUrl
+  ? { label: "Sampaikan pengaduan", href: complaintFormUrl, external: true }
+  : { label: "Pengaduan", href: "/kontak", soon: true };
 
 const profilPaths = ["/profil", "/sejarah", "/visi-misi", "/struktur-pemerintahan"];
 
@@ -35,7 +40,7 @@ const menuGroups: { title: string; links: MenuLink[] }[] = [
     links: [
       { label: "Ajukan Surat", href: "/pelayanan" },
       { label: "Cek Status Surat", href: "/pelayanan/status" },
-      { label: "Pengaduan", href: "/kontak", soon: true },
+      complaintLink,
     ],
   },
   {
@@ -59,7 +64,7 @@ const menuGroups: { title: string; links: MenuLink[] }[] = [
 const mobileLinks: MenuLink[] = [
   { label: "Beranda", href: "/" },
   { label: "Cek Status Surat", href: "/pelayanan/status" },
-  { label: "Pengaduan", href: "/kontak", soon: true },
+  complaintLink,
   { label: "Profil Desa", href: "/profil" },
   { label: "Perangkat Desa", href: "/struktur-pemerintahan" },
   { label: "BUMDes", href: "/bumdes" },
@@ -81,6 +86,39 @@ function getFocusable(container: HTMLElement | null) {
 
 function SoonBadge() {
   return <span className="menu-soon">Segera hadir</span>;
+}
+
+function FormBadge() {
+  return <span className="menu-soon" aria-hidden="true">Google Forms</span>;
+}
+
+/** Tautan menu: Google Form desa dibuka di tab baru, sisanya route internal. */
+function MenuAnchor({
+  link,
+  className,
+  onClick,
+  current,
+  children,
+}: {
+  link: MenuLink;
+  className?: string;
+  onClick: () => void;
+  current?: "page";
+  children: ReactNode;
+}) {
+  if (link.external) {
+    return (
+      <a className={className} href={link.href} onClick={onClick} {...externalLinkProps}>
+        {children}
+        <span className="sr-only"> ({complaintNote} Dibuka di tab baru.)</span>
+      </a>
+    );
+  }
+  return (
+    <Link className={className} href={link.href} aria-current={current} onClick={onClick}>
+      {children}
+    </Link>
+  );
 }
 
 export function SiteHeader() {
@@ -245,14 +283,15 @@ export function SiteHeader() {
                   <ul>
                     {group.links.map((link) => (
                       <li key={link.label}>
-                        <Link
-                          href={link.href}
-                          aria-current={link.soon ? undefined : current(link.href)}
+                        <MenuAnchor
+                          link={link}
+                          current={link.soon ? undefined : current(link.href)}
                           onClick={closeMenu}
                         >
                           {link.label}
                           {link.soon && <SoonBadge />}
-                        </Link>
+                          {link.external && <FormBadge />}
+                        </MenuAnchor>
                       </li>
                     ))}
                   </ul>
@@ -275,17 +314,22 @@ export function SiteHeader() {
               <ul className="menu-mobile-list">
                 {mobileLinks.map((link) => (
                   <li key={link.label}>
-                    <Link
-                      href={link.href}
-                      aria-current={link.soon ? undefined : current(link.href)}
+                    <MenuAnchor
+                      link={link}
+                      current={link.soon ? undefined : current(link.href)}
                       onClick={closeMenu}
                     >
                       <span className="menu-mobile-text">
                         {link.label}
                         {link.soon && <SoonBadge />}
+                        {link.external && <FormBadge />}
                       </span>
-                      <ChevronRight size={22} aria-hidden="true" />
-                    </Link>
+                      {link.external ? (
+                        <ExternalLink size={22} aria-hidden="true" />
+                      ) : (
+                        <ChevronRight size={22} aria-hidden="true" />
+                      )}
+                    </MenuAnchor>
                   </li>
                 ))}
               </ul>
