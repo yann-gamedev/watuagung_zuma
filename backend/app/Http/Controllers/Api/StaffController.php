@@ -147,7 +147,7 @@ class StaffController extends Controller {
             $detail += [
                 'telepon'=>$application->telepon,
                 'tempat_lahir'=>$application->tempat_lahir,
-                'tanggal_lahir'=>$application->tanggal_lahir->format('Y-m-d'),
+                'tanggal_lahir'=>$application->tanggal_lahir,
                 'jenis_kelamin'=>$application->jenis_kelamin,
                 'letter_numbers'=>DB::table('letter_numbers')->where('application_id', $application->id)->orderBy('id')
                     ->get(['number','status','void_reason','issued_at'])->map(fn ($letter) => [
