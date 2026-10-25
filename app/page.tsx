@@ -4,7 +4,7 @@ import { ServiceList } from "@/components/service-list";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { PublicShell } from "@/components/site";
-import { news } from "@/lib/data";
+import { news, pages } from "@/lib/data";
 export default function Home() {
   return (
     <PublicShell>
@@ -105,8 +105,8 @@ export default function Home() {
       </section>
       <section className="container home-bottom-container home-bottom home-economy" aria-label="BUMDes dan UMKM">
         <article className="home-economy-card home-bumdes">
-          <h2>BUMDes [NAMA BUMDES]</h2>
-          <p>[RINGKASAN BUMDES DAN UNIT USAHA — dari dokumen resmi desa]</p>
+          <h2>BUMDes Watuagung Bangkit</h2>
+          <p>BUMDes Watuagung Bangkit berstatus aktif dengan unit usaha peternakan sapi, berdasarkan RKP Desa Watuagung 2027.</p>
           <Link href="/bumdes" className="home-bottom-link">
             Lihat unit usaha <ArrowRight size={22} aria-hidden="true" />
           </Link>
@@ -124,7 +124,7 @@ export default function Home() {
         <div className="home-contact-card">
           <div>
             <h2 id="contact-title">Kantor Desa Watuagung</h2>
-            <p>[ALAMAT LENGKAP KANTOR DESA]</p>
+            <p>{pages.kontak.blocks[0].text}</p>
             <p>Buka [HARI &amp; JAM LAYANAN]</p>
             <Link href="/kontak" className="home-bottom-button">
               Lihat Kontak Kantor

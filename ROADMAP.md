@@ -153,6 +153,7 @@ Bergantung pada K2 dan K4.
 - [ ] CRUD di panel admin untuk peran `admin`, termasuk unggah foto konten
 - [ ] Frontend membaca dari API, dengan cadangan `lib/data.ts` untuk mode demo
 - [ ] Hapus semua keterangan "konten contoh" yang sudah diganti data resmi
+  - [x] Visi dan tiga misi Kepala Desa dari dokumen yang diterima 25 Oktober 2026, tanpa periode; alamat beranda/footer memakai sumber `/kontak` di `lib/data.ts`, ringkasan BUMDes beranda resmi. Lint, tsc, build, build:demo, test:demo serta visual beranda, `/visi-misi`, `/kontak` dan footer pada 390px/1440px lulus (`docs/progres-2026-10-25.md`). Placeholder data belum tersedia dan label contoh footer tetap.
   - [x] Konten potensi, BUMDes Watuagung Bangkit, lembaga aktif pada profil, dan program prioritas 2027 tanpa nominal dari RKP Desa 2027. Notice contoh di potensi/transparansi dihapus; notice BUMDes menjadi sumber. Lint, tsc, build, build:demo, test:demo dan visual empat halaman 390px/1440px lulus (25 Oktober 2026, `docs/progres-2026-10-25.md`). Bukan penyelesaian CMS atau seluruh konten situs.
 
 ## M6 — Unggah lampiran persyaratan
