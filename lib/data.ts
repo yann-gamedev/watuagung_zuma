@@ -143,35 +143,50 @@ export const pages: Record<
     intro: "Merawat cerita masa lalu, melangkah bersama menuju masa depan.",
     blocks: [
       {
-        title: "Arsip sejarah desa",
-        text: "Naskah sejarah, asal-usul nama Watuagung, dan tahun berdirinya desa akan disusun dari arsip resmi serta penuturan tokoh masyarakat yang telah diverifikasi.",
+        title: "Asal-usul nama Watuagung",
+        text: "Nama Watuagung berasal dari sebuah batu besar menyerupai gunung yang di atasnya tumbuh pohon beringin. Sepasang satria, Mbah Singo (dari Ponorogo) dan istrinya Mbah Gambir (dari Keraton Solo), berteduh di bawahnya dan merasakan ketenteraman, lalu tempat itu dijadikan desa. Keduanya dikenang sebagai pepunden desa dan disebut memiliki 12 anak yang membuka hutan (babat alas) Desa Watudukun, yang kini dikenal sebagai Watuagung. Ringkasan ini berdasarkan tutur masyarakat yang tercatat dalam RKP Desa Watuagung 2027.",
       },
       {
-        title: "Warisan kebersamaan",
-        text: "Gotong royong dan musyawarah menjadi nilai yang ingin terus dihadirkan dalam pelayanan warga. Narasi ini merupakan contoh editorial, bukan catatan sejarah resmi.",
+        title: "Tiga dusun",
+        text: "Dari sejarah itu dikenal tiga dusun: Watuagung, Talang, dan Sekar.",
+      },
+      {
+        title: "Kepala desa dari masa ke masa",
+        // ponytail: satu baris per orang via white-space: pre-line; jadikan <ul> bila blok mendukung daftar.
+        text: [
+          "Oentong Koesoemodirdjo, Petinggi pendiri desa (Abad XIX)",
+          "Astro Redjo (Abad XIX)",
+          "Tirto Soebronto (s.d. 1942)",
+          "Idris Kerto Soedjono (1942–1967)",
+          "Abdul Ghani Kerto Oetomo (1967–1975)",
+          "Moh. Sa'i, Pj. (1975–1978)",
+          "Ad Hardjo Setyo Atmodjo (1979–1990)",
+          "Mgs Hardjo Sutopo (1991–1998)",
+          "Pujiharjo Mangku Projo (1999–2002)",
+          "Mokhamad Usman Ef, S.Pd. (2003–2016)",
+          "Nanang Setyawan, S.E., Pj. (2016–2017)",
+          "Drs. Kusminto (2017–2023)",
+          "Didik Hariyanto (2024–2031)",
+          "",
+          "Sumber: RKP Desa Watuagung 2027.",
+        ]
+          .join("\n")
+          .replace(/–/g, "\u2060–\u2060"), // word joiner: rentang tahun tidak terpotong di ponsel
       },
     ],
   },
   "visi-misi": {
     title: "Visi dan Misi",
     eyebrow: "ARAH PEMBANGUNAN",
-    intro: "Watuagung yang mandiri, sejahtera, dan melayani.",
+    intro: "Arah pembangunan Desa Watuagung menurut dokumen perencanaan desa.",
     blocks: [
       {
-        title: "Visi desa",
-        text: "Mewujudkan desa yang maju dan mandiri dengan pelayanan yang terbuka serta masyarakat yang sejahtera. Rumusan contoh ini perlu disesuaikan dengan RPJM Desa.",
+        title: "Visi dan misi desa",
+        text: "Visi dan misi resmi mengacu pada RPJM Desa Watuagung 2024–2031 dan akan ditampilkan setelah dokumen diterima.",
       },
       {
-        title: "Misi 01 · Pelayanan",
-        text: "Meningkatkan pelayanan administrasi yang mudah diakses, ramah, dan transparan.",
-      },
-      {
-        title: "Misi 02 · Pemberdayaan",
-        text: "Mengembangkan potensi pertanian dan UMKM melalui kolaborasi masyarakat.",
-      },
-      {
-        title: "Misi 03 · Lingkungan",
-        text: "Menjaga kelestarian lingkungan dan memperkuat budaya gotong royong.",
+        title: "Tema pembangunan 2027",
+        text: "Terbangunnya tata kelola pemerintah desa yang baik, bersih, terbuka, partisipatif guna mewujudkan kehidupan masyarakat Watuagung yang maju, cerdas, adil, makmur, sejahtera, dan berdaulat. Sumber: RKP Desa Watuagung 2027.",
       },
     ],
   },

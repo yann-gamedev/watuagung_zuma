@@ -1730,6 +1730,10 @@ p {
   font-size: 18px;
   line-height: 1.6;
 }
+/* Baris baru di teks blok (mis. daftar kepala desa) tampil sebagai baris baru. */
+.info-page .content-card p {
+  white-space: pre-line;
+}
 .info-contact,
 .info-vision-mission {
   display: grid;

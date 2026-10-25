@@ -28,7 +28,7 @@ export default async function Page({
     <PublicShell>
       <PageHeading {...page} />
       <section className="section container info-page">
-        {slug !== "profil" && slug !== "struktur-pemerintahan" && (
+        {!["profil", "struktur-pemerintahan", "sejarah", "visi-misi"].includes(slug) && (
           <div className="notice">
             Konten contoh · Informasi resmi desa akan diperbarui setelah
             verifikasi.
@@ -69,21 +69,6 @@ export default async function Page({
                 </p>
               </article>
             )}
-          </div>
-        ) : slug === "visi-misi" ? (
-          <div className="info-vision-mission">
-            <article className="content-card">
-              <h2>{page.blocks[0].title}</h2>
-              <blockquote>{page.blocks[0].text}</blockquote>
-            </article>
-            <ol className="info-mission-list" aria-label="Misi desa">
-              {page.blocks.slice(1).map((block) => (
-                <li className="content-card" key={block.title}>
-                  <h2>{block.title.replace(/^Misi \d+ · /, "")}</h2>
-                  <p>{block.text}</p>
-                </li>
-              ))}
-            </ol>
           </div>
         ) : (
           <div className="content-grid">
