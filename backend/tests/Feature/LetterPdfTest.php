@@ -265,12 +265,58 @@ class LetterPdfTest extends TestCase
         $this->assertSame('Ö***', Letter::maskName('Ömer'));
     }
 
+    public function test_letter_header_defaults_and_environment_overrides(): void
+    {
+        $defaults = [
+            'kabupaten' => 'PASURUAN',
+            'kecamatan' => 'PRIGEN',
+            'alamat_kantor' => 'Jl. Taman Safari Indonesia II, Dusun Watuagung RT 001/RW 001',
+            'kepala_desa' => 'DIDIK HARIYANTO',
+        ];
+        $env = \Illuminate\Support\Env::getRepository();
+        $previous = [];
+        foreach ($defaults as $key => $value) {
+            $name = 'LETTER_'.strtoupper($key);
+            $previous[$name] = $env->get($name);
+            $env->clear($name);
+        }
+
+        try {
+            $config = require config_path('letters.php');
+            $this->assertSame($defaults, $config['desa']);
+            $this->assertSame('[PLACEHOLDER]', $config['kode_desa']);
+            foreach ($defaults as $key => $value) {
+                $env->set('LETTER_'.strtoupper($key), 'Pengganti fiktif '.$key);
+            }
+            $config = require config_path('letters.php');
+            foreach ($defaults as $key => $value) {
+                $this->assertSame('Pengganti fiktif '.$key, $config['desa'][$key]);
+            }
+        } finally {
+            foreach ($previous as $name => $value) {
+                $env->clear($name);
+                if ($value !== null) $env->set($name, $value);
+            }
+        }
+    }
+
     public function test_all_four_templates_render(): void
     {
         foreach (LetterType::cases() as $type) {
             $application = $this->application(['jenis_surat' => $type->value]);
             $this->act();
             $this->assertStringStartsWith('%PDF-', $this->pdf($application)->assertOk()->getContent());
+            foreach ([true, false] as $draft) {
+                $html = view('letters.'.strtolower($type->value), [
+                    'a' => $application, 'draft' => $draft, 'number' => null,
+                    'date' => now()->locale('id'), 'qr' => null, 'desa' => config('letters.desa'),
+                ])->render();
+                $this->assertStringContainsString('PEMERINTAH KABUPATEN '.e(config('letters.desa.kabupaten')), $html);
+                $this->assertStringContainsString('KECAMATAN '.e(config('letters.desa.kecamatan')), $html);
+                $this->assertStringContainsString('<p>'.e(config('letters.desa.alamat_kantor')).'</p>', $html);
+                $this->assertStringContainsString('<strong><u>'.e(config('letters.desa.kepala_desa')).'</u></strong>', $html);
+                $this->assertStringContainsString('Format sementara, menunggu template resmi', $html);
+            }
         }
     }
 }

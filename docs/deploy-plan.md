@@ -82,6 +82,7 @@ Daftar lengkap ada di `ROADMAP.md` § "Data yang harus diminta ke desa". Yang me
 - [ ] `backend/.env.production.example` (tanpa rahasia): `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `DB_CONNECTION=pgsql`, `SESSION_DRIVER=database`, `LOG_CHANNEL=daily` (level `warning`), `FRONTEND_ORIGINS=https://<domain>`, `LETTER_VERIFY_URL=https://<domain>/verifikasi/`, `SANCTUM_EXPIRATION=480`, `FILESYSTEM_DISK=local`.
 - [ ] Frontend produksi: `NEXT_PUBLIC_DEMO_MODE=false`, `NEXT_PUBLIC_API_URL=https://<domain>/api/v1`, `NEXT_PUBLIC_SITE_URL=https://<domain>`. Pastikan build produksi tidak memuat teks/tanda demo atau "konten contoh" yang sudah diganti data resmi.
 - [ ] Ganti semua placeholder surat dengan data Fase 1; periksa visual 4 PDF.
+  - [x] Identitas wilayah, alamat kantor, dan penandatangan sesuai RKP Desa 2027 bagian 7, dapat diganti lewat empat env `LETTER_*`; empat PDF final + empat draf diperiksa visual. Tes backend 183/1.925 assertions, lint, tsc, build, build:demo, test:demo lulus (25 Oktober 2026, `docs/progres-2026-10-25.md`). Kop resmi, kode desa, dan kode klasifikasi masih menunggu F9b; butir induk belum selesai.
 
 ### Tuntaskan verifikasi yang tertunda di ROADMAP
 - [ ] M1: verifikasi halaman berita; review visual 390px/1440px yang tertunda.

@@ -11,11 +11,11 @@ return [
     ),
     // Halaman verifikasi publik di frontend; QR berisi URL ini + ?kode=.
     'verify_url' => env('LETTER_VERIFY_URL', 'http://localhost:3000/verifikasi/'),
-    // Data kop dan penandatangan belum diterima dari desa.
+    // RKP Desa Watuagung 2027, bagian 7 sarian; format kop resmi masih menunggu.
     'desa' => [
-        'kabupaten' => '[NAMA KABUPATEN]',
-        'kecamatan' => '[NAMA KECAMATAN]',
-        'alamat_kantor' => '[ALAMAT KANTOR DESA]',
-        'kepala_desa' => '[NAMA KEPALA DESA]',
+        'kabupaten' => env('LETTER_KABUPATEN', 'PASURUAN'),
+        'kecamatan' => env('LETTER_KECAMATAN', 'PRIGEN'),
+        'alamat_kantor' => env('LETTER_ALAMAT_KANTOR', 'Jl. Taman Safari Indonesia II, Dusun Watuagung RT 001/RW 001'),
+        'kepala_desa' => env('LETTER_KEPALA_DESA', 'DIDIK HARIYANTO'),
     ],
 ];
