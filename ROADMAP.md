@@ -166,7 +166,8 @@ Bergantung pada K2 dan K4.
 
 Bergantung pada K5 dan M2.
 
-- [x] Template Blade sementara untuk empat jenis surat (`backend/resources/views/letters/`); kop, kabupaten/kecamatan, alamat, dan nama Kepala Desa masih `[PLACEHOLDER]`. Empat PDF contoh dan draf diperiksa visual (21 Okt 2026).
+- [x] Template Blade sementara untuk empat jenis surat (`backend/resources/views/letters/`); format kop resmi masih menunggu. Empat PDF contoh dan draf diperiksa visual (21 Okt 2026).
+- [x] Identitas wilayah, alamat kantor, dan penandatangan dari RKP Desa 2027 bagian 7 melalui env `LETTER_KABUPATEN`, `LETTER_KECAMATAN`, `LETTER_ALAMAT_KANTOR`, `LETTER_KEPALA_DESA`. Tes backend 183/1.925 assertions, lint, tsc, build, build:demo, test:demo lulus; empat PDF final + empat draf diperiksa visual (25 Okt 2026, `docs/progres-2026-10-25.md`). Kop resmi, kode desa, dan kode klasifikasi tetap menunggu F9b.
 - [ ] Template per jenis surat sesuai format resmi desa (kop, nomor, penandatangan) — menunggu contoh surat asli; sementara petugas dapat mengunggah surat manual
 - [ ] Format penomoran surat resmi dari desa — mesin penomoran/register dipisahkan ke M3a; kode klasifikasi dan kode desa masih `[PLACEHOLDER]`
 - [x] Draf PDF bertanda DRAF untuk staff/admin/village_head saat PROCESSING/WAITING_APPROVAL; PDF final ber-QR saat `APPROVED`, disimpan terenkripsi di storage privat dengan SHA-256; siapa/kapan Kepala Desa menyetujui dicatat; setiap unduhan diaudit
