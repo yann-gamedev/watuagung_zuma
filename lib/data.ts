@@ -135,6 +135,10 @@ export const pages: Record<
         title: "Informasi wilayah",
         text: "Desa Watuagung berada di Kecamatan Prigen, Kabupaten Pasuruan, Provinsi Jawa Timur, pada bentang alam dataran pegunungan dan berjarak ±11 km dari kecamatan. Wilayahnya terdiri atas 3 dusun (Watuagung, Talang, Sekar) dengan 10 RW dan 31 RT. Batas wilayah: utara Desa Gunting (Kec. Prigen), timur Desa Karangrejo (Kec. Purwosari), selatan Desa Jatiarjo (Kec. Prigen), barat Desa Dayurejo (Kec. Prigen). Luas wilayah sedang dikonfirmasi. Sumber: RKP Desa Watuagung 2027.",
       },
+      {
+        title: "Lembaga desa",
+        text: "Lembaga yang berstatus aktif:\nPemerintah Desa\nBPD\nRT/RW\nKader Posyandu\nKader Pembangunan Manusia (KPM)\nBUMDes Watuagung Bangkit\nKoperasi Desa Merah Putih\nPKK\nGapoktan/Poktan\nHIPPA\n\nSumber: RKP Desa Watuagung 2027.",
+      },
     ],
   },
   sejarah: {
@@ -257,35 +261,31 @@ export const pages: Record<
     intro: "Kekayaan alam dan karya warga, menjadi kekuatan desa.",
     blocks: [
       {
-        title: "Pertanian berkelanjutan",
-        text: "Contoh potensi: pertanian padi dan tanaman pekarangan yang dikembangkan dengan semangat menjaga alam.",
+        title: "Pertanian dan perkebunan",
+        text: "Persawahan seluas 151 ha dan tegalan 224 ha didominasi padi dan palawija. Perkebunan seluas 35 ha meliputi nangka, alpukat, rambutan, dan pisang. Terdapat 16 titik sumber mata air. Sumber: RKP Desa Watuagung 2027, ditetapkan 28 September 2026.",
       },
       {
-        title: "UMKM dan produk lokal",
-        text: "Contoh potensi: usaha pangan olahan, kerajinan, dan perdagangan warga. Daftar usaha akan ditambahkan setelah pendataan resmi.",
+        title: "Usaha warga",
+        text: "Kegiatan ekonomi warga meliputi kelompok usaha ekonomi produktif, budidaya lebah madu, kelompok keterampilan usaha perempuan, kelompok usaha tani, dan peternakan ayam. BUMDes Watuagung Bangkit memiliki unit usaha peternakan sapi. Sumber: RKP Desa Watuagung 2027.",
       },
       {
-        title: "Alam dan budaya",
-        text: "Ruang terbuka hijau dan budaya gotong royong menjadi inspirasi pengembangan desa. Destinasi wisata akan dicantumkan setelah diverifikasi.",
+        title: "Seni dan budaya",
+        text: "Seni dan budaya desa meliputi ludruk, bantengan, kelompok lawak, seni religius, dan orkes Melayu. Desa juga memiliki arena outbound. Pembentukan Kelompok Sadar Wisata (Pokdarwis) dan festival kesenian direncanakan pada 2027. Sumber: RKP Desa Watuagung 2027.",
       },
     ],
   },
   transparansi: {
     title: "Transparansi Desa",
     eyebrow: "TERBUKA UNTUK WARGA",
-    intro: "Pembangunan yang dapat dilihat, anggaran yang dapat dipahami.",
+    intro: "Program prioritas dan informasi dokumen perencanaan Desa Watuagung.",
     blocks: [
       {
-        title: "APBDes 2026 · Contoh",
-        text: "Pendapatan Rp2,4 miliar • Belanja Rp2,3 miliar • Pembiayaan netto Rp100 juta. Semua angka adalah ilustrasi, bukan laporan keuangan desa.",
-      },
-      {
-        title: "Prioritas belanja",
-        text: "Contoh alokasi: infrastruktur 40%, pemberdayaan 25%, pemerintahan 20%, dan pelayanan sosial 15%.",
+        title: "Program prioritas 2027",
+        text: "Kesehatan: rembuk stunting, PMT balita/ibu hamil/stunting, Posyandu remaja, tes gula darah/kolesterol/asam urat, dan penyuluhan TBC/malaria.\n\nInfrastruktur: TPS3R tahap 1, TPT dan paving Kali Terong, TPT Sentono (Talang), drainase RT 2 RW 9 (Sekar), TPT jalan lingkungan RT 3 RW 4, lanjutan pipanisasi air bersih Dusun Talang, dan rehab pendopo balai desa.\n\nPemberdayaan: festival kesenian, pembentukan Pokdarwis, pelatihan pemasaran digital, penguatan BUMDes, serta pembentukan bank sampah dan Lembaga Adat Desa.\n\nSosial: BLT Dana Desa untuk 42 keluarga penerima manfaat.\n\nSumber: RKP Desa Watuagung 2027, program tahun 2027.",
       },
       {
         title: "Dokumen publik",
-        text: "Dokumen APBDes, realisasi anggaran, serta rencana kerja resmi belum tersedia. Informasi diperbarui setelah dokumen disahkan pemerintah desa.",
+        text: "RKP Desa 2027 telah ditetapkan melalui Perdes Nomor 6 Tahun 2026 pada 28 September 2026. APBDes resmi akan ditampilkan setelah diterima. Angka anggaran belum ditampilkan karena masih menunggu data APBDes resmi.",
       },
     ],
   },

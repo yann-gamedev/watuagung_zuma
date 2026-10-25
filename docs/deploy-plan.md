@@ -60,6 +60,7 @@ Daftar lengkap ada di `ROADMAP.md` § "Data yang harus diminta ke desa". Yang me
 - [ ] **(BLOKIR)** Persyaratan resmi dan estimasi waktu tiap jenis surat.
 - [ ] **(BLOKIR)** Daftar RT/RW dan nama ketua yang berwenang, nama petugas desa, kepala desa, admin.
 - [ ] **(BLOKIR)** Konten profil: alamat kantor, jam layanan, kontak, visi-misi, perangkat desa, foto berizin. Sebagian: alamat kantor dan identitas wilayah dari RKP Desa 2027 sudah tampil (`content/profile-contact`, `docs/progres-2026-10-24.md`); perangkat desa dan BPD dari Tabel 2.9/2.10 sudah tampil tanpa foto (`content/officials`); sejarah, daftar kepala desa, dan tema RKP 2027 sudah tampil (`content/history-direction`); visi-misi (RPJM Desa 2024–2031) dan sisanya belum.
+- [x] Konten ekonomi dan keterbukaan dari RKP Desa 2027: potensi, BUMDes Watuagung Bangkit, daftar lembaga aktif pada profil, dan program prioritas 2027 tanpa nominal. Lint, tsc, build, build:demo, test:demo serta visual `/potensi`, `/bumdes`, `/profil`, `/transparansi` pada 390px/1440px lulus (25 Oktober 2026, `docs/progres-2026-10-25.md`). APBDes resmi dan kontak/pengurus BUMDes tetap menunggu; bukan penyelesaian seluruh Fase 1.
 - [ ] Masa retensi data pemohon dan surat (disetujui desa).
 - [ ] Prosedur bantuan kode akses di kantor (siapa melayani, dokumen yang diperiksa).
 

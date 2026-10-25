@@ -2,23 +2,23 @@
 import { PageHeading, PublicShell } from "@/components/site";
 
 export const metadata: Metadata = {
-  title: "BUMDES — Badan Usaha Milik Desa",
-  description: "Informasi Badan Usaha Milik Desa Watuagung. Profil, unit usaha, dan kontak resmi masih menunggu verifikasi.",
+  title: "BUMDes Watuagung Bangkit",
+  description: "BUMDes Watuagung Bangkit berstatus aktif dengan unit usaha peternakan sapi. Penguatan BUMDes direncanakan pada 2027 berdasarkan RKP Desa Watuagung 2027.",
 };
 
 export default function BumdesPage() {
   return (
     <PublicShell>
-      <PageHeading eyebrow="BUMDES WATUAGUNG" title="Badan Usaha Milik Desa" intro="Informasi mengenai badan usaha desa, kegiatan usaha, dan layanan bagi warga." />
+      <PageHeading eyebrow="BUMDES WATUAGUNG" title="BUMDes Watuagung Bangkit" intro="Informasi mengenai badan usaha desa, kegiatan usaha, dan layanan bagi warga." />
       <section className="section container info-page bumdes-page" aria-label="Informasi BUMDES">
-        <p className="notice">Halaman prototipe. Informasi resmi BUMDES belum tersedia dan akan ditampilkan setelah diverifikasi.</p>
+        <p className="notice">Sumber: RKP Desa Watuagung 2027, ditetapkan melalui Perdes Nomor 6 Tahun 2026 pada 28 September 2026.</p>
         <div className="bumdes-layout">
           <article className="bumdes-article">
             <h2>Tentang BUMDES</h2>
-            <p>Badan Usaha Milik Desa merupakan badan usaha yang dibentuk untuk mengelola usaha dan memanfaatkan potensi desa bagi kesejahteraan masyarakat.</p>
-            <p>Nama badan usaha, profil organisasi, dan dokumen pendirian BUMDES Watuagung belum dicantumkan karena masih menunggu data resmi.</p>
+            <p>BUMDes Watuagung Bangkit berstatus aktif.</p>
+            <p>Penguatan BUMDes direncanakan pada 2027.</p>
             <h2>Unit usaha dan layanan</h2>
-            <p>Daftar unit usaha, produk, serta layanan belum tersedia. Halaman ini belum menyediakan pemesanan atau transaksi.</p>
+            <p>Unit usaha yang tercatat adalah peternakan sapi. Halaman ini belum menyediakan pemesanan atau transaksi.</p>
           </article>
           <aside className="bumdes-contact">
             <h2>Kontak BUMDES</h2>
