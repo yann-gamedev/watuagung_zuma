@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { ArrowRight, CheckCircle2, ClipboardCheck, Clock3, FileCheck2, FileClock, CircleX, CircleAlert, UserCheck, ShieldCheck } from "lucide-react";
-import { news } from "@/lib/data";
+import { news, pages } from "@/lib/data";
 import type { ServiceCode, Status } from "@/types/pelayanan";
 import { requiresNeighborhoodApproval } from "@/lib/letter-workflow";
 import { SiteHeader, normalizePath } from "@/components/site-header";
@@ -26,7 +26,7 @@ export function Footer() {
             </span>
           </Link>
           <p className="footer-contact">
-            [ALAMAT KANTOR] · [TELEPON/WA] · [EMAIL]
+            {pages.kontak.blocks[0].text} · [TELEPON/WA] · [EMAIL]
           </p>
         </div>
         <nav className="footer-links" aria-label="Layanan di footer">

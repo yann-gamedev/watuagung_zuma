@@ -181,12 +181,24 @@ export const pages: Record<
   },
   "visi-misi": {
     title: "Visi dan Misi",
-    eyebrow: "ARAH PEMBANGUNAN",
+    eyebrow: "Visi dan misi Kepala Desa Watuagung",
     intro: "Arah pembangunan Desa Watuagung menurut dokumen perencanaan desa.",
     blocks: [
       {
-        title: "Visi dan misi desa",
-        text: "Visi dan misi resmi mengacu pada RPJM Desa Watuagung 2024–2031 dan akan ditampilkan setelah dokumen diterima.",
+        title: "Visi",
+        text: 'Gerakan perubahan menuju terwujudnya tata kelola pemerintahan Desa Watuagung yang bersih dan transparan.\nSumber: dokumen "Visi Misi Kepala Desa Watuagung" dari perangkat desa, diterima 25 Oktober 2026.',
+      },
+      {
+        title: "Misi 01",
+        text: "Penyelenggaraan pemerintahan desa yang demokratis, bersih, dan terbebas dari segala bentuk penyelewengan, korupsi, kolusi, dan nepotisme.",
+      },
+      {
+        title: "Misi 02",
+        text: "Mengembangkan perekonomian masyarakat melalui pemanfaatan potensi desa.",
+      },
+      {
+        title: "Misi 03",
+        text: "Mewujudkan kesejahteraan masyarakat guna mencapai taraf kehidupan yang lebih baik.",
       },
       {
         title: "Tema pembangunan 2027",
