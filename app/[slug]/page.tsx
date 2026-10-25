@@ -28,7 +28,7 @@ export default async function Page({
     <PublicShell>
       <PageHeading {...page} />
       <section className="section container info-page">
-        {!["profil", "struktur-pemerintahan", "sejarah", "visi-misi"].includes(slug) && (
+        {!["profil", "struktur-pemerintahan", "sejarah", "visi-misi", "potensi", "transparansi"].includes(slug) && (
           <div className="notice">
             Konten contoh · Informasi resmi desa akan diperbarui setelah
             verifikasi.
