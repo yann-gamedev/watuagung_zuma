@@ -228,7 +228,7 @@ Dependensi: `barryvdh/laravel-dompdf` (PDF dari Blade) dan `bacon/bacon-qr-code`
 - **Unggah manual:** staff/admin, saat `APPROVED`/`READY_FOR_PICKUP`. Field `file`, ≤ 5 MB, isi wajib diawali `%PDF-`. Menggantikan PDF otomatis (file lama dihapus), kode QR tidak berubah, `source=uploaded`, `uploaded_by`, audit `letter.uploaded`. Status lain → 422.
 - **QR:** `GET …/letter-qr.png` (staff/admin) untuk ditempel pada surat yang disusun manual.
 - Peran lain (RT/RW) → 403; tanpa token → 401; nomor tidak valid → 422.
-- Detail kantor menambah `letter: { approved_at, source, sha256, file_updated_at } | null`; kode verifikasi dan path tidak dikirim. RT/RW tidak menerima field ini.
+- Detail kantor menambah `letter: { approved_at, source, sha256, file_updated_at, file_purged_at } | null`; kode verifikasi dan path tidak dikirim. RT/RW tidak menerima field ini. `file_purged_at` terisi bila PDF dihapus oleh retensi; `GET …/letter.pdf` lalu → **410** tanpa membuat ulang PDF dari data anonim.
 - **Verifikasi publik** `GET /verify/{kode}`: hanya `{ number, jenis_surat, issued_at, nama, status }`. `nama` disamarkan (`Siti Wulandari` → `S*** W********`); `status` `valid`, atau `revoked` bila nomor surat terakhir dibatalkan. Tanpa NIK, KK, alamat, telepon, isi surat, atau nomor pengajuan. Kode tidak ditemukan/format salah → 404. `Cache-Control: no-store`.
 - QR **bukan** Tanda Tangan Elektronik tersertifikasi (lihat `PRODUCT.md`). Mengganti `APP_KEY` membuat PDF tersimpan tidak terbaca.
 
@@ -301,6 +301,13 @@ Migration `2026_10_20_000000_add_neighborhood_territories` menambah kolom `rt`/`
 - Token petugas berlaku `SANCTUM_EXPIRATION` menit sejak login (bawaan 480 menit = 8 jam kerja; atur di `.env`, lalu `php artisan config:clear` bila konfigurasi di-cache). Token kedaluwarsa atau dicabut menghasilkan 401.
 - Frontend menyimpan token di `sessionStorage` tab dan memvalidasinya lewat `/staff/me`; menutup tab menghapus sesi. Jangan simpan token dalam URL atau localStorage.
 - Token kedaluwarsa dihapus dari database oleh `sanctum:prune-expired --hours=24` yang dijadwalkan harian di `routes/console.php`. Scheduler harus dijalankan: di server tambahkan cron `* * * * * php artisan schedule:run`; secara lokal gunakan `php artisan schedule:work`. Cek jadwal dengan `php artisan schedule:list`.
+- **Retensi (mati bawaan):** `config/retention.php` membaca `RETENTION_APPLICATION_DAYS` (kosong = mati; isi hanya setelah desa menetapkan masa simpan). `php artisan applications:purge --dry-run` menampilkan target tanpa mengubah apa pun; tanpa opsi, permohonan `COMPLETED`/`REJECTED` dengan `updated_at` lebih tua dari N hari dianonimkan dalam transaksi per permohonan:
+  - `nama` → inisial (`Siti Wulandari` → `S. W.`); `nik`, `no_kk`, `telepon`, `alamat`, `tempat_lahir`, `tanggal_lahir`, `keperluan` → string kosong (terenkripsi); `alamat_usaha`, `catatan` → `null`; `purged_at` diisi. `updated_at` asli tidak berubah.
+  - Tetap: `request_id`, `jenis_surat`, `status`, `rt`/`rw`, `jenis_kelamin`, data usaha selain alamat, tanggal, `letter_numbers`, `application_events`, `audit_logs`, serta baris `letters` (kode verifikasi, SHA-256).
+  - PDF final dihapus dari disk privat setelah commit; `letters.path` → `null`, `letters.file_purged_at` diisi.
+  - Satu audit `application.purged` per permohonan dengan `user_id = null` (aksi sistem; migration `2026_10_27_000000` membuat kolom ini nullable dan rollback sengaja membiarkannya nullable). Tanpa isi data.
+  - Idempoten: permohonan yang sudah memiliki `purged_at` dilewati. Nilai bukan bilangan bulat ≥ 1 → keluar dengan error tanpa perubahan.
+  - Dijadwalkan harian di `routes/console.php`; aman karena mati bawaan. Backup lama tetap berisi data sebelum anonimisasi sampai rotasinya habis.
 - Belum ada unggah dokumen persyaratan, OTP, TTE, atau pengelolaan konten. Jangan menguji dengan data pribadi nyata.
 
 ## Sebelum produksi
