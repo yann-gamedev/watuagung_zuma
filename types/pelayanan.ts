@@ -62,6 +62,8 @@ export interface LetterFile {
   source: "generated" | "uploaded" | null;
   sha256: string | null;
   file_updated_at: string | null;
+  /** Diisi bila PDF dihapus oleh retensi (`applications:purge`); unduhan lalu 410. */
+  file_purged_at: string | null;
 }
 /** GET /verify/{kode}, publik: tanpa NIK, alamat, isi surat, atau nomor pengajuan. */
 export interface LetterVerification {

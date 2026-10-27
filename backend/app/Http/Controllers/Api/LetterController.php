@@ -20,6 +20,8 @@ class LetterController extends Controller {
         if (! $this->allowed($user, self::READERS)) return $this->forbidden();
         $application = $this->application($request_id);
         $letter = Letter::find($application);
+        // Jangan membuat ulang PDF dari data yang sudah dianonimkan.
+        if ($letter?->file_purged_at) return response()->json(['message'=>'Berkas surat sudah dihapus sesuai masa simpan data.'], 410)->header('Cache-Control', 'private, no-store');
         if (in_array($application->status, Letter::DRAFT_STATUSES, true)) {
             [$pdf, $action, $name] = [Letter::render($application, null), 'letter.draft_viewed', 'draf-'];
         } elseif ($letter && in_array($application->status, Letter::FINAL_STATUSES, true)) {
@@ -95,6 +97,7 @@ class LetterController extends Controller {
             'source'=>$letter->source,
             'sha256'=>$letter->sha256,
             'file_updated_at'=>$letter->file_updated_at ? Carbon::parse($letter->file_updated_at)->toISOString() : null,
+            'file_purged_at'=>$letter->file_purged_at ? Carbon::parse($letter->file_purged_at)->toISOString() : null,
         ] : null;
     }
 

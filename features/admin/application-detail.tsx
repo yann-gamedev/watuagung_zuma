@@ -30,7 +30,7 @@ const detailSchema = z.object({
   nama_usaha: z.string().nullable(), jenis_usaha: z.string().nullable(), alamat_usaha: z.string().nullable(),
   keperluan: z.string(), catatan: z.string().nullable(), can_reset_access_code: z.boolean(),
   letter_numbers: z.array(z.object({ number: z.string(), status: z.enum(["issued", "void"]), void_reason: z.string().nullable(), issued_at: z.string() })).optional(),
-  letter: z.object({ approved_at: z.string(), source: z.enum(["generated", "uploaded"]).nullable(), sha256: z.string().nullable(), file_updated_at: z.string().nullable() }).nullable().optional(),
+  letter: z.object({ approved_at: z.string(), source: z.enum(["generated", "uploaded"]).nullable(), sha256: z.string().nullable(), file_updated_at: z.string().nullable(), file_purged_at: z.string().nullable() }).nullable().optional(),
   history: z.array(z.object({ action: z.enum(["ACCESS_CODE_RESET"]).nullable(), from_status: z.enum(statuses).nullable(), to_status: z.enum(statuses),
     note: z.string().nullable(), staff_name: z.string().nullable(), created_at: z.string() })),
 });
