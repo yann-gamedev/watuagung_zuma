@@ -75,7 +75,10 @@ export function Footer() {
           · dipotong
         </span>
         <p className="footer-disclaimer">
-          Konten masih contoh, menunggu verifikasi desa.
+          {/* env ditulis langsung agar teks contoh terbuang dari bundle klien saat false */}
+          {process.env.NEXT_PUBLIC_SHOW_SAMPLE_CONTENT !== "false"
+            ? "Konten masih contoh, menunggu verifikasi desa."
+            : "Sumber data: dokumen resmi Pemerintah Desa Watuagung."}
         </p>
       </div>
     </footer>
@@ -134,6 +137,16 @@ export function NewsCard({
         </span>
       </div>
     </Link>
+  );
+}
+export function NoOfficialNews() {
+  return (
+    <div className="content-grid">
+      <article className="content-card">
+        <h2>Belum ada berita resmi.</h2>
+        <p>Berita akan ditampilkan di sini setelah diterbitkan Pemerintah Desa Watuagung.</p>
+      </article>
+    </div>
   );
 }
 export const statusLabels: Record<Status, string> = {

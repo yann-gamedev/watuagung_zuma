@@ -36,7 +36,9 @@ export const services = [
     icon: "ContactRound",
   },
 ] as const;
-export const news = [
+// Bawaan true; produksi mengisi "false" agar berita/agenda/pengumuman contoh tidak tampil.
+export const showSampleContent = process.env.NEXT_PUBLIC_SHOW_SAMPLE_CONTENT !== "false";
+const sampleNews = [
   {
     slug: "gotong-royong",
     category: "KEGIATAN DESA",
@@ -112,6 +114,7 @@ export const news = [
     ],
   },
 ];
+export const news = showSampleContent ? sampleNews : [];
 export const pages: Record<
   string,
   {
@@ -237,7 +240,7 @@ export const pages: Record<
     title: "Pengumuman",
     eyebrow: "INFORMASI UNTUK WARGA",
     intro: "Informasi pelayanan dan pemberitahuan desa dalam satu tempat.",
-    blocks: [
+    blocks: showSampleContent ? [
       {
         title: "Pelayanan administrasi digital",
         text: "Contoh pengumuman · Pengajuan surat dapat dicoba melalui menu Pelayanan Desa. Website masih berupa prototipe dan belum menerima permohonan resmi.",
@@ -246,13 +249,18 @@ export const pages: Record<
         title: "Persiapan dokumen pengajuan",
         text: "Siapkan data identitas dan persyaratan sesuai jenis surat. Gunakan data fiktif ketika mencoba prototipe.",
       },
+    ] : [
+      {
+        title: "Belum ada pengumuman resmi.",
+        text: "Pengumuman akan ditampilkan di sini setelah diterbitkan Pemerintah Desa Watuagung.",
+      },
     ],
   },
   agenda: {
     title: "Agenda Desa",
     eyebrow: "RUANG KEBERSAMAAN",
     intro: "Ikuti kegiatan dan ambil bagian dalam kehidupan desa.",
-    blocks: [
+    blocks: showSampleContent ? [
       {
         title: "20 September · Kerja bakti lingkungan",
         text: "07.00 WIB · Titik kumpul balai desa. Agenda contoh, belum merupakan jadwal resmi.",
@@ -264,6 +272,11 @@ export const pages: Record<
       {
         title: "28 September · Musyawarah warga",
         text: "19.30 WIB · Balai desa. Penyampaian aspirasi pembangunan. Agenda contoh.",
+      },
+    ] : [
+      {
+        title: "Belum ada agenda resmi.",
+        text: "Agenda kegiatan akan ditampilkan di sini setelah diterbitkan Pemerintah Desa Watuagung.",
       },
     ],
   },

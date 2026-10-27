@@ -155,6 +155,7 @@ Bergantung pada K2 dan K4.
 - [ ] Hapus semua keterangan "konten contoh" yang sudah diganti data resmi
   - [x] Visi dan tiga misi Kepala Desa dari dokumen yang diterima 25 Oktober 2026, tanpa periode; alamat beranda/footer memakai sumber `/kontak` di `lib/data.ts`, ringkasan BUMDes beranda resmi. Lint, tsc, build, build:demo, test:demo serta visual beranda, `/visi-misi`, `/kontak` dan footer pada 390px/1440px lulus (`docs/progres-2026-10-25.md`). Placeholder data belum tersedia dan label contoh footer tetap.
   - [x] Konten potensi, BUMDes Watuagung Bangkit, lembaga aktif pada profil, dan program prioritas 2027 tanpa nominal dari RKP Desa 2027. Notice contoh di potensi/transparansi dihapus; notice BUMDes menjadi sumber. Lint, tsc, build, build:demo, test:demo dan visual empat halaman 390px/1440px lulus (25 Oktober 2026, `docs/progres-2026-10-25.md`). Bukan penyelesaian CMS atau seluruh konten situs.
+  - [x] Env `NEXT_PUBLIC_SHOW_SAMPLE_CONTENT` (bawaan true, `build:demo` selalu true). Bila false: berita kosong ("Belum ada berita resmi."), bagian berita beranda tidak dirender, agenda/pengumuman satu blok kosong resmi tanpa notice contoh, footer sumber resmi, description layout tanpa "Prototipe". Label contoh persyaratan pelayanan tetap. `npm run test:no-sample` memeriksa `out/`. Lint, tsc, build (true dan false), build:demo, test:demo serta visual beranda, `/berita`, `/agenda` 390px/1440px dengan flag false lulus (27 Oktober 2026, `docs/progres-2026-10-27.md`).
 
 ## M6 — Unggah lampiran persyaratan
 

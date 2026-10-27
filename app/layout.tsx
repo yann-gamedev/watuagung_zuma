@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { showSampleContent } from "@/lib/data";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -15,7 +16,8 @@ export const metadata: Metadata = {
     template: "%s | Desa Watuagung",
   },
   description:
-    "Sistem Informasi dan Pelayanan Digital Desa Watuagung. Akses profil, berita, transparansi, dan pengajuan surat desa. Prototipe dengan data contoh.",
+    "Sistem Informasi dan Pelayanan Digital Desa Watuagung. Akses profil, berita, transparansi, dan pengajuan surat desa." +
+    (showSampleContent ? " Prototipe dengan data contoh." : ""),
   openGraph: {
     title: "Desa Watuagung",
     description: "Membangun Desa, Melayani Warga Lebih Dekat",

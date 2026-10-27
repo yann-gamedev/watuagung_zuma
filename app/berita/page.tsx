@@ -1,5 +1,5 @@
 import { news } from "@/lib/data";
-import { PublicShell, PageHeading, NewsCard } from "@/components/site";
+import { PublicShell, PageHeading, NewsCard, NoOfficialNews } from "@/components/site";
 import { Newspaper } from "lucide-react";
 export const metadata = { title: "Berita Desa" };
 export default function Page() {
@@ -17,6 +17,11 @@ export default function Page() {
           </div>
         }
       />
+      {news.length === 0 ? (
+        <section className="section container info-page">
+          <NoOfficialNews />
+        </section>
+      ) : (
       <section className="section container">
         <div className="news-intro-row">
           <p className="news-intro-copy">Ikuti kabar kegiatan warga, perkembangan desa, layanan, dan inisiatif ekonomi lokal.</p>
@@ -32,6 +37,7 @@ export default function Page() {
           ))}
         </div>
       </section>
+      )}
     </PublicShell>
   );
 }

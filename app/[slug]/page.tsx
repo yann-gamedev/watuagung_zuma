@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import { complaintFormUrl, complaintNote, externalLinkProps } from "@/lib/complaint";
-import { pages } from "@/lib/data";
+import { pages, showSampleContent } from "@/lib/data";
 import { PublicShell, PageHeading } from "@/components/site";
 
 export function generateStaticParams() {
@@ -28,7 +28,11 @@ export default async function Page({
     <PublicShell>
       <PageHeading {...page} />
       <section className="section container info-page">
-        {!["profil", "struktur-pemerintahan", "sejarah", "visi-misi", "potensi", "transparansi"].includes(slug) && (
+        {/* Tanpa konten contoh, agenda/pengumuman hanya berisi keadaan kosong resmi. */}
+        {![
+          "profil", "struktur-pemerintahan", "sejarah", "visi-misi", "potensi", "transparansi",
+          ...(showSampleContent ? [] : ["agenda", "pengumuman"]),
+        ].includes(slug) && (
           <div className="notice">
             Konten contoh · Informasi resmi desa akan diperbarui setelah
             verifikasi.

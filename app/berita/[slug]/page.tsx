@@ -2,9 +2,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { news } from "@/lib/data";
-import { PublicShell, PageHeading } from "@/components/site";
+import { PublicShell, PageHeading, NoOfficialNews } from "@/components/site";
+// Next 16 menolak generateStaticParams kosong; tanpa berita, satu slug pengganti menampilkan keadaan kosong.
+const emptySlug = "belum-ada";
 export function generateStaticParams() {
-  return news.map((n) => ({ slug: n.slug }));
+  return news.length ? news.map((n) => ({ slug: n.slug })) : [{ slug: emptySlug }];
 }
 export async function generateMetadata({
   params,
@@ -12,7 +14,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  return { title: news.find((n) => n.slug === slug)?.title };
+  return { title: news.find((n) => n.slug === slug)?.title ?? "Berita Desa" };
 }
 export default async function Page({
   params,
@@ -20,6 +22,20 @@ export default async function Page({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  if (!news.length && slug === emptySlug)
+    return (
+      <PublicShell>
+        <PageHeading
+          eyebrow="KABAR WATUAGUNG"
+          title="Berita Desa"
+          intro="Cerita kegiatan, pembangunan, dan kebersamaan warga."
+          parent={{ label: "Berita Desa", href: "/berita" }}
+        />
+        <section className="section container info-page">
+          <NoOfficialNews />
+        </section>
+      </PublicShell>
+    );
   const n = news.find((x) => x.slug === slug);
   if (!n) notFound();
   return (
