@@ -43,9 +43,20 @@ assert.equal(parse(params("status=APPROVED&jenis_surat=SKU"), "antrean-rt").stat
 assert.equal(parse(params("status=APPROVED&jenis_surat=SKU"), "antrean-rt").jenis_surat, "");
 assert.equal(parse(params("status=APPROVED"), "antrean-rw").status, "RT_APPROVED");
 const all = parse(params("view=all&status=SUBMITTED"), "antrean-rw");
-assert.equal(all.status, "");
+assert.equal(all.status, "SUBMITTED");
 assert.equal(new URL(api("antrean-rw", all), "https://example.test").searchParams.has("view"), false);
 assert.equal(new URL(list("antrean-rw", all), "https://example.test").searchParams.get("view"), "all");
 const safe = list("permohonan", parse(params("nik=0000000000000001&token=secret&returnTo=https://example.test/&alamat=Fiktif")));
 assert.equal(safe, "/admin/permohonan/?sort=terbaru&page=1");
-console.log("PASS: admin query validation, fixed queues, search limit, safe navigation, pagination and filter round-trip.");
+for (const from of ["permohonan", "antrean-rt", "antrean-rw"]) {
+  for (const query of ["my_queue=1", "today=1", "status=WAITING_APPROVAL", "status=READY_FOR_PICKUP", "my_queue=1&today=1&sort=terlama&page=2"]) {
+    const filters = parse(params(`view=all&${query}`), from);
+    const href = new URL(detail("REQ-2026-FICTITIOUS", from, filters), "https://example.test");
+    assert.equal(list(from, parse(href.searchParams, from)), list(from, filters));
+    const backend = new URL(api(from, filters), "https://example.test");
+    for (const [key, value] of params(query)) assert.equal(backend.searchParams.get(key), value);
+  }
+}
+assert.equal(parse(params("my_queue=true&today=garbage")).my_queue, undefined);
+assert.equal(parse(params("my_queue=true&today=garbage")).today, undefined);
+console.log("PASS: admin query validation, fixed queues, search limit, safe navigation, pagination, summary filters and detail round-trip.");

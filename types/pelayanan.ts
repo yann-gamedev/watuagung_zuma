@@ -78,6 +78,13 @@ export interface StaffAccessCodeResponse {
   request_id: string;
   lookup_secret: string;
 }
+/** GET /staff/summary; seluruh hitungan mengikuti wilayah/jenis surat pengguna. */
+export interface StaffSummary {
+  by_status: Record<Status, number>;
+  my_queue: number;
+  today: number;
+  oldest: Pick<StaffApplication, "request_id" | "nama" | "jenis_surat" | "status" | "created_at" | "allowed_transitions">[];
+}
 export interface StaffApplicationsPage {
   data: StaffApplication[];
   current_page: number;

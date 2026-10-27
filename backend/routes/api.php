@@ -12,6 +12,7 @@ Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/
     Route::post('/logout', [StaffController::class, 'logout']);
     Route::get('/me', [StaffController::class, 'me']);
     Route::get('/letter-register', [StaffController::class, 'letterRegister']);
+    Route::get('/summary', [StaffController::class, 'summary']);
     Route::get('/applications', [StaffController::class, 'index']);
     Route::get('/applications/{request_id}', [StaffController::class, 'show']);
     Route::patch('/applications/{application:request_id}/status', [StaffController::class, 'update']);

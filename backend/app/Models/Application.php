@@ -27,6 +27,22 @@ class Application extends Model
         }
     }
 
+    public function scopeForMyQueue(Builder $query, User $user): void {
+        $query->forUser($user)->where(function (Builder $queue) use ($user) {
+            $queue->whereRaw('1 = 0');
+            foreach (LetterType::cases() as $type) {
+                $statuses = array_filter(ApplicationStatus::values(), fn (string $status) => ApplicationStatus::allowedFor($status, $user->role, $type) !== []);
+                if ($statuses) $queue->orWhere(fn (Builder $branch) => $branch->where('jenis_surat', $type->value)->whereIn('status', $statuses));
+            }
+        });
+    }
+
+    public function scopeSubmittedToday(Builder $query): void {
+        // Eloquent stores naive timestamps in the application timezone, not UTC.
+        $start = now(config('app.timezone'))->startOfDay();
+        $query->where('created_at', '>=', $start)->where('created_at', '<', $start->copy()->addDay());
+    }
+
     public function isInTerritory(User $user): bool {
         if (! $user->canAccessPanel()) return false;
         if (! $user->isNeighborhoodHead()) return true;
