@@ -12,7 +12,7 @@
 | M1 — UI | Mayoritas implementasi selesai | Verifikasi berita (masih dikunci pengguna) dan review visual tertunda |
 | M2 — Status/peran | Selesai sesuai checklist | Perluasan RT/RW dicatat di M2a |
 | M2a — RT/RW | Implementasi dan uji API selesai | Review visual antrean 390px/1440px |
-| M3 — Dashboard | Sebagian selesai; manajemen akun sudah ada | Ringkasan per status, uji manual akun dan review visual |
+| M3 — Dashboard | Sebagian selesai; manajemen akun dan ringkasan dashboard sudah ada | Uji manual akun dan review visual halaman akun |
 | M3a — Register | Implementasi dan uji konkurensi PostgreSQL selesai | Uji browser dengan Laravel |
 | M4 — Pengaduan | Dialihkan ke Google Form desa (24 Okt 2026); tautan selesai | URL Google Form dari desa (`NEXT_PUBLIC_COMPLAINT_FORM_URL`) |
 | M5 — CMS | Belum dibuat; menunggu K2/K4 | Hosting, pengelola konten, backend dan frontend |
@@ -113,7 +113,7 @@ Bergantung pada M2 dan M3 (detail permohonan). Disetujui pengguna 20 Oktober 202
 Bergantung pada M2, kecuali fondasi sesi dan kerangka (disetujui pengguna untuk dikerjakan lebih dulu).
 
 - [x] Fondasi: sesi petugas persisten per tab (`sessionStorage` + `GET /staff/me`), token kedaluwarsa 480 menit (`SANCTUM_EXPIRATION`) dan prune terjadwal, 401 kembali ke login dengan pesan; kerangka sidebar + bilah atas + panel geser ≤ 900px; menu hanya Dashboard/Permohonan/Surat disetujui. Backend test, lint, tsc, build, build:demo, dan pemeriksaan browser 390px/1440px dengan Laravel lokal lulus.
-- [ ] Ringkasan jumlah pengajuan per status (endpoint baru) — sesi A4
+- [x] Ringkasan jumlah pengajuan per status (endpoint baru) — sesi A4: `GET /staff/summary` (`by_status`, `my_queue`, `today`, `oldest`) untuk kelima peran dengan cakupan wilayah yang sama dengan daftar; empat kartu + antrean terlama di `/admin`; filter daftar `my_queue`/`today`. Tes backend SQLite dan PostgreSQL, lint, tsc, build, build:demo, serta pemeriksaan browser 390px/1440px dengan Laravel lokal untuk kelima peran lulus (lihat `docs/progres-2026-10-27.md`).
 - [x] Pencarian berdasarkan nomor pengajuan — juga nama pemohon (nama di `q` disetujui pengguna), filter status/jenis surat, urutan, dan pagination dengan query string.
 - [x] Halaman detail pengajuan: data pemohon untuk staff/admin/village_head, riwayat status dari `application_events`, aksi dari `allowed_transitions`, dan audit `application.viewed` di `audit_logs`. Akses RT/RW dengan pembatasan wilayah dan data ditambahkan di M2a.
 - [x] Antrean kepala desa: daftar yang menunggu persetujuan (`/admin/persetujuan`, dikerjakan bersama M2)

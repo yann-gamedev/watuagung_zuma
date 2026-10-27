@@ -42,7 +42,7 @@ export function ApplicationsTable({ section }: { section: ApplicationSection }) 
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const params = new URLSearchParams();
-    for (const name of ["q", "status", "jenis_surat", "sort", "view"]) {
+    for (const name of ["q", "status", "jenis_surat", "sort", "view", "my_queue", "today"]) {
       params.set(name, String(form.get(name) ?? ""));
     }
     const next = parseApplicationFilters(params, section);
@@ -71,6 +71,9 @@ export function ApplicationsTable({ section }: { section: ApplicationSection }) 
     <section className={styles.panel} aria-labelledby="applications-title">
       <h2 id="applications-title">Daftar permohonan</h2>
       <form key={query} className={styles.filters} onSubmit={submitFilters} aria-label="Cari dan filter permohonan">
+        {filters.my_queue && <input type="hidden" name="my_queue" value="1" />}
+        {filters.today && <input type="hidden" name="today" value="1" />}
+        {(filters.my_queue || filters.today) && <p className={styles.searchField}>Filter aktif: {[filters.my_queue && "Perlu tindakan Anda", filters.today && "Masuk hari ini"].filter(Boolean).join(" · ")}. Gunakan Hapus filter untuk melihat semua permohonan.</p>}
         <div className={styles.searchField}>
           <label htmlFor="admin-application-search">Nomor pengajuan atau nama pemohon</label>
           <input id="admin-application-search" name="q" type="search" defaultValue={filters.q} maxLength={APPLICATION_SEARCH_MAX_LENGTH} autoComplete="off" />
@@ -81,7 +84,8 @@ export function ApplicationsTable({ section }: { section: ApplicationSection }) 
             <option value="pending">Menunggu keputusan {section === "antrean-rt" ? "RT" : "RW"}</option>
             <option value="all">Semua pengajuan wilayah</option>
           </select>
-        </div> : <div className={styles.field}>
+        </div> : null}
+        {(!neighborhood || filters.view === "all") && <div className={styles.field}>
           <label htmlFor="admin-status-filter">Status</label>
           <select id="admin-status-filter" name="status" defaultValue={filters.status} disabled={section === "persetujuan"}>
             {section !== "persetujuan" && <option value="">{section === "surat" ? "Disetujui dan siap diambil" : "Semua status"}</option>}

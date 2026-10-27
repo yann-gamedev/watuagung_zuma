@@ -175,12 +175,21 @@ Disetujui pengguna untuk M3:
 
 Disetujui pengguna:
 
-- `rt_head` hanya melihat menu dan halaman **Antrean RT** (`/admin/antrean-rt`); `rw_head` hanya **Antrean RW** (`/admin/antrean-rw`). Halaman panel lain menampilkan "Halaman ini tidak tersedia untuk peran Anda." beserta tautan ke antreannya.
+- `rt_head` melihat **Dashboard** (`/admin`) dan **Antrean RT** (`/admin/antrean-rt`); `rw_head` melihat **Dashboard** dan **Antrean RW** (`/admin/antrean-rw`). Dashboard dan antrean tetap dibatasi wilayah/jenis surat. Halaman panel lain menampilkan "Halaman ini tidak tersedia untuk peran Anda." beserta tautan ke antreannya (perluasan dashboard disetujui 27 Oktober 2026).
 - Antrean memakai pilihan "Menunggu keputusan RT/RW" (bawaan) atau "Semua pengajuan wilayah" untuk riwayat baca-saja pada halaman yang sama. Filter jenis surat tidak menampilkan SKU.
 - Pada semua lebar layar, kartu antrean memakai radius 18px dan tombol tinggi minimal 52px. Warna tetap `--sage`/`--leaf`; ikon `UserCheck` (RT) dan `ShieldCheck` (RW).
 - Aksi detail: "Setujui sebagai Ketua RT", "Setujui sebagai Ketua RW", dan "Tolak"; persetujuan dan penolakan memakai dialog konfirmasi, tolak wajib memakai catatan.
 - Detail RT/RW menampilkan NIK/KK utuh, tanpa telepon, tempat/tanggal lahir, maupun jenis kelamin.
 - Status `SUBMITTED` untuk surat yang memerlukan RT/RW tampil sebagai "Menunggu verifikasi RT".
+
+### Ringkasan dashboard — 27 Oktober 2026
+
+Disetujui pengguna untuk kelima peran:
+
+- Empat kartu sejajar pada desktop, satu kolom pada ≤900px; angka 32px, label 16px (RT/RW tetap 18px mengikuti aturan teks minimum panel wilayah), radius 14px dan token panel admin yang ada.
+- Label: **Perlu tindakan Anda**, **Masuk hari ini**, **Menunggu persetujuan Kepala Desa**, **Siap diambil**. Setiap kartu menaut ke daftar dengan filter yang sama dengan hitungannya; RT/RW menuju antrean wilayahnya dalam mode semua pengajuan.
+- **Antrean terlama** berisi maksimal lima baris bertaut detail, memakai pola kartu daftar; keadaan kosong: "Belum ada permohonan yang perlu ditangani." Tanpa grafik atau komponen baru.
+- Filter `my_queue=1` dan `today=1` ditampilkan sebagai keterangan filter aktif, dipertahankan pada pagination/detail/kembali, dan dibuang oleh Hapus filter. Mode semua pengajuan wilayah dapat memakai filter status.
 
 ### Buku registrasi surat — 21 Oktober 2026
 

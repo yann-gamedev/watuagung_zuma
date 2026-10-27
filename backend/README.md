@@ -152,6 +152,7 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | POST | `/staff/users/{id}/reset-password` | Admin | Body `password` (min. 10); menandai wajib ganti kata sandi dan mencabut semua token akun itu |
 | POST | `/staff/me/password` | Token petugas | Body `old_password` dan `password` (min. 10); token lain dicabut, token aktif tetap |
 | GET | `/staff/letter-register` | Staff, admin, village_head aktif | Register nomor terbit/batal; filter `year`, `jenis_surat`, `page`; 20 per halaman |
+| GET | `/staff/summary` | Token lima peran, ability `applications:manage` | Hitungan per status, antrean tindakan peran, masuk hari ini, lima antrean tertua; scope sama dengan daftar |
 | GET | `/staff/applications` | Token petugas | Daftar paginasi 20 per halaman, dibatasi wilayah untuk ketua RT/RW; filter `status` atau `statuses[]`, `q`, `jenis_surat`, dan `sort` (kontrak di bawah) |
 | POST | `/staff/applications/{request_id}/lookup-secret` | Staff, admin, rt_head, rw_head (10/menit) | Membuat ulang kode akses; hanya untuk status non-COMPLETED. Kode lama langsung tidak berlaku. Kode baru hanya ada di respons ini. |
 | GET | `/staff/applications/{request_id}` | Token lima peran panel | Detail data pemohon, `allowed_transitions`, dan `history`; ketua RT/RW hanya wilayahnya dengan field terbatas; setiap akses berhasil dicatat di `audit_logs` |
@@ -184,10 +185,23 @@ Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Untuk SKU, `nam
 | `status` | Satu status dari alur di bawah; tidak boleh bersama `statuses` |
 | `statuses[]` | Array tidak kosong, maksimal jumlah status yang tersedia, setiap status valid dan tidak duplikat; tidak boleh bersama `status` |
 | `page` | Bilangan bulat ≥ 1; 20 item per halaman |
+| `my_queue`, `today` | Boolean opsional (`0`/`1`); antrean tindakan peran dan/atau permohonan masuk hari ini; digabung AND |
 
 Nama pencarian di parameter `q` adalah pengecualian URL yang disetujui pengguna (18 Oktober 2026). Jangan memasukkan NIK/KK/telepon/alamat ke pencarian. Query URL dapat tersimpan di riwayat browser/access log server; sebelum produksi, redaksi query pada log proxy/web server perlu dikonfigurasi. Audit aplikasi tidak merekam pencarian.
 
 Filter digabung dengan AND; pasangan pencarian nomor/nama dikelompokkan dengan OR. Respons tetap objek paginator Laravel (`data`, `current_page`, `last_page`, `per_page`, `total`, metadata/tautan pagination). Setiap item `data` **hanya** berisi `request_id`, `nama`, `jenis_surat`, `status`, `created_at`, `allowed_transitions`. **Perubahan kontrak:** `catatan` tidak lagi dikirim dalam daftar karena teks bebas dapat memuat data pribadi; baca catatan melalui endpoint detail. NIK, KK, alamat, telepon, data usaha, keperluan, hash kode akses, dan ID internal tidak disertakan. Daftar tidak mencatat audit akses detail.
+
+### Ringkasan dashboard
+
+`GET /api/v1/staff/summary` memerlukan bearer token `applications:manage` dan akun panel aktif (`staff`, `village_head`, `admin`, `rt_head`, `rw_head`). Tanpa token 401; ability/peran/akun tidak berwenang 403. Respons sukses dan gagal memakai `Cache-Control: private, no-store`.
+
+- `by_status`: objek seluruh nilai `ApplicationStatus` → jumlah integer, termasuk nol. Query agregat `GROUP BY status`, bukan memuat seluruh permohonan.
+- `my_queue`: jumlah permohonan dengan transisi yang tersedia untuk peran tersebut menurut `ApplicationStatus::allowedFor()` **dan jenis suratnya**. Tidak ada tabel status duplikat di controller/frontend; `NEED_REVISION` ikut bila peran memiliki transisi.
+- `today`: jumlah yang dibuat sejak 00.00 hari ini sampai sebelum 00.00 besok sesuai zona waktu aplikasi (`APP_TIMEZONE`, bawaan `Asia/Jakarta`), tanpa membatasi status.
+- `oldest`: maksimal lima permohonan dalam `my_queue`, urut `created_at` lalu ID internal menaik; setiap item tepat sama dengan daftar (`request_id`, `nama`, `jenis_surat`, `status`, `created_at`, `allowed_transitions`). Tidak ada ID internal, catatan bebas, identitas sensitif, atau kode akses.
+- Seluruh hitungan/antrean memakai `Application::forUser()` yang sama dengan daftar. Ketua RT/RW hanya wilayah dan jenis surat yang memerlukan persetujuan RT/RW; peran kantor melihat seluruh wilayah.
+- Daftar menerima filter boolean opsional `my_queue` dan `today` (`0`/`1`, bawaan tidak aktif), digabung AND dengan filter lama. Filter dan summary memakai scope yang sama agar angka kartu cocok dengan total daftar. Input tidak valid mendapat 422. Frontend memakai `my_queue=1`, `today=1`, `status=WAITING_APPROVAL`, dan `status=READY_FOR_PICKUP`; kartu Siap diambil **tidak** menghitung APPROVED.
+- Ringkasan dihitung saat diminta (bukan live/polling). Muat ulang untuk memperbarui; perubahan data atau pergantian hari di antara dua permintaan dapat mengubah total.
 
 ### Register dan nomor surat
 

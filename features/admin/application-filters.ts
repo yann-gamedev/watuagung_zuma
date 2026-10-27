@@ -10,6 +10,8 @@ export type ApplicationFilters = {
   sort: ApplicationSort;
   page: number;
   view?: "pending" | "all";
+  my_queue?: boolean;
+  today?: boolean;
 };
 type SearchParamsReader = { get: (name: string) => string | null };
 
@@ -30,7 +32,7 @@ export function parseApplicationFilters(params: SearchParamsReader, section: App
   if (section === "surat" && status !== "APPROVED" && status !== "READY_FOR_PICKUP") status = "";
   const neighborhood = section === "antrean-rt" || section === "antrean-rw";
   const view = params.get("view") === "all" ? "all" : "pending";
-  if (neighborhood) status = view === "all" ? "" : section === "antrean-rt" ? "SUBMITTED" : "RT_APPROVED";
+  if (neighborhood && view !== "all") status = section === "antrean-rt" ? "SUBMITTED" : "RT_APPROVED";
   const service = params.get("jenis_surat");
   const rawPage = params.get("page") ?? "1";
   const page = /^\d+$/.test(rawPage) ? Number(rawPage) : 1;
@@ -39,6 +41,8 @@ export function parseApplicationFilters(params: SearchParamsReader, section: App
     status,
     jenis_surat: services.some((item) => item.code === service) && !(neighborhood && service === "SKU") ? service as ServiceCode : "",
     ...(neighborhood ? { view } : {}),
+    ...(params.get("my_queue") === "1" ? { my_queue: true } : {}),
+    ...(params.get("today") === "1" ? { today: true } : {}),
     sort: params.get("sort") === "terlama" ? "terlama" : "terbaru",
     page: Number.isSafeInteger(page) && page >= 1 && page <= 2147483647 ? page : 1,
   };
@@ -49,9 +53,12 @@ export function buildApplicationQuery(filters: ApplicationFilters, section: Appl
   const safe = parseApplicationFilters(new URLSearchParams({
     q: filters.q, status: filters.status, jenis_surat: filters.jenis_surat,
     sort: filters.sort, page: String(filters.page), view: filters.view ?? "pending",
+    my_queue: filters.my_queue ? "1" : "0", today: filters.today ? "1" : "0",
   }), parseApplicationSection(section));
   const query = new URLSearchParams();
   if (safe.view === "all") query.set("view", "all");
+  if (safe.my_queue) query.set("my_queue", "1");
+  if (safe.today) query.set("today", "1");
   if (safe.q) query.set("q", safe.q);
   if (safe.status) query.set("status", safe.status);
   if (safe.jenis_surat) query.set("jenis_surat", safe.jenis_surat);

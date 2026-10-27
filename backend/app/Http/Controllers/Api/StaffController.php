@@ -17,6 +17,33 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 class StaffController extends Controller {
+    private const LIST_FIELDS = ['id','request_id','nama','jenis_surat','status','created_at','rt','rw'];
+
+    private function listItem(Application $application, User $user): array {
+        return [
+            'request_id'=>$application->request_id,
+            'nama'=>$application->nama,
+            'jenis_surat'=>$application->jenis_surat,
+            'status'=>$application->status,
+            'created_at'=>$application->created_at,
+            'allowed_transitions'=>$application->allowedTransitions($user),
+        ];
+    }
+
+    public function summary(Request $request): JsonResponse {
+        $user = $request->user();
+        if (! $user->canAccessPanel()) return $this->forbidden();
+        $query = Application::query()->forUser($user);
+        $counts = (clone $query)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status')->map(fn ($count) => (int) $count)->all();
+        $queue = (clone $query)->forMyQueue($user);
+        return response()->json([
+            'by_status'=>array_replace(array_fill_keys(ApplicationStatus::values(), 0), $counts),
+            'my_queue'=>(clone $queue)->count(),
+            'today'=>(clone $query)->submittedToday()->count(),
+            'oldest'=>(clone $queue)->select(self::LIST_FIELDS)->orderBy('created_at')->orderBy('id')->limit(5)->get()
+                ->map(fn (Application $application) => $this->listItem($application, $user)),
+        ])->header('Cache-Control', 'private, no-store');
+    }
     public function login(Request $request): JsonResponse {
         $data = $request->validate([
             'username'=>['required_without:email','prohibits:email','string','max:64','regex:/\A[a-z0-9][a-z0-9_-]*\z/'],
@@ -53,8 +80,12 @@ class StaffController extends Controller {
             'q'=>['sometimes','nullable','string','max:100'],
             'jenis_surat'=>['sometimes',Rule::enum(LetterType::class)],
             'sort'=>['sometimes',Rule::in(['terbaru','terlama'])],
+            'my_queue'=>['sometimes','boolean'],
+            'today'=>['sometimes','boolean'],
         ]);
-        $query = Application::query()->forUser($user)->select(['id','request_id','nama','jenis_surat','status','created_at','rt','rw']);
+        $query = Application::query()->forUser($user)->select(self::LIST_FIELDS);
+        if ($data['my_queue'] ?? false) $query->forMyQueue($user);
+        if ($data['today'] ?? false) $query->submittedToday();
         if (isset($data['status'])) $query->where('status', $data['status']);
         if (isset($data['statuses'])) $query->whereIn('status', $data['statuses']);
         if (isset($data['jenis_surat'])) $query->where('jenis_surat', $data['jenis_surat']);
@@ -68,14 +99,8 @@ class StaffController extends Controller {
         }
         $direction = ($data['sort'] ?? 'terbaru') === 'terlama' ? 'asc' : 'desc';
         // Explicit fields only: encrypted columns and freeform notes are never selected.
-        $page = $query->orderBy('created_at', $direction)->orderBy('id', $direction)->paginate(20)->through(fn (Application $application) => [
-            'request_id'=>$application->request_id,
-            'nama'=>$application->nama,
-            'jenis_surat'=>$application->jenis_surat,
-            'status'=>$application->status,
-            'created_at'=>$application->created_at,
-            'allowed_transitions'=>$application->allowedTransitions($user),
-        ]);
+        $page = $query->orderBy('created_at', $direction)->orderBy('id', $direction)->paginate(20)
+            ->through(fn (Application $application) => $this->listItem($application, $user));
         return response()->json($page)->header('Cache-Control', 'private, no-store');
     }
     public function letterRegister(Request $request): JsonResponse {
