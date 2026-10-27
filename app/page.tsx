@@ -83,6 +83,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+      {/* Tanpa berita resmi bagian ini tidak dirender; /berita tetap tertaut di header dan footer. */}
+      {news.length > 0 && (
       <section className="container home-bottom-container home-bottom home-news" aria-labelledby="news-title">
         <div className="home-news-heading">
           <h2 id="news-title">Kabar desa</h2>
@@ -103,6 +105,7 @@ export default function Home() {
         </div>
         <p className="home-news-note">Berita contoh untuk pratinjau website.</p>
       </section>
+      )}
       <section className="container home-bottom-container home-bottom home-economy" aria-label="BUMDes dan UMKM">
         <article className="home-economy-card home-bumdes">
           <h2>BUMDes Watuagung Bangkit</h2>
