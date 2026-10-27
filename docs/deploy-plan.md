@@ -75,7 +75,7 @@ Daftar lengkap ada di `ROADMAP.md` § "Data yang harus diminta ke desa". Yang me
 ### Privasi dan enkripsi
 - [x] Enkripsi `tempat_lahir` dan `tanggal_lahir` di `applications` (cast `encrypted`, kolom `text`), dengan migration yang mengenkripsi baris lama. `nama` tetap teks biasa untuk pencarian (keputusan 18 Okt 2026). Migration `2026_10_25_000000`; SQLite 182 tes / 1.879 assertions, PostgreSQL 18.6 182 tes / 1.881 assertions, rollback/migrate PostgreSQL lulus (24 Oktober 2026, `docs/progres-2026-10-24.md`).
 - [ ] Tinjau ulang respons API dan `audit_logs`: tidak ada NIK/KK/telepon/alamat/kode akses/token pada respons daftar, log, maupun pesan error.
-- [ ] Halaman `/kebijakan-privasi/`: data yang dikumpulkan, tujuan, siapa yang mengakses, masa simpan, kontak desa. Tautkan dari footer dan formulir pengajuan.
+- [x] Halaman `/kebijakan-privasi/`: data yang dikumpulkan, tujuan, siapa yang mengakses, masa simpan, kontak desa. Tautan footer dan pemberitahuan di atas tombol kirim empat formulir tersedia tanpa checkbox persetujuan wajib. Lint, tsc, build, build:demo, test:demo serta pemeriksaan 390px/1440px lulus (27 Oktober 2026, `docs/progres-2026-10-27.md`). Masa simpan masih `[MASA SIMPAN — menunggu keputusan desa]` sampai F10. Pengguna mengizinkan butir ini mendahului pemblokir Fase 0–1; bukan persetujuan deploy atau penyelesaian retensi.
 - [ ] Perintah artisan retensi terjadwal sesuai masa yang disetujui desa (hapus/anonimkan permohonan lama dan file surat), dengan tes.
 
 ### Konfigurasi

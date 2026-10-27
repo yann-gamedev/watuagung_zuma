@@ -58,6 +58,7 @@ export function Footer() {
           <Link href="/agenda">Agenda</Link>
           <Link href="/pengumuman">Pengumuman</Link>
           <Link href="/statistik">Statistik</Link>
+          <Link href="/kebijakan-privasi/">Kebijakan Privasi</Link>
         </nav>
       </div>
       <div className="container footer-bottom">

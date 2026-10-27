@@ -4,6 +4,7 @@ import { dummyResidents, findDummyResident } from "@/lib/dummy-residents";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Send, LoaderCircle, CircleAlert } from "lucide-react";
 import { FormField } from "@/components/form-field";
 import { submissionSchema, type SubmissionValues } from "@/lib/validation";
@@ -178,6 +179,12 @@ export function ApplicationForm({ code }: { code: ServiceCode }) {
             <p>
               Pastikan data yang Anda isikan sudah benar. Simpan nomor
               permohonan setelah pengajuan berhasil.
+            </p>
+            <p>
+              Dengan mengirim, Anda menyetujui pengolahan data sesuai{" "}
+              <Link className="inline-flex min-h-12 items-center underline!" href="/kebijakan-privasi/">
+                Kebijakan Privasi
+              </Link>.
             </p>
             <button className="btn application-submit" type="submit" disabled={isSubmitting || (dummyPreview && !isDemo)}>
               {isSubmitting ? (
