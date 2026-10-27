@@ -190,7 +190,7 @@ Wajib selesai sebelum menerima data warga nyata.
 - [x] Implementasi bantuan buat ulang kode akses: `POST /staff/applications/{request_id}/lookup-secret` dan dialog di detail permohonan untuk staff/admin/RT/RW, sesuai wilayah; kode lama tidak berlaku, kode baru ditampilkan sekali, riwayat dan audit dicatat. Feature test, lint, tsc dan build lulus pada sesi kode akses (lihat `docs/progres-2026-10-21.md`). Ini bukan OTP/pemulihan mandiri.
 - [ ] Uji manual bantuan kode akses dan tetapkan prosedur operasional pemeriksaan KTP/KK serta petugas yang melayani sebelum produksi. OTP WhatsApp/SMS belum dibuat; tidak wajib bila jalur bantuan sudah dipilih dan diverifikasi.
 - [x] Tempat dan tanggal lahir pemohon terenkripsi (cast `encrypted`, migration mengenkripsi baris lama, rollback mendekripsi). `nama` tetap teks biasa. SQLite 182 tes / 1.879 assertions dan PostgreSQL 18.6 182 tes / 1.881 assertions lulus (24 Oktober 2026, `docs/progres-2026-10-24.md`).
-- [ ] Halaman kebijakan privasi
+- [x] Halaman `/kebijakan-privasi/`, tautan footer dan pemberitahuan di atas tombol kirim empat formulir. Lint, tsc, build, build:demo, test:demo serta pemeriksaan 390px/1440px lulus (27 Oktober 2026, `docs/progres-2026-10-27.md`). Masa simpan masih placeholder sampai keputusan desa/F10; bukan penyelesaian kebijakan retensi.
 - [ ] Uji keamanan dasar: rate limit, otorisasi per peran, field sensitif tidak bocor di respons atau log
 
 ---
