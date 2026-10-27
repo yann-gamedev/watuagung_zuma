@@ -50,6 +50,11 @@ class User extends Authenticatable {
         return $this->canAccessPanel() && $this->role !== 'village_head';
     }
 
+    /** Kelola berita (keputusan C-2): ubah di sini bila desa menambah peran penulis. */
+    public function canManageContent(): bool {
+        return $this->canAccessPanel() && in_array($this->role, ['admin', 'staff'], true);
+    }
+
     public function canAccessPanel(): bool {
         // Akun nonaktif langsung ditolak walau token lamanya belum tercabut.
         return $this->is_active && ApplicationStatus::isPanelRole($this->role) && $this->hasValidTerritory();

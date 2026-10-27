@@ -48,6 +48,10 @@ Path berikut relatif terhadap `/api/v1`. Transport menggunakan `Accept: applicat
 | POST | `/staff/applications/{request_id}/letter.pdf` | Staff/admin: multipart `file` PDF ≤ 5 MB, saat APPROVED/READY_FOR_PICKUP |
 | GET | `/staff/applications/{request_id}/letter-qr.png` | Staff/admin: PNG QR verifikasi |
 | GET | `/verify/{kode}` | Publik, 30/menit: [LetterVerification](../types/pelayanan.ts) |
+| GET | `/posts` | Publik, 60/menit: berita terbit, 10 per halaman ([PublicPostsPage](../types/posts.ts)) |
+| GET | `/posts/{slug}` | Publik, 60/menit: detail + `body`; draf/terhapus/belum waktunya 404 |
+| GET/POST | `/staff/posts` | Admin/staff: daftar (`status`, `q`, `page`) / buat berita |
+| GET/PATCH/DELETE | `/staff/posts/{id}` | Admin/staff: detail, ubah sebagian, soft delete |
 
 Pengajuan berhasil mengembalikan HTTP 201 dengan `success`, `request_id`, `status`, `jenis_surat`, dan `lookup_secret`. Cek status mengembalikan `request_id`, `jenis_surat` (wajib dibaca frontend untuk memilih linimasa), `status`, serta catatan, bukan identitas sensitif. Penolakan oleh RT/RW diberi awalan "Ditolak oleh Ketua RT/RW". Respons validasi gagal menggunakan HTTP 422. Frontend membatasi waktu tunggu API menjadi 20 detik dan memvalidasi respons pelayanan dengan Zod.
 
@@ -60,6 +64,17 @@ Token wajib memiliki `applications:manage` dan akun panel aktif; tanpa token 401
 Daftar `/staff/applications` menambah filter boolean `my_queue` dan `today` (`0`/`1`, opsional; invalid 422), digabung AND dengan filter yang sudah ada. Kartu Dashboard memakai `my_queue=1`, `today=1`, `status=WAITING_APPROVAL`, atau `status=READY_FOR_PICKUP` (bukan gabungan APPROVED). Filter dipertahankan pada pagination, detail, dan kembali; Hapus filter menghapusnya. Angka merupakan hasil saat permintaan, bukan pembaruan otomatis; Muat ulang mengambil ringkasan terbaru.
 
 Dashboard tersedia bagi kelima peran; kartu RT/RW menuju antrean masing-masing dengan `view=all`, yang kini mendukung filter status. Pembatasan server tetap berlaku. Demo tidak menampilkan dashboard/login dan tidak menghubungi API. Data ringkasan hanya di state halaman, tidak disimpan di browser storage.
+
+### Berita (CMS C1)
+
+Rancangan: `docs/PROMPTS-CMS-BERITA.md`. Tipe: `types/posts.ts`. Halaman publik dan panel belum memakai API ini (C3/C4).
+
+- **Publik** (`/posts`, `/posts/{slug}`): tanpa token, `Cache-Control: public, max-age=60`. Hanya `status=published` dengan `published_at` ≤ sekarang, urut `published_at` menurun. Item: `slug`, `title`, `category`, `category_label`, `summary`, `published_at`, `cover_url` (selalu `null` sampai C2); detail menambah `body`. ID internal tidak dikirim.
+- **Petugas** (`/staff/posts…`): token `applications:manage` + peran `admin`/`staff` aktif (`User::canManageContent()`); tanpa token 401, peran lain 403. Respons `private, no-store`. Daftar 20 per halaman urut `updated_at` menurun, filter `status` = `draft`/`published`, `q` (maks. 100, potongan judul literal, tidak peka huruf besar/kecil); item = [StaffPost](../types/posts.ts) tanpa `body`. Berita terhapus 404 di semua endpoint.
+- **Input**: `title` (≤160), `category` (`kegiatan_desa`, `pemerintahan`, `pembangunan`, `pemberdayaan`, `layanan_publik`, `ekonomi_lokal`, `pengumuman`), `summary` (≤300), `body` (≤20.000), `status`. Semua wajib saat POST, sebagian saat PATCH. Spasi luar dibuang; karakter kontrol ditolak (422), kecuali baris baru/tab di `body`. HTML tidak diproses: disimpan apa adanya, **frontend wajib merender sebagai teks**; paragraf dipisah baris kosong.
+- **Terbit**: terbit pertama mengisi `published_at` = sekarang; kembali ke draf dan terbit ulang mempertahankan tanggal lama.
+- **Slug**: `Str::slug(title)` (kosong → `berita`), unik termasuk berita terhapus dengan akhiran `-2`, `-3`. Mengikuti judul hanya selama belum pernah terbit; setelah itu tetap.
+- **Audit**: `post.created`, `post.updated`, `post.published`, `post.deleted` (`subject_type=post`), hanya ID dan aksi.
 
 ### Login username
 

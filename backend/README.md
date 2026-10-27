@@ -161,8 +161,19 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | POST | `/staff/applications/{request_id}/letter.pdf` | Staff, admin (10/menit) | Multipart `file` PDF ≤ 5 MB; mengganti PDF otomatis dengan surat hasil pindaian |
 | GET | `/staff/applications/{request_id}/letter-qr.png` | Staff, admin | Gambar QR verifikasi untuk ditempel pada surat manual |
 | GET | `/verify/{kode}` | Publik, 30 permintaan/menit | Metadata surat tersamar untuk halaman verifikasi QR |
+| GET | `/posts` | Publik, 60 permintaan/menit | Berita terbit, 10 per halaman, `Cache-Control: public, max-age=60` |
+| GET | `/posts/{slug}` | Publik, 60 permintaan/menit | Detail berita terbit + `body`; draf/terhapus 404 |
+| GET | `/staff/posts` | Admin, staff | Daftar berita semua status kecuali terhapus; filter `status`, `q` (judul), `page`; 20 per halaman |
+| POST | `/staff/posts` | Admin, staff | Body `title`, `category`, `summary`, `body`, `status`; 201 |
+| GET | `/staff/posts/{id}` | Admin, staff | Detail berita termasuk draf |
+| PATCH | `/staff/posts/{id}` | Admin, staff | Ubah sebagian field yang sama |
+| DELETE | `/staff/posts/{id}` | Admin, staff | Soft delete (baris tetap ada, pemulihan lewat database) |
 
 Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Untuk SKU, `nama_usaha`, `jenis_usaha`, dan `alamat_usaha` wajib diisi. Validasi yang gagal mengembalikan HTTP 422 dengan objek `errors`.
+
+### Berita
+
+Kontrak lengkap di [docs/integrasi.md § Berita](../docs/integrasi.md). Hak kelola satu tempat: `User::canManageContent()` (`admin`/`staff` aktif); peran lain 403, tanpa token 401. Kategori di `App\Domain\PostCategory`. Isi teks biasa, HTML disimpan apa adanya dan tidak pernah dirender server. Slug tetap setelah terbit pertama. Audit `post.*` hanya aksi dan ID, tanpa judul/isi. Kolom `cover_path` disiapkan untuk C2; `cover_url` masih `null`.
 
 ### Kontrak manajemen akun
 

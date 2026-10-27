@@ -15,7 +15,7 @@
 | M3 — Dashboard | Sebagian selesai; manajemen akun dan ringkasan dashboard sudah ada | Uji manual akun dan review visual halaman akun |
 | M3a — Register | Implementasi dan uji konkurensi PostgreSQL selesai | Uji browser dengan Laravel |
 | M4 — Pengaduan | Dialihkan ke Google Form desa (24 Okt 2026); tautan selesai | URL Google Form dari desa (`NEXT_PUBLIC_COMPLAINT_FORM_URL`) |
-| M5 — CMS | Belum dibuat; menunggu K2/K4 | Hosting, pengelola konten, backend dan frontend |
+| M5 — CMS | API berita (C1) selesai; sisanya belum, menunggu K2/K4 | Foto sampul, panel dan halaman berita dari API (C2–C4), konten lain |
 | M6 — Lampiran persyaratan | Belum dibuat | Unggah privat, batas file, retensi; berbeda dari unggah surat final M7 |
 | M7 — PDF/QR | Implementasi dengan template sementara selesai | Format resmi desa, uji browser Laravel dan pindai QR; TTE di luar lingkup |
 | M8 — Produksi | Belum siap operasional | Infrastruktur, privasi/retensi, prosedur bantuan, verifikasi keamanan |
@@ -150,6 +150,7 @@ Bergantung pada K2 dan K4.
 
 - [ ] Tabel: `village_profile` (satu baris: nama, alamat, jam layanan, kontak, visi, misi, sejarah, luas, jumlah dusun/penduduk), `officials` (perangkat desa), `posts` (berita/pengumuman), `agendas`, `bumdes_units`, `umkm`
 - [ ] Endpoint publik `GET` per jenis konten
+  - [x] Berita C1 (`docs/PROMPTS-CMS-BERITA.md`): tabel `posts` (soft delete), `GET /posts` dan `/posts/{slug}` publik (hanya terbit, `public, max-age=60`), CRUD `/staff/posts` untuk `admin`/`staff` (`User::canManageContent()`), slug stabil setelah terbit, audit `post.*` tanpa isi. `PostsApiTest` 15 tes; suite SQLite 233 tes / 2.547 assertions, PostgreSQL 18.6 233 tes / 2.549 assertions, rollback/migrate PostgreSQL lulus (27 Oktober 2026, `docs/progres-2026-10-27.md`). Pengguna mengizinkan mendahului K2/K4. Belum: foto sampul (C2), panel (C3), halaman publik membaca API (C4).
 - [ ] CRUD di panel admin untuk peran `admin`, termasuk unggah foto konten
 - [ ] Frontend membaca dari API, dengan cadangan `lib/data.ts` untuk mode demo
 - [ ] Hapus semua keterangan "konten contoh" yang sudah diganti data resmi
