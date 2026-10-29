@@ -97,7 +97,7 @@ Daftar lengkap ada di `ROADMAP.md` § "Data yang harus diminta ke desa". Yang me
 Agent membuat folder `deploy/` berisi: `nginx/watuagung.conf`, `deploy.sh`, `backup.sh`, `restore.md`, `crontab.txt`, dan `server-setup.md`.
 
 - [ ] VPS: Ubuntu 24.04 LTS, minimal 2 vCPU / 2 GB RAM / 40 GB SSD, lokasi data center Indonesia bila memungkinkan.
-- [ ] Paket: Nginx, PHP 8.3+ FPM dengan ekstensi `pgsql`, `mbstring`, `xml`, `dom`, `gd`, `zip`, `intl`, `bcmath`; Composer; PostgreSQL 16+; Node 22.13+ (hanya untuk build, boleh di mesin lain).
+- [ ] Paket: Nginx, PHP 8.3+ FPM dengan ekstensi `pgsql`, `mbstring`, `xml`, `dom`, `gd`, `zip`, `intl`, `bcmath`; Composer; PostgreSQL 16+; Node 22.13+ (hanya untuk build, boleh di mesin lain). `php-gd` wajib mendukung JPEG, PNG, dan WebP untuk sampul berita C2; cek `gd_info()` pada CLI dan FPM. WebP tidak tersedia memakai JPEG fallback; GD tidak tersedia unggah menjawab 503. Set `upload_max_filesize` ≥ 5M dan `post_max_size` > 6M agar batas aplikasi foto 3 MB/PDF 5 MB tetap dapat divalidasi.
 - [ ] Keamanan server: login SSH hanya kunci (password dan root login dimatikan), user deploy terpisah, `ufw` hanya 22/80/443, `fail2ban`, `unattended-upgrades`.
 - [ ] PostgreSQL: user dan database khusus aplikasi dengan kata sandi kuat, `listen_addresses = 'localhost'`.
 - [ ] DNS: A record domain (dan `www`) ke IP VPS. HTTPS dengan Let's Encrypt (certbot) dan perpanjangan otomatis.
@@ -106,6 +106,7 @@ Agent membuat folder `deploy/` berisi: `nginx/watuagung.conf`, `deploy.sh`, `bac
 ### Konfigurasi Nginx (isi `deploy/nginx/watuagung.conf`)
 - [ ] Root = hasil `out/` Next.js; `location /api/` → `backend/public/index.php` via PHP-FPM. Tidak ada akses langsung ke `backend/` selain `public/`.
 - [ ] Tolak `/.env`, `/.git`, file tersembunyi, dan `storage/`.
+- [ ] Media berita C2/F12b: `/media/posts/` dipetakan langsung ke `backend/storage/app/public/posts/` (bagian `/media/` lain 404). Hanya file UUID `.webp`/`.jpg` hasil encode ulang; tanpa directory listing, tanpa eksekusi PHP atau fallback PHP-FPM, `X-Content-Type-Options: nosniff`, dan `Cache-Control: public, max-age=31536000, immutable`. Isi `MEDIA_URL=https://[DOMAIN]/media` sesuai origin `APP_URL`; tanpa env memakai bawaan Laravel `${APP_URL}/storage` (untuk lokal, bukan konfigurasi Nginx produksi yang menolak `/storage/`). Uji file ada 200, hilang 404, ekstensi lain/PHP ditolak; tidak membuka storage privat.
 - [ ] Redirect HTTP → HTTPS; header: `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `X-Frame-Options: DENY`, `Content-Security-Policy` yang diuji terhadap build.
 - [ ] `client_max_body_size 6m` (unggah PDF ≤ 5 MB).
 - [ ] Format access log tanpa query string untuk `/api/` (parameter `q` berisi nama; lihat `backend/README.md`).
@@ -122,10 +123,11 @@ Urutan setiap rilis:
 
 - [ ] Cron: `* * * * * php /path/backend/artisan schedule:run` (prune token Sanctum + retensi). Queue worker tidak diperlukan saat ini karena tidak ada job yang di-dispatch; tinjau ulang bila ada.
 - [ ] Hak akses: `storage/` dan `bootstrap/cache/` hanya dapat ditulis user PHP-FPM.
+- [ ] Deploy C2/F12b: pertahankan folder persisten `backend/storage/app/public/posts` antar-rilis, buat bila belum ada; PHP-FPM dapat menulis, Nginx hanya membaca. Gunakan alias path langsung `/media/posts/` di atas; `php artisan storage:link` hanya alternatif lokal untuk prefix `/storage`, tidak diperlukan untuk alias produksi.
 
 ## Fase 5 — Backup dan pemulihan
 
-- [ ] `backup.sh` harian: `pg_dump` terkompresi + arsip `backend/storage/app/private` (PDF surat), dienkripsi sebelum dikirim ke penyimpanan di luar VPS. Simpan 14 harian + 8 mingguan.
+- [ ] `backup.sh` harian: `pg_dump` terkompresi + arsip `backend/storage/app/private` (PDF surat) **dan `backend/storage/app/public/posts` (sampul berita C2/F12b)**, dienkripsi sebelum dikirim ke penyimpanan di luar VPS. Simpan 14 harian + 8 mingguan. Uji pemulihan juga mencocokkan `posts.cover_path` dengan file dan memastikan URL `/media/posts/…` dapat dibaca. Soft delete berita mempertahankan file; jangan mengecualikannya dari backup.
 - [ ] `APP_KEY` **tidak** ikut dalam arsip backup yang sama.
 - [ ] **(BLOKIR)** Uji pemulihan ke server/VM kosong: restore database + file + `APP_KEY`, lalu pastikan NIK pada satu permohonan uji dapat didekripsi dan PDF dapat diunduh. Catat langkahnya di `deploy/restore.md`.
 
@@ -149,5 +151,7 @@ Urutan setiap rilis:
 ## Setelah rilis 1
 
 - M5 CMS (fetch di browser dari API), M6 Lampiran (penyimpanan privat + retensi). M4 tidak dibangun; tetap Google Form.
+  - [x] C2 API sampul berita: unggah/hapus, validasi, encode ulang GD tanpa EXIF/GPS, URL media, penggantian file, otorisasi dan throttle. SQLite 258 tes / 2.730 assertions; PostgreSQL 258 tes / 2.732 assertions; fallback JPEG 23 lulus / 2 skip khusus WebP; lint, tsc, build lulus (29 Oktober 2026, `docs/progres-2026-10-29.md`). Pengguna mengizinkan mendahului pemblokir deploy/K2/K4. Bukan verifikasi Nginx/FPM/backup atau persetujuan deploy.
+  - [ ] Pembersihan berkala media berita: soft delete mempertahankan file untuk pemulihan; kegagalan proses/hapus file dapat meninggalkan file sisa. Tentukan kebijakan sebelum menambah pembersihan; retensi permohonan F10 tidak berlaku untuk berita.
 - Blind index NIK (HMAC) bila perlu deduplikasi atau pencarian NIK; jangan membuka pencarian NIK publik.
 - Rotasi `APP_KEY` hanya dengan prosedur `APP_PREVIOUS_KEYS` + re-enkripsi data, diuji di salinan database lebih dulu.

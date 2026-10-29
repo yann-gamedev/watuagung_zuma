@@ -1,3 +1,6 @@
+/** Kontrak sampul berita tersedia bersama tipe berita; multipart, bukan JSON. */
+export type { StaffPostCoverInput, StaffPostCoverResponse } from "./posts";
+
 export const statuses = [
   "SUBMITTED",
   "RT_APPROVED",

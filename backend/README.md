@@ -167,13 +167,22 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | POST | `/staff/posts` | Admin, staff | Body `title`, `category`, `summary`, `body`, `status`; 201 |
 | GET | `/staff/posts/{id}` | Admin, staff | Detail berita termasuk draf |
 | PATCH | `/staff/posts/{id}` | Admin, staff | Ubah sebagian field yang sama |
-| DELETE | `/staff/posts/{id}` | Admin, staff | Soft delete (baris tetap ada, pemulihan lewat database) |
+| DELETE | `/staff/posts/{id}` | Admin, staff | Soft delete (baris dan sampul tetap ada, pemulihan lewat database) |
+| POST/DELETE | `/staff/posts/{id}/cover` | Admin, staff, berbagi 10/menit per akun | Multipart `file` / hapus sampul; 200 detail berita terbaru |
 
 Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Untuk SKU, `nama_usaha`, `jenis_usaha`, dan `alamat_usaha` wajib diisi. Validasi yang gagal mengembalikan HTTP 422 dengan objek `errors`.
 
 ### Berita
 
-Kontrak lengkap di [docs/integrasi.md § Berita](../docs/integrasi.md). Hak kelola satu tempat: `User::canManageContent()` (`admin`/`staff` aktif); peran lain 403, tanpa token 401. Kategori di `App\Domain\PostCategory`. Isi teks biasa, HTML disimpan apa adanya dan tidak pernah dirender server. Slug tetap setelah terbit pertama. Audit `post.*` hanya aksi dan ID, tanpa judul/isi. Kolom `cover_path` disiapkan untuk C2; `cover_url` masih `null`.
+Kontrak lengkap di [docs/integrasi.md § Berita](../docs/integrasi.md). Hak kelola satu tempat: `User::canManageContent()` (`admin`/`staff` aktif); peran lain 403, tanpa token 401. Kategori di `App\Domain\PostCategory`. Isi teks biasa, HTML disimpan apa adanya dan tidak pernah dirender server. Slug tetap setelah terbit pertama. Audit `post.*` hanya aksi dan ID, tanpa judul/isi. `cover_url` berisi URL publik sampul atau `null`; `cover_path` tidak dikirim.
+
+**Foto sampul (C2):** POST `/staff/posts/{id}/cover` memakai multipart field `file`; DELETE pada path yang sama menghapus sampul. Keduanya berbagi throttle 10/menit per akun, hak kelola sama dengan C1, respons 200 berupa detail berita terbaru (`cover_url` null setelah hapus), `Cache-Control: private, no-store`. Validasi 422: JPG/JPEG/PNG/WebP ≤ 3.072 KiB, lebar 600–6.000 px, tinggi 400–6.000 px; isi rusak ditolak. Klien FormData tidak menetapkan `Content-Type` sendiri agar boundary benar.
+
+GD menggambar ulang piksel, memperkecil lebar maksimal 1.600 px tanpa memperbesar gambar kecil, mempertahankan rasio, membuang metadata EXIF/GPS. Output WebP kualitas 80 jika didukung; selain itu JPEG kualitas 82 (transparansi menjadi putih). Nama `posts/<uuid>.webp` atau `.jpg` di disk `public` (`storage/app/public/posts`). GD tidak tersedia → 503. Produksi memerlukan `php-gd` dengan JPEG/PNG/WebP; tes memberi pesan skip bila GD/WebP tidak tersedia.
+
+Konfigurasi `MEDIA_URL` adalah **URL dasar absolut**, tanpa `/posts`: bawaan kosong/tidak diisi memakai `${APP_URL}/storage`; lokal jalankan `php artisan storage:link`. Untuk produksi isi `MEDIA_URL=https://[DOMAIN]/media`, sesuai `APP_URL`, lalu cache ulang konfigurasi. URL sampul menjadi `https://[DOMAIN]/media/posts/<uuid>.webp`. Nginx menyajikan hanya folder `storage/app/public/posts` di `/media/posts/`, bukan seluruh storage; lihat `docs/deploy-plan.md`.
+
+File baru disimpan sebelum transaksi penggantian dan audit `post.updated`; bila transaksi gagal, file baru dibersihkan dan sampul lama tetap. Baris dikunci saat penggantian; file lama dihapus setelah commit. Gagal hapus file lama → 500 dengan pesan bahwa sampul sudah diperbarui; perlu pembersihan administrator. Soft delete berita **tidak** menghapus file agar bisa dipulihkan. File sampul bersifat publik, termasuk sampul draf/berita terhapus bila URL diketahui; jangan unggah dokumen pribadi. Pembersihan berkala file sisa belum dibuat dan tidak termasuk retensi permohonan F10. Backup harus mencakup folder media.
 
 ### Kontrak manajemen akun
 

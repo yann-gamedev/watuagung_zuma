@@ -1,4 +1,4 @@
-/** Kontrak API berita (C1). Lihat docs/integrasi.md § Berita. */
+/** Kontrak API berita (C1–C2). Lihat docs/integrasi.md § Berita. */
 export const postCategories = [
   "kegiatan_desa",
   "pemerintahan",
@@ -19,6 +19,7 @@ export interface PublicPost {
   category_label: string;
   summary: string;
   published_at: string;
+  /** URL publik sampul hasil encode ulang; null bila belum ada atau dihapus. */
   cover_url: string | null;
 }
 export interface PublicPostDetail extends PublicPost {
@@ -48,6 +49,13 @@ export interface StaffPostsPage {
   last_page: number;
   total: number;
 }
+/** POST /staff/posts/{id}/cover: kirim file lewat FormData, jangan tetapkan Content-Type sendiri. */
+export interface StaffPostCoverInput {
+  file: File;
+}
+/** POST dan DELETE /staff/posts/{id}/cover: 200, detail lengkap dengan cover_url terbaru. */
+export type StaffPostCoverResponse = StaffPostDetail;
+
 /** POST /staff/posts (semua wajib); PATCH /staff/posts/{id} (sebagian). */
 export interface StaffPostInput {
   title: string;
