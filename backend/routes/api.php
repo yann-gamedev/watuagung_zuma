@@ -33,4 +33,6 @@ Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/
     Route::get('/posts/{id}', [PostController::class, 'staffShow'])->whereNumber('id');
     Route::patch('/posts/{id}', [PostController::class, 'update'])->whereNumber('id');
     Route::delete('/posts/{id}', [PostController::class, 'destroy'])->whereNumber('id');
+    Route::post('/posts/{id}/cover', [PostController::class, 'uploadCover'])->whereNumber('id')->middleware('throttle:10,1,post-cover');
+    Route::delete('/posts/{id}/cover', [PostController::class, 'deleteCover'])->whereNumber('id')->middleware('throttle:10,1,post-cover');
 });

@@ -7,7 +7,10 @@ use App\Models\Post;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /** Berita: baca publik + kelola admin/staff. Isi disimpan sebagai teks biasa, tidak pernah diproses sebagai HTML. */
 class PostController extends Controller {
@@ -21,7 +24,7 @@ class PostController extends Controller {
             'slug'=>$post->slug, 'title'=>$post->title,
             'category'=>$post->category->value, 'category_label'=>$post->category->label(),
             'summary'=>$post->summary, 'published_at'=>$post->published_at?->toISOString(),
-            'cover_url'=>null, // diisi di sesi C2 (foto sampul)
+            'cover_url'=>$post->cover_path ? Storage::disk('public')->url($post->cover_path) : null,
         ];
     }
 
@@ -113,6 +116,76 @@ class PostController extends Controller {
             $this->audit($user->id, 'post.deleted', $post);
         });
         return response()->json(['success'=>true])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function uploadCover(Request $request, int $id): JsonResponse {
+        if (! $request->user()->canManageContent()) return $this->forbidden();
+        Post::findOrFail($id);
+        $request->validate(['file'=>[
+            'bail', 'required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:3072',
+            'dimensions:min_width=600,min_height=400,max_width=6000,max_height=6000',
+        ]]);
+        abort_unless(extension_loaded('gd'), 503, 'Pengolah foto belum tersedia. Hubungi administrator.');
+        $bytes = file_get_contents($request->file('file')->getRealPath());
+        abort_if($bytes === false, 500, 'Foto gagal dibaca.');
+        $source = @imagecreatefromstring($bytes);
+        if ($source === false) throw ValidationException::withMessages(['file'=>'Foto tidak dapat dibaca. Pilih JPG, PNG, atau WebP yang valid.']);
+        $webp = function_exists('imagewebp') && (imagetypes() & IMG_WEBP) !== 0;
+        $width = min(1600, imagesx($source));
+        $height = max(1, (int) round(imagesy($source) * $width / imagesx($source)));
+        $image = imagecreatetruecolor($width, $height);
+        $stream = tmpfile();
+        try {
+            abort_if($image === false || $stream === false, 500, 'Foto gagal diproses.');
+            // Kanvas baru hanya berisi piksel: EXIF/GPS dan metadata lain tidak disalin.
+            if ($webp) {
+                imagealphablending($image, false);
+                imagesavealpha($image, true);
+                imagefill($image, 0, 0, imagecolorallocatealpha($image, 0, 0, 0, 127));
+            } else {
+                imagefill($image, 0, 0, imagecolorallocate($image, 255, 255, 255));
+            }
+            abort_unless(imagecopyresampled($image, $source, 0, 0, 0, 0, $width, $height, imagesx($source), imagesy($source)), 500, 'Foto gagal diperkecil.');
+            $encoded = $webp ? imagewebp($image, $stream, 80) : imagejpeg($image, $stream, 82);
+            abort_unless($encoded && ftell($stream) > 0, 500, 'Foto gagal disimpan.');
+            rewind($stream);
+            $path = 'posts/'.Str::uuid().($webp ? '.webp' : '.jpg');
+            try {
+                abort_unless(Storage::disk('public')->put($path, $stream), 500, 'Foto gagal disimpan.');
+                $post = $this->changeCover($request, $id, $path, $oldPath);
+            } catch (\Throwable $e) {
+                Storage::disk('public')->delete($path);
+                throw $e;
+            }
+        } finally {
+            imagedestroy($source);
+            if ($image !== false) imagedestroy($image);
+            if (is_resource($stream)) fclose($stream);
+        }
+        // Hapus hanya setelah commit; kegagalan DB tidak merusak sampul sebelumnya.
+        $this->removeCoverFile($oldPath);
+        return response()->json($this->staffDetail($post))->header('Cache-Control', 'private, no-store');
+    }
+
+    public function deleteCover(Request $request, int $id): JsonResponse {
+        if (! $request->user()->canManageContent()) return $this->forbidden();
+        $post = $this->changeCover($request, $id, null, $oldPath);
+        $this->removeCoverFile($oldPath);
+        return response()->json($this->staffDetail($post))->header('Cache-Control', 'private, no-store');
+    }
+
+    private function changeCover(Request $request, int $id, ?string $path, ?string &$oldPath): Post {
+        return DB::transaction(function () use ($request, $id, $path, &$oldPath) {
+            $post = Post::lockForUpdate()->findOrFail($id);
+            $oldPath = $post->cover_path;
+            $post->forceFill(['cover_path'=>$path, 'updated_by'=>$request->user()->id])->save();
+            $this->audit($request->user()->id, 'post.updated', $post);
+            return $post;
+        });
+    }
+
+    private function removeCoverFile(?string $path): void {
+        if ($path !== null) abort_unless(Storage::disk('public')->delete($path), 500, 'Sampul diperbarui, tetapi file lama gagal dihapus. Hubungi administrator.');
     }
 
     private function rules(bool $creating): array {

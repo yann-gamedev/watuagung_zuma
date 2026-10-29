@@ -52,6 +52,7 @@ Path berikut relatif terhadap `/api/v1`. Transport menggunakan `Accept: applicat
 | GET | `/posts/{slug}` | Publik, 60/menit: detail + `body`; draf/terhapus/belum waktunya 404 |
 | GET/POST | `/staff/posts` | Admin/staff: daftar (`status`, `q`, `page`) / buat berita |
 | GET/PATCH/DELETE | `/staff/posts/{id}` | Admin/staff: detail, ubah sebagian, soft delete |
+| POST/DELETE | `/staff/posts/{id}/cover` | Admin/staff, berbagi 10/menit per akun: unggah multipart `file` / hapus sampul; 200 detail berita terbaru |
 
 Pengajuan berhasil mengembalikan HTTP 201 dengan `success`, `request_id`, `status`, `jenis_surat`, dan `lookup_secret`. Cek status mengembalikan `request_id`, `jenis_surat` (wajib dibaca frontend untuk memilih linimasa), `status`, serta catatan, bukan identitas sensitif. Penolakan oleh RT/RW diberi awalan "Ditolak oleh Ketua RT/RW". Respons validasi gagal menggunakan HTTP 422. Frontend membatasi waktu tunggu API menjadi 20 detik dan memvalidasi respons pelayanan dengan Zod.
 
@@ -65,16 +66,20 @@ Daftar `/staff/applications` menambah filter boolean `my_queue` dan `today` (`0`
 
 Dashboard tersedia bagi kelima peran; kartu RT/RW menuju antrean masing-masing dengan `view=all`, yang kini mendukung filter status. Pembatasan server tetap berlaku. Demo tidak menampilkan dashboard/login dan tidak menghubungi API. Data ringkasan hanya di state halaman, tidak disimpan di browser storage.
 
-### Berita (CMS C1)
+### Berita (CMS C1–C2)
 
 Rancangan: `docs/PROMPTS-CMS-BERITA.md`. Tipe: `types/posts.ts`. Halaman publik dan panel belum memakai API ini (C3/C4).
 
-- **Publik** (`/posts`, `/posts/{slug}`): tanpa token, `Cache-Control: public, max-age=60`. Hanya `status=published` dengan `published_at` ≤ sekarang, urut `published_at` menurun. Item: `slug`, `title`, `category`, `category_label`, `summary`, `published_at`, `cover_url` (selalu `null` sampai C2); detail menambah `body`. ID internal tidak dikirim.
+- **Publik** (`/posts`, `/posts/{slug}`): tanpa token, `Cache-Control: public, max-age=60`. Hanya `status=published` dengan `published_at` ≤ sekarang, urut `published_at` menurun. Item: `slug`, `title`, `category`, `category_label`, `summary`, `published_at`, `cover_url` (URL publik absolut atau `null` bila tanpa sampul); detail menambah `body`. ID internal tidak dikirim.
 - **Petugas** (`/staff/posts…`): token `applications:manage` + peran `admin`/`staff` aktif (`User::canManageContent()`); tanpa token 401, peran lain 403. Respons `private, no-store`. Daftar 20 per halaman urut `updated_at` menurun, filter `status` = `draft`/`published`, `q` (maks. 100, potongan judul literal, tidak peka huruf besar/kecil); item = [StaffPost](../types/posts.ts) tanpa `body`. Berita terhapus 404 di semua endpoint.
 - **Input**: `title` (≤160), `category` (`kegiatan_desa`, `pemerintahan`, `pembangunan`, `pemberdayaan`, `layanan_publik`, `ekonomi_lokal`, `pengumuman`), `summary` (≤300), `body` (≤20.000), `status`. Semua wajib saat POST, sebagian saat PATCH. Spasi luar dibuang; karakter kontrol ditolak (422), kecuali baris baru/tab di `body`. HTML tidak diproses: disimpan apa adanya, **frontend wajib merender sebagai teks**; paragraf dipisah baris kosong.
 - **Terbit**: terbit pertama mengisi `published_at` = sekarang; kembali ke draf dan terbit ulang mempertahankan tanggal lama.
 - **Slug**: `Str::slug(title)` (kosong → `berita`), unik termasuk berita terhapus dengan akhiran `-2`, `-3`. Mengikuti judul hanya selama belum pernah terbit; setelah itu tetap.
-- **Audit**: `post.created`, `post.updated`, `post.published`, `post.deleted` (`subject_type=post`), hanya ID dan aksi.
+- **Audit**: `post.created`, `post.updated`, `post.published`, `post.deleted` (`subject_type=post`), hanya ID dan aksi. Unggah/hapus sampul memakai `post.updated`, tanpa nama file asli atau metadata gambar.
+- **Sampul C2**: POST `/staff/posts/{id}/cover` menerima multipart `file` (FormData; jangan tetapkan Content-Type sendiri), DELETE menghapus sampul; keduanya berbagi 10/menit per akun. Respons 200 `StaffPostCoverResponse` = `StaffPostDetail`, `cover_url` terbaru atau null setelah hapus, `private, no-store`. Kontrak input/response di `types/posts.ts`, diekspor ulang lewat `types/pelayanan.ts`. Tanpa token 401, peran/ability salah 403, ID hilang/soft-deleted 404, invalid 422 (`errors.file`), throttle 429.
+- **Validasi/proses**: JPG/JPEG/PNG/WebP ≤ 3.072 KiB, dimensi 600×400 sampai 6.000×6.000 px. GD membaca isi, kanvas piksel baru membuang EXIF/GPS; lebar maksimal 1.600 px, rasio tetap, tanpa memperbesar. WebP kualitas 80 bila didukung; selain itu JPEG kualitas 82 (transparansi putih). GD hilang → 503. UUID acak di `storage/app/public/posts`, tidak menyimpan file asli.
+- **URL media**: `MEDIA_URL` URL dasar absolut disk public, tanpa `/posts`; kosong/tidak diisi memakai `${APP_URL}/storage` Laravel (`php artisan storage:link` untuk lokal). Produksi `MEDIA_URL=https://[DOMAIN]/media`, sesuai `APP_URL`; hasil `/media/posts/<uuid>.webp` atau `.jpg`. Cache ulang konfigurasi setelah mengganti env. Jangan memakai `/media/posts` sebagai MEDIA_URL karena path tersimpan sudah diawali `posts/`.
+- **Siklus file**: transaksi mengunci berita dan menyimpan path + audit; kegagalan DB membersihkan file baru, mempertahankan file lama. Penggantian/hapus sampul menghapus file lama setelah commit. Gagal hapus file lama → 500 dengan pesan sampul sudah diperbarui; administrator perlu membersihkan sisa. Soft delete berita tidak menghapus sampul, agar restore lewat database tetap utuh. File publik tetap dapat dibaca bila URL diketahui, termasuk draf/terhapus; bukan tempat dokumen pribadi. Retensi permohonan F10 tidak menyentuh berita; pembersihan berkala terpisah belum dibuat.
 
 ### Login username
 
