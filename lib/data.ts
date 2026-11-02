@@ -1,3 +1,26 @@
+// Kontak publik kantor desa; R4 nanti memindahkan pengelolaannya ke panel.
+// Tech Lead: ganti [PLACEHOLDER] di sini, tanpa env. Phone: format internasional
+// diawali 62, hanya digit (tanpa +, spasi, atau tanda hubung); jangan isi nomor rekaan.
+// Embed: Google Maps → cari Balai Desa → Bagikan → Sematkan peta → salin isi src.
+// Link: Bagikan → Salin link. Gunakan hanya awalan URL yang divalidasi di bawah.
+// Hari kerja pastinya masih menunggu konfirmasi; jangan menambahkan nama hari.
+export const contact = {
+  address: "Jl. Taman Safari Indonesia II, Dusun Watuagung RT 001/RW 001, Kecamatan Prigen, Kabupaten Pasuruan, Jawa Timur",
+  hours: "Hari kerja, 08.00–13.00 WIB",
+  contactName: "Pelayanan Desa (Bu Ita)",
+  phone: "[PLACEHOLDER]",
+  mapsEmbedUrl: "[PLACEHOLDER]",
+  mapsLinkUrl: "[PLACEHOLDER]",
+};
+
+export function getContactLinks(values = contact) {
+  return {
+    phone: values.phone.startsWith("62") && values.phone.length > 2 && !/[^0-9]/.test(values.phone) ? values.phone : null,
+    mapsEmbedUrl: values.mapsEmbedUrl.startsWith("https://www.google.com/maps/embed?") ? values.mapsEmbedUrl : null,
+    mapsLinkUrl: ["https://maps.app.goo.gl/", "https://www.google.com/maps/"].some((prefix) => values.mapsLinkUrl.startsWith(prefix)) ? values.mapsLinkUrl : null,
+  };
+}
+
 export const services = [
   {
     slug: "sku",
@@ -321,15 +344,7 @@ export const pages: Record<
     blocks: [
       {
         title: "Kantor Desa Watuagung",
-        text: "Jl. Taman Safari Indonesia II, Dusun Watuagung RT 001/RW 001, Kecamatan Prigen, Kabupaten Pasuruan, Jawa Timur",
-      },
-      {
-        title: "Jam pelayanan · Contoh",
-        text: "Senin–Kamis 08.00–15.00 WIB • Jumat 08.00–11.30 WIB. Jadwal ini belum merupakan jam operasional resmi.",
-      },
-      {
-        title: "Saluran komunikasi",
-        text: "Nomor telepon dan email resmi belum tersedia. Gunakan menu Pelayanan Desa dan Cek Status untuk mencoba alur layanan.",
+        text: contact.address,
       },
     ],
   },

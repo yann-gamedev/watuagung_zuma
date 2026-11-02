@@ -196,6 +196,18 @@ ESLint mengecualikan dependensi Composer dan output/cache generasi secara spesif
 
 Uji menggunakan data fiktif: formulir kosong, NIK/KK tidak valid, tanggal masa depan, SKU tanpa informasi usaha, pengajuan valid, salin receipt, kode akses salah, perubahan status, filter dan pagination, serta logout. Jangan mengklaim alur API lulus hanya berdasarkan build frontend.
 
+## Kontak kantor dan peta
+
+Satu objek `contact` di `lib/data.ts` menjadi sumber beranda, `/kontak`, footer, menu, baris jam layanan, dan alamat kebijakan privasi. R4 nanti memindahkan pengelolaannya ke panel; saat ini tanpa env dan perlu build ulang static export setelah perubahan.
+
+- Alamat resmi dipertahankan. Jam: **Hari kerja, 08.00–13.00 WIB**; nama hari menunggu konfirmasi. Kontak resmi berizin: **Pelayanan Desa (Bu Ita)**.
+- Tech Lead mengisi `phone`, `mapsEmbedUrl`, `mapsLinkUrl` yang masih `[PLACEHOLDER]`. Jangan mengisi nomor rekaan. `getContactLinks()` hanya memakai nomor digit berawalan `62`, embed berawalan `https://www.google.com/maps/embed?`, dan tautan berawalan `https://maps.app.goo.gl/` atau `https://www.google.com/maps/`. Nilai lain dianggap belum diisi.
+- Nomor kosong: **Nomor kontak segera diumumkan.** Nomor valid: `tel:` dan tombol **Chat WhatsApp** (`https://wa.me/<nomor>`), area sentuh ≥48px. Email kosong tidak ditampilkan.
+- Embed: Google Maps → cari Balai Desa → Bagikan → Sematkan peta → salin isi `src`. Link: Bagikan → Salin link. Komentar pengisian juga ada di objek kontak.
+- Iframe memakai title **Peta lokasi Balai Desa Watuagung**, `loading="lazy"`, `referrerpolicy="no-referrer-when-downgrade"`, rasio responsif 4:3. Tanpa embed tidak ada kotak placeholder; alamat tetap tampil. Tautan **Buka di Google Maps** dibuka di tab baru bila valid, independen dari embed.
+- Rating tidak diambil terpisah: kartu tempat di embed Google sudah menampilkannya. Tidak ada API rating atau dependensi Maps tambahan. CSP hosting perlu `frame-src https://www.google.com` (lihat `docs/deploy-plan.md`).
+- Tes regresi: `node scripts/test-contact.mjs`; memakai nilai fiktif di memori, tidak mengganti kontak produksi.
+
 ## Konten publik dan produksi
 
 Konten, statistik, anggaran, jadwal, dan informasi BUMDES masih prototipe atau menunggu verifikasi. Foto persawahan adalah ilustrasi Thomas Fuhrmann dari Wikimedia Commons, CC BY-SA 4.0, dipotong pada tampilan; atribusi di footer. Jangan mengklaimnya sebagai dokumentasi desa.

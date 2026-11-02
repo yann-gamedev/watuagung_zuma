@@ -1,5 +1,6 @@
 import { PageHeading, PublicShell } from "@/components/site";
-import { pages } from "@/lib/data";
+import Link from "next/link";
+import { contact } from "@/lib/data";
 
 export const metadata = {
   title: "Kebijakan Privasi",
@@ -9,7 +10,7 @@ export const metadata = {
 const blocks = [
   {
     title: "Pengelola data",
-    text: `Data dikelola oleh Pemerintah Desa Watuagung.\nAlamat kantor: ${pages.kontak.blocks[0].text}.`,
+    text: `Data dikelola oleh Pemerintah Desa Watuagung.\nAlamat kantor: ${contact.address}.`,
   },
   {
     title: "Data yang dikumpulkan",
@@ -33,7 +34,7 @@ const blocks = [
   },
   {
     title: "Hak warga dan kontak",
-    text: "Anda dapat meminta informasi, perbaikan, atau penghapusan data melalui kantor desa.\nTelepon: [NOMOR TELEPON KANTOR DESA]\nEmail: [EMAIL KANTOR DESA]",
+    text: "Anda dapat meminta informasi, perbaikan, atau penghapusan data melalui kantor desa.",
   },
   {
     title: "Pengaduan melalui Google Form",
@@ -56,6 +57,9 @@ export default function PrivacyPage() {
             <article className="content-card" key={block.title}>
               <h2>{block.title}</h2>
               <p>{block.text}</p>
+              {block.title === "Hak warga dan kontak" && (
+                <Link className="home-bottom-button mt-4" href="/kontak">Kontak kantor desa</Link>
+              )}
             </article>
           ))}
         </div>

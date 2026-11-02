@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { contact } from "@/lib/data";
 import { FileText, MessageSquare, Search } from "lucide-react";
 import { complaintFormUrl, complaintNote, externalLinkProps } from "@/lib/complaint";
 
@@ -60,7 +61,7 @@ export function TaskPanel() {
         })}
       </nav>
       <p className="task-office-hours">
-        Kantor desa buka [HARI &amp; JAM LAYANAN] · Bantuan: [NOMOR KANTOR]
+        {contact.hours} · <Link href="/kontak">Kontak kantor desa</Link>
       </p>
     </div>
   );

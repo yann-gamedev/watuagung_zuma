@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronRight, ExternalLink, Menu, X } from "lucide-react";
 import { complaintFormUrl, complaintNote, externalLinkProps } from "@/lib/complaint";
+import { contact } from "@/lib/data";
 
 /** Pathname tanpa garis miring di akhir (next.config memakai trailingSlash). */
 export function normalizePath(path: string | null) {
@@ -299,8 +300,8 @@ export function SiteHeader() {
               ))}
               <div className="menu-contact">
                 <h2 className="menu-label">Kontak Kantor</h2>
-                <p>[ALAMAT KANTOR DESA]</p>
-                <p>Buka [HARI &amp; JAM LAYANAN]</p>
+                <p>{contact.address}</p>
+                <p>{contact.hours}</p>
                 <Link className="menu-contact-btn" href="/kontak" onClick={closeMenu}>
                   Lihat Kontak Kantor
                 </Link>
@@ -335,7 +336,7 @@ export function SiteHeader() {
               </ul>
               <div className="menu-contact">
                 <h2 className="menu-label">Kantor Desa</h2>
-                <p>[ALAMAT KANTOR DESA] · Buka [HARI &amp; JAM LAYANAN]</p>
+                <p>{contact.address} · {contact.hours}</p>
               </div>
             </div>
           </div>
