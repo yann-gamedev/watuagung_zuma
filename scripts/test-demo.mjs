@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
 
@@ -81,4 +82,5 @@ for (const url of ["https://forms.gle/Abc123", " https://docs.google.com/forms/d
   assert.equal(parseComplaintFormUrl(url), url.trim());
 for (const url of [undefined, "", "https://forms.gle/", "http://forms.gle/Abc", "https://forms.gle.evil.com/x", "https://docs.google.com/document/d/x", "javascript:alert(1)", "https://evil.com/?https://forms.gle/x"])
   assert.equal(parseComplaintFormUrl(url), "", String(url));
+execFileSync(process.execPath, ["scripts/test-public-news.mjs"], { stdio: "inherit" });
 console.log("PASS: demo isolation, autofill fixtures, four services, calendar validation, status lookup, corrupted/blocked storage, identity privacy, complaint form URL.");

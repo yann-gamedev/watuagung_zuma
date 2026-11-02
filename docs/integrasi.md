@@ -68,7 +68,15 @@ Dashboard tersedia bagi kelima peran; kartu RT/RW menuju antrean masing-masing d
 
 ### Berita (CMS C1–C2)
 
-Rancangan: `docs/PROMPTS-CMS-BERITA.md`. Tipe: `types/posts.ts`. Halaman publik dan panel belum memakai API ini (C3/C4).
+Rancangan: `docs/PROMPTS-CMS-BERITA.md`. Tipe API tetap `types/posts.ts` (tidak ada perubahan kontrak C4). Halaman publik memakai API melalui `services/posts.ts`; panel C3 masih pekerjaan lokal terpisah.
+
+**Halaman publik C4:** `/berita/` memuat daftar di browser, dengan keadaan memuat/kosong/galat, coba lagi dan Muat lebih banyak. Beranda mengambil maksimal tiga item pertama; kosong/galat menyembunyikan bagian Kabar desa. `listPosts(page)` dan `getPost(slug)` memvalidasi respons Zod, timeout 20 detik, `cache: no-store`, tanpa token atau browser storage. API gagal tidak pernah diganti berita contoh. `NEXT_PUBLIC_SHOW_SAMPLE_CONTENT` hanya mengatur fallback berita bila tanpa API; build demo tetap memaksa tanpa API. Label Konten contoh hanya untuk item fallback.
+
+Detail `/berita/baca/?slug=...` membaca query dalam `Suspense`, memperbarui `document.title`, dan merender paragraf teks (bukan HTML). Slug kosong atau API 404 menampilkan Berita tidak ditemukan; gangguan jaringan/format/server menampilkan coba lagi. Sampul native img hanya menerima URL HTTP(S), alt judul, lazy dan rasio tetap; tanpa sampul memakai pola visual lama.
+
+**Kompatibilitas static export:** `generateStaticParams` tetap hanya slug demo (atau `belum-ada` bila contoh dimatikan), tanpa fetch API saat build. Route lama yang diekspor melakukan `location.replace` ke detail query dalam mode API. Slug lama lain ditangani komponen redirect di `app/not-found.tsx`; hosting wajib menyajikan `out/404.html` untuk path tidak dikenal, bukan halaman 404 bawaan hosting. Respons awal tetap HTTP 404 sebelum redirect browser; tanpa JavaScript tidak ada redirect. Tautan baru selalu detail query sehingga berita baru tidak membutuhkan HTML per slug atau build ulang. Env URL API tetap ditentukan saat build, bukan konfigurasi runtime.
+
+**Temuan lokal C4:** konfigurasi CORS lama hanya mengizinkan GET/POST/PATCH/OPTIONS, belum DELETE. Hapus berita/sampul lewat panel lintas-origin gagal preflight; penghapusan C4 diuji lewat HTTP langsung, bukan klaim lulus alur hapus panel. Perbaikan `backend/config/cors.php` di luar sesi frontend ini.
 
 - **Publik** (`/posts`, `/posts/{slug}`): tanpa token, `Cache-Control: public, max-age=60`. Hanya `status=published` dengan `published_at` ≤ sekarang, urut `published_at` menurun. Item: `slug`, `title`, `category`, `category_label`, `summary`, `published_at`, `cover_url` (URL publik absolut atau `null` bila tanpa sampul); detail menambah `body`. ID internal tidak dikirim.
 - **Petugas** (`/staff/posts…`): token `applications:manage` + peran `admin`/`staff` aktif (`User::canManageContent()`); tanpa token 401, peran lain 403. Respons `private, no-store`. Daftar 20 per halaman urut `updated_at` menurun, filter `status` = `draft`/`published`, `q` (maks. 100, potongan judul literal, tidak peka huruf besar/kecil); item = [StaffPost](../types/posts.ts) tanpa `body`. Berita terhapus 404 di semua endpoint.
