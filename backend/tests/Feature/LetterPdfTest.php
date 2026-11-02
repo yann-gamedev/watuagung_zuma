@@ -217,6 +217,7 @@ class LetterPdfTest extends TestCase
 
     public function test_detail_exposes_letter_summary_only_to_office(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $application = $this->approved('SKTM');
         $this->act();
         $this->getJson('/api/v1/staff/applications/'.$application->request_id)->assertOk()

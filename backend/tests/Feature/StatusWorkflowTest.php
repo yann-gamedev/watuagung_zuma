@@ -169,7 +169,7 @@ class StatusWorkflowTest extends TestCase
         foreach (['READY_FOR_PICKUP', 'COMPLETED'] as $status) {
             $application = $this->application($status);
             $this->postJson('/api/v1/applications/status', ['request_id' => $application->request_id, 'lookup_secret' => 'rahasia-fiktif'])
-                ->assertOk()->assertExactJson(['success' => true, 'request_id' => $application->request_id, 'status' => $status, 'catatan' => null, 'jenis_surat' => 'SKU', 'letter_number' => null]);
+                ->assertOk()->assertExactJson(['success' => true, 'request_id' => $application->request_id, 'status' => $status, 'catatan' => null, 'jenis_surat' => 'SKU', 'letter_number' => null, 'requires_neighborhood_approval' => false]);
         }
     }
 
@@ -285,7 +285,7 @@ class StatusWorkflowTest extends TestCase
         $token = $this->postJson('/api/v1/staff/login', ['username' => 'kades-fiktif', 'password' => 'test-password-only'])
             ->assertOk()->assertJsonPath('user.role', 'village_head')->json('token');
         $this->withToken($token)->getJson('/api/v1/staff/me')->assertOk()
-            ->assertExactJson(['name' => 'Kepala Desa Fiktif', 'username' => 'kades-fiktif', 'role' => 'village_head', 'rt' => null, 'rw' => null, 'must_change_password' => false]);
+            ->assertExactJson(['name' => 'Kepala Desa Fiktif', 'username' => 'kades-fiktif', 'role' => 'village_head', 'rt' => null, 'rw' => null, 'must_change_password' => false, 'features' => ['neighborhood_approval' => false]]);
     }
 
     public function test_staff_create_command_prompts_for_hidden_password(): void

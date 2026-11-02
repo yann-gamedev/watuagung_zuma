@@ -55,6 +55,7 @@ class StaffSummaryTest extends TestCase
     #[DataProvider('roles')]
     public function test_summary_and_filters_obey_each_roles_workflow_type_and_territory(string $role, int $perStatus, int $queueCount): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $this->travelTo(now()->startOfSecond());
         foreach (ApplicationStatus::values() as $status) {
             foreach (LetterType::cases() as $type) {
@@ -93,6 +94,7 @@ class StaffSummaryTest extends TestCase
 
     public function test_oldest_is_capped_stable_safe_and_uses_sql_aggregates(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $this->travelTo(now()->startOfSecond());
         $ids = [];
         for ($i = 0; $i < 7; $i++) $ids[] = $this->application()->request_id;

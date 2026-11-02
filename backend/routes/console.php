@@ -19,6 +19,10 @@ Artisan::command('inspire', function () {
 // Membuat akun panel lokal; kata sandi diminta tersembunyi dan tidak pernah disimpan di repositori.
 Artisan::command('staff:create {username} {--role=staff} {--name=} {--email=} {--rt=} {--rw=}', function (string $username) {
     $role = $this->option('role');
+    if (! config('letters.neighborhood_approval', false) && in_array($role, ['rt_head', 'rw_head'], true)) {
+        $this->error('Persetujuan RT/RW dinonaktifkan. Akun Ketua RT/RW tidak dapat dibuat.');
+        return 1;
+    }
     $data = ['username' => $username, 'role' => $role, 'name' => $this->option('name') ?: $username, 'email' => $this->option('email') ?: "$username@example.test"];
     $data += ['rt' => $this->option('rt'), 'rw' => $this->option('rw')];
     $validator = Validator::make($data, [

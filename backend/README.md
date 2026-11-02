@@ -111,19 +111,43 @@ foreach ($run in 1..3) {
 - Batas waktu barrier 45 detik, SQL/lock 60 detik, dan proses anak 90 detik. Gagal/timeout → exit 1; output exception/worker tidak dicetak agar SQL, data sensitif, dan rahasia tidak bocor. Schema dibersihkan dalam `finally`, juga saat gagal. Bila proses induk dihentikan paksa, schema sementara mungkin tertinggal; periksa secara manual, jangan menghapus schema lain.
 - Tiga hasil PASS adalah bukti skenario lokal tersebut, bukan pembuktian matematis untuk semua beban, uji server produksi, atau uji HTTP end-to-end. Jika satu jalan gagal, hentikan rangkaian dan laporkan sebelum mengubah `LetterNumber`.
 
+### Konfigurasi persetujuan RT/RW — keputusan 2 November 2026
+
+Keputusan klien: RT/RW **nonaktif secara bawaan**, bukan dihapus. Satu-satunya sakelar ada di backend: `config('letters.neighborhood_approval')`, env `LETTER_NEIGHBORHOOD_APPROVAL=false`. Perluas `config/letters.php` yang sudah ada; pertahankan format nomor, identitas desa, PDF, dan konfigurasi lain. Tidak ada sakelar frontend. `LetterType::requiresNeighborhoodApproval()` membaca keputusan ini; `ApplicationStatus` menggunakan `LetterType`, bukan tabel jenis surat duplikat. Saat false semua jenis langsung ke petugas desa, lalu Kepala Desa, siap diambil, selesai. Saat true hanya DOMISILI/SKTM/KTP_KK melalui RT lalu RW; SKU tetap langsung ke kantor.
+
+Kontrak perubahan: `/staff/me` mengirim `features: { neighborhood_approval: boolean }`; submit dan cek status publik mengirim `requires_neighborhood_approval: boolean` dari `LetterType`. Linimasa frontend memakai boolean respons, bukan tabel kebutuhan per jenis. Teks publik statis mengikuti alur bawaan. Verifikasi perubahan 2 November: SQLite dan PostgreSQL lulus (masing-masing 276 tes), lihat `docs/progres-2026-11-02.md`. Hasil tes terdahulu di dokumen ini bukan verifikasi keputusan baru.
+
+**Praproduksi: tidak ada migrasi data/status baru untuk penonaktifan ini.** Model, tabel, dan migration `residents` tetap dipertahankan hanya untuk seeder/tes, tanpa referensi route atau fitur produksi. Jangan menghapus riwayat pengajuan atau akun RT/RW.
+
+Jika konfigurasi akan diganti pada database yang sudah berisi data, ikuti prosedur operasional berikut:
+
+1. Hentikan penerimaan pengajuan sementara. Buat backup database dan storage privat yang dapat dipulihkan; pertahankan `APP_KEY` yang sama.
+2. Inventarisasi jumlah/status pengajuan, akun wilayah, dan token aktif. Jangan mengubah status massal atau menjalankan migrasi status otomatis.
+3. Sebelum mematikan fitur, pertahankan flag true dan selesaikan pengajuan lama berstatus `RT_APPROVED`/`RW_APPROVED` sampai melewati jalur RT/RW ke kantor desa. Jangan mematikan fitur saat pengajuan masih tertahan pada kedua status tersebut.
+4. Tetapkan `LETTER_NEIGHBORHOOD_APPROVAL=false` di env backend. Pengajuan yang masih `SUBMITTED` sesudah off diproses petugas desa, termasuk non-SKU. Bila kelak diaktifkan kembali, `SUBMITTED` non-SKU dapat masuk antrean RT/RW; tahap yang sudah dilewati, termasuk pengajuan selesai, tidak diputar mundur.
+5. Cabut token sesi panel lama melalui prosedur administrasi yang terkontrol. Jalankan `php artisan config:clear` agar env baru terbaca (bangun ulang cache konfigurasi bila deployment memakainya), lalu wajibkan login ulang. Tanpa pencabutan pun token RT/RW lama ditolak 403 saat fitur mati; token yang sudah dicabut menghasilkan 401.
+6. Uji alur dan pembatasan peran di lingkungan target sebelum membuka penerimaan kembali. Mengubah flag bukan bukti alur telah diverifikasi.
+
 ### Akun petugas
 
 Jalankan `php artisan migrate` terlebih dahulu untuk menambahkan kolom username unik. Akun lama tetap tersimpan dengan username null dan login email melalui API masih didukung. Form admin sekarang menggunakan username; tetapkan username unik pada akun lama sebelum memakainya. Format: 1–64 karakter huruf kecil/angka, `_`, atau `-`, diawali huruf kecil/angka. Tidak ada akun/kata sandi bawaan.
 
-Tidak ada endpoint pendaftaran publik. Panel menerima lima peran: `rt_head` (ketua RT), `rw_head` (ketua RW), `staff` (petugas), `village_head` (kepala desa), dan `admin`. Buat akun lokal dengan perintah berikut; kata sandi (minimal 12 karakter) diminta dua kali secara tersembunyi, jadi tidak tersimpan di riwayat terminal maupun repositori:
+Tidak ada endpoint pendaftaran publik. Panel bawaan menerima `staff` (petugas), `village_head` (kepala desa), dan `admin`. Peran `rt_head` (ketua RT) dan `rw_head` (ketua RW) tetap ada, tetapi hanya dapat dibuat/dipakai saat fitur RT/RW aktif. Buat akun lokal dengan perintah berikut; kata sandi (minimal 12 karakter) diminta dua kali secara tersembunyi, jadi tidak tersimpan di riwayat terminal maupun repositori:
 
 ```powershell
-php artisan staff:create rt-lokal --role=rt_head --rt=1 --rw=2 --name="Ketua RT Lokal"
-php artisan staff:create rw-lokal --role=rw_head --rw=2 --name="Ketua RW Lokal"
 php artisan staff:create petugas-lokal --role=staff --name="Petugas Lokal"
 php artisan staff:create kades-lokal --role=village_head --name="Kepala Desa Lokal"
 php artisan staff:create admin-lokal --role=admin --name="Admin Lokal"
 ```
+
+Hanya setelah `LETTER_NEIGHBORHOOD_APPROVAL=true` diterapkan sesuai prosedur di atas:
+
+```powershell
+php artisan staff:create rt-lokal --role=rt_head --rt=1 --rw=2 --name="Ketua RT Lokal"
+php artisan staff:create rw-lokal --role=rw_head --rw=2 --name="Ketua RW Lokal"
+```
+
+Saat fitur mati, login RT/RW mendapat 401 generik `Kredensial tidak valid.`; token RT/RW lama mendapat 403 pada endpoint panel. API pembuatan/penetapan peran atau wilayah/aktivasi akun RT/RW ditolak 422 dengan pesan jelas bahwa fitur nonaktif. Menonaktifkan akun RT/RW yang sudah ada tetap diizinkan. `staff:create --role=rt_head|rw_head` juga ditolak. `/staff/me` mengirim `features.neighborhood_approval`; otorisasi tetap di server.
 
 `--email` opsional (bawaan `<username>@example.test`). `rt_head` wajib `--rt` dan `--rw`; `rw_head` wajib `--rw`; isinya 1–3 digit dan disimpan sebagai 3 digit (`1` → `001`). Kolom `rt`/`rw` pada `users` nullable untuk peran lain. Ketua RT/RW tanpa wilayah lengkap tidak bisa masuk panel. Nama, username, dan nomor wilayah di atas hanya contoh, **bukan** akun bawaan. Buat admin pertama melalui CLI; untuk pengelolaan berikutnya gunakan panel **Akun** (`/admin/akun`) agar validasi wilayah, perlindungan admin, dan audit diterapkan.
 
@@ -141,12 +165,12 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 
 | Metode | Path | Akses | Kegunaan |
 | --- | --- | --- | --- |
-| POST | `/applications` | Publik, 5 permintaan/menit | Mengajukan layanan; mengembalikan `request_id`, `status`, `jenis_surat`, dan `lookup_secret` (HTTP 201) |
-| POST | `/applications/status` | Publik, 10 permintaan/menit; 5 kode salah per nomor → 429 selama 15 menit | Body: `request_id` dan `lookup_secret`; mengembalikan `jenis_surat`, status, dan catatan (penolakan RT/RW diberi awalan "Ditolak oleh Ketua RT/RW") |
+| POST | `/applications` | Publik, 5 permintaan/menit | Mengajukan layanan; mengembalikan `request_id`, `status`, `jenis_surat`, `requires_neighborhood_approval: boolean` dari `LetterType`, dan `lookup_secret` (HTTP 201) |
+| POST | `/applications/status` | Publik, 10 permintaan/menit; 5 kode salah per nomor → 429 selama 15 menit | Body: `request_id` dan `lookup_secret`; mengembalikan `jenis_surat`, `requires_neighborhood_approval: boolean` dari `LetterType`, status, dan catatan (penolakan RT/RW historis tetap diberi awalan "Ditolak oleh Ketua RT/RW") |
 | POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `username` dan `password` (atau `email` untuk klien lama); mengembalikan bearer token |
 | POST | `/staff/logout` | Token petugas | Mencabut token aktif |
-| GET | `/staff/me` | Token petugas | Mengembalikan `{ name, username, role, rt, rw, must_change_password }`; `username`, `rt`, `rw` bisa `null`. Peran di luar lima peran panel, akun nonaktif, atau ketua RT/RW tanpa wilayah lengkap mendapat 403 |
-| GET | `/staff/users` | Admin | Daftar akun `{ id, name, username, role, rt, rw, is_active, must_change_password, last_login_at }` dan `warnings` wilayah tanpa ketua aktif |
+| GET | `/staff/me` | Token petugas | Mengembalikan `{ name, username, role, rt, rw, must_change_password, features: { neighborhood_approval: boolean } }`; `username`, `rt`, `rw` bisa `null`. Peran di luar lima peran panel, akun nonaktif, ketua RT/RW tanpa wilayah lengkap, atau token RT/RW saat fitur mati mendapat 403 |
+| GET | `/staff/users` | Admin | Daftar akun `{ id, name, username, role, rt, rw, is_active, must_change_password, last_login_at }` dan `warnings` wilayah tanpa ketua aktif (selalu `[]` saat fitur RT/RW mati) |
 | POST | `/staff/users` | Admin | Body `name`, `username`, `role`, `password` (min. 10); `rt` wajib untuk `rt_head`, `rw` wajib untuk `rt_head`/`rw_head`. Akun baru aktif dan wajib ganti kata sandi |
 | PATCH | `/staff/users/{id}` | Admin | Body `name`, `role`, `is_active`, `rt`, `rw`; menonaktifkan akun mencabut semua tokennya |
 | POST | `/staff/users/{id}/reset-password` | Admin | Body `password` (min. 10); menandai wajib ganti kata sandi dan mencabut semua token akun itu |
@@ -190,6 +214,7 @@ File baru disimpan sebelum transaksi penggantian dan audit `post.updated`; bila 
 
 - `GET /staff/users` hanya untuk `admin`; peran lain dan tamu mendapat 403/401. Tidak ada endpoint hapus akun: gunakan `is_active=false` agar riwayat status tetap merujuk ke akun itu.
 - `warnings` berisi `{ role, rt, rw, pending }` untuk permohonan `SUBMITTED` di RT/RW tanpa `rt_head` aktif atau `RT_APPROVED` di RW tanpa `rw_head` aktif. Angka `pending` adalah jumlah permohonan yang tertahan.
+- Saat fitur mati, buat akun RT/RW, tetapkan peran/wilayah RT/RW, atau aktifkan akun RT/RW → 422 dengan pesan jelas bahwa fitur nonaktif. Menonaktifkan akun RT/RW lama tetap boleh. Login RT/RW → 401 generik; token lama yang belum dicabut → 403 pada endpoint panel.
 - `PATCH` mengikuti aturan: admin tidak bisa menonaktifkan/menurunkan dirinya sendiri; admin aktif terakhir tidak bisa dihapus; satu RT hanya satu `rt_head` aktif dan satu RW hanya satu `rw_head` aktif. Melanggar aturan → 422 dengan `errors`.
 - Login akun nonaktif → 401 `Kredensial tidak valid.` (pesan sama dengan kata sandi salah). Login berhasil mengisi `last_login_at` dan mengembalikan `must_change_password`.
 - `POST /staff/me/password` memverifikasi kata sandi lama, menyimpan kata sandi baru (min. 10), menghapus `must_change_password`, dan mencabut token lain. Token yang sedang dipakai tetap berlaku.
@@ -275,14 +300,14 @@ Dependensi: `barryvdh/laravel-dompdf` (PDF dari Blade) dan `bacon/bacon-qr-code`
 
 ### Alur status dan wewenang
 
-Alur bergantung pada jenis surat (`app/Domain/LetterType.php::requiresNeighborhoodApproval()`; frontend mencerminkannya di `lib/letter-workflow.ts` hanya untuk tampilan):
+Kebutuhan RT/RW dipusatkan di `app/Domain/LetterType.php::requiresNeighborhoodApproval()`, dikendalikan **hanya** `letters.neighborhood_approval` backend. Frontend memakai `requires_neighborhood_approval` dari respons publik di `lib/letter-workflow.ts`, bukan cerminan tabel jenis surat.
 
-- SKU: `SUBMITTED` → `VERIFIED` → `PROCESSING` → `WAITING_APPROVAL` → `APPROVED` → `READY_FOR_PICKUP` → `COMPLETED`.
-- DOMISILI, SKTM, KTP_KK: `SUBMITTED` → `RT_APPROVED` → `RW_APPROVED` → `VERIFIED` → lanjutan sama dengan SKU.
+- Bawaan false, **semua jenis** (SKU, DOMISILI, SKTM, KTP_KK): `SUBMITTED` → `VERIFIED` → `PROCESSING` → `WAITING_APPROVAL` → `APPROVED` → `READY_FOR_PICKUP` → `COMPLETED`.
+- Hanya saat true, DOMISILI/SKTM/KTP_KK: `SUBMITTED` → `RT_APPROVED` → `RW_APPROVED` → `VERIFIED` → lanjutan sama. SKU selalu langsung ke kantor.
 
-Aturan dipusatkan di `app/Domain/ApplicationStatus.php`; controller tidak menyimpan salinan tabel ini.
+Aturan dipusatkan di `app/Domain/ApplicationStatus.php` yang menggunakan `LetterType`; controller tidak menyimpan salinan tabel ini. Akses RT/RW ke seluruh endpoint panel ditolak saat fitur mati.
 
-**DOMISILI, SKTM, KTP_KK:**
+**DOMISILI, SKTM, KTP_KK — hanya saat fitur aktif:**
 
 | Dari | Ke | Peran |
 | --- | --- | --- |
@@ -290,13 +315,13 @@ Aturan dipusatkan di `app/Domain/ApplicationStatus.php`; controller tidak menyim
 | `RT_APPROVED` | `RW_APPROVED`, `REJECTED` | **hanya** rw_head (wilayahnya) |
 | `RW_APPROVED` | `VERIFIED`, `NEED_REVISION`, `REJECTED` | staff, admin |
 
-Baris berikutnya (`NEED_REVISION` dan seterusnya) sama dengan tabel SKU.
+Baris berikutnya (`NEED_REVISION` dan seterusnya) sama dengan tabel umum.
 
-**SKU dan lanjutan semua jenis:**
+**Bawaan semua jenis; saat fitur aktif, SKU dan lanjutan semua jenis:**
 
 | Dari | Ke | Peran |
 | --- | --- | --- |
-| `SUBMITTED` (hanya SKU) | `VERIFIED`, `NEED_REVISION`, `REJECTED` | staff, admin |
+| `SUBMITTED` (semua jenis saat off; hanya SKU saat on) | `VERIFIED`, `NEED_REVISION`, `REJECTED` | staff, admin |
 | `NEED_REVISION` | `VERIFIED`, `REJECTED` | staff, admin |
 | `VERIFIED` | `PROCESSING`, `NEED_REVISION`, `REJECTED` | staff, admin |
 | `PROCESSING` | `WAITING_APPROVAL`, `NEED_REVISION`, `REJECTED` | staff, admin |
@@ -304,7 +329,7 @@ Baris berikutnya (`NEED_REVISION` dan seterusnya) sama dengan tabel SKU.
 | `APPROVED` | `READY_FOR_PICKUP` | staff, admin |
 | `READY_FOR_PICKUP` | `COMPLETED` | staff, admin |
 
-- Perpindahan yang tidak ada di tabel jenis suratnya (melompat, misalnya `SUBMITTED` → `RW_APPROVED` atau DOMISILI `SUBMITTED` → `VERIFIED`; mundur; atau dari `REJECTED`/`COMPLETED`) → **422** `Transisi status tidak valid.`
+- Perpindahan yang tidak ada di alur aktif (melompat, misalnya `SUBMITTED` → `RW_APPROVED`; DOMISILI `SUBMITTED` → `VERIFIED` hanya tidak valid saat fitur RT/RW aktif; mundur; atau dari `REJECTED`/`COMPLETED`) → **422** `Transisi status tidak valid.`
 - Perpindahan yang ada di tabel tetapi bukan wewenang peran → **403** `Peran Anda tidak berwenang melakukan perubahan status ini.` Admin tidak dapat menyetujui. Pengajuan di luar wilayah ketua RT/RW → **403** `Akses ditolak.`
 - `NEED_REVISION` dan `REJECTED` wajib memakai `catatan` (422 dengan `errors.catatan`).
 - Status dibaca ulang dengan kunci baris di dalam transaksi, sehingga klien dengan data usang tidak bisa mengulang transisi. Setiap perubahan dicatat di `application_events` beserta `user_id`.
@@ -352,4 +377,4 @@ php artisan test --filter=ResidentsFoundationTest
 
 Tiga NIK fiktif: `0000000000000001`, `0000000000000002`, `0000000000000003`. Awalan wilayah sengaja tidak valid. Jangan masukkan data asli pada tahap ini.
 
-Belum ada endpoint pencarian penduduk atau integrasi autofill API: frontend tetap memakai fixture lokal. Mode coba pada frontend dengan API aktif memblokir pengiriman ke server. Sebelum data asli, siapkan verifikasi kepemilikan, otorisasi, audit akses, retensi, indeks pencarian aman, dan deduplikasi NIK. Kolom terenkripsi tidak dapat dicari langsung dengan query NIK. Jangan membuka lookup publik hanya berdasarkan NIK.
+Tidak ada endpoint pencarian penduduk atau integrasi autofill API. Keputusan 2 November 2026 menghapus impor/UI autofill dummy dari formulir publik; warga mengisi data sendiri dan kolom alamat RT/RW tetap ada. File `lib/dummy-residents.ts` dan tes fixture dipertahankan. Model `Resident`, tabel `residents`, dan migration tetap ada hanya sebagai fondasi seeder/tes, tanpa referensi route atau fitur produksi. Sebelum penggunaan data asli pada fondasi ini, siapkan verifikasi kepemilikan, otorisasi, audit akses, retensi, indeks pencarian aman, dan deduplikasi NIK. Kolom terenkripsi tidak dapat dicari langsung dengan query NIK. Jangan membuka lookup publik hanya berdasarkan NIK.

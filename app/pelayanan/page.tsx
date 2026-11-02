@@ -31,7 +31,7 @@ export default function Page() {
               </li>
             ))}
           </ol>
-          <p className="service-steps-note"><strong>Alur pemeriksaan:</strong> Domisili, SKTM, dan KTP/KK diperiksa Ketua RT, Ketua RW, petugas desa, lalu Kepala Desa. SKU langsung ke kantor desa tanpa pemeriksaan RT/RW.</p>
+          <p className="service-steps-note"><strong>Alur pemeriksaan:</strong> Semua jenis surat diverifikasi petugas desa, lalu disetujui Kepala Desa. Surat fisik diambil di kantor desa setelah berstatus siap diambil.</p>
         </section>
         <div className="status-strip">
           <div>

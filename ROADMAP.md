@@ -11,11 +11,11 @@
 | M0 — Fondasi | Sebagian selesai | Aturan backend, logo penuh/512px, logo sederhana |
 | M1 — UI | Mayoritas implementasi selesai | Verifikasi berita (masih dikunci pengguna) dan review visual tertunda |
 | M2 — Status/peran | Selesai sesuai checklist | Perluasan RT/RW dicatat di M2a |
-| M2a — RT/RW | Implementasi dan uji API selesai | Review visual antrean 390px/1440px |
+| M2a — RT/RW | Dinonaktifkan secara bawaan atas keputusan klien 2 Nov 2026; kode dipertahankan | Verifikasi 2 Nov SQLite/PostgreSQL dan frontend lulus; hasil uji lama tetap arsip |
 | M3 — Dashboard | Sebagian selesai; manajemen akun dan ringkasan dashboard sudah ada | Uji manual akun dan review visual halaman akun |
 | M3a — Register | Implementasi dan uji konkurensi PostgreSQL selesai | Uji browser dengan Laravel |
 | M4 — Pengaduan | Dialihkan ke Google Form desa (24 Okt 2026); tautan selesai | URL Google Form dari desa (`NEXT_PUBLIC_COMPLAINT_FORM_URL`) |
-| M5 — CMS | API berita, sampul, dan halaman publik C4 selesai; panel C3 masih pekerjaan lokal | Integrasi/commit panel, CORS DELETE, konten lain dan keputusan produksi K2/K4 |
+| M5 — CMS | API berita, sampul, panel C3 dan halaman publik C4 sudah di-commit | CORS DELETE, konten lain dan keputusan produksi K2/K4 |
 | M6 — Lampiran persyaratan | Belum dibuat | Unggah privat, batas file, retensi; berbeda dari unggah surat final M7 |
 | M7 — PDF/QR | Implementasi dengan template sementara selesai | Format resmi desa, uji browser Laravel dan pindai QR; TTE di luar lingkup |
 | M8 — Produksi | Belum siap operasional | Infrastruktur, privasi/retensi, prosedur bantuan, verifikasi keamanan |
@@ -39,7 +39,7 @@ Sumber: kode/route API, file yang terlacak Git, `docs/progres-2026-10-21.md`, `d
 
 | # | Keputusan | Menentukan modul | Status |
 |---|---|---|---|
-| K1 | DOMISILI/SKTM/KTP_KK: RT → RW → petugas desa → kepala desa → siap diambil; SKU tetap langsung petugas desa | M2, M2a | **Disetujui 20 Oktober 2026** |
+| K1 | Bawaan semua jenis langsung petugas desa → kepala desa → siap diambil → selesai; kode RT/RW dipertahankan di balik konfigurasi backend | M2, M2a | **Keputusan klien 2 November 2026 menggantikan aktivasi bawaan K1 20 Oktober 2026**; alur RT → RW untuk non-SKU hanya bila flag true, riwayat keputusan/tes lama tetap di M2a |
 | K2 | Hosting produksi: tetap static export (Vercel) + API terpisah, atau Next.js server penuh? | M5, M8 | Belum |
 | K3 | Database produksi: PostgreSQL 16+; SQLite tetap untuk pengembangan cepat | M8 | **Disetujui 24 Oktober 2026**; suite dan migration diverifikasi pada PostgreSQL 18.6 lokal, bukan deployment produksi |
 | K4 | Siapa di desa yang mengisi dan memperbarui konten? | M5 | Belum |
@@ -92,11 +92,18 @@ Bergantung pada K1.
 - [x] Perbarui `types/pelayanan.ts`, label status, badge, dan simulasi demo
 - [x] Tes: setiap transisi yang diizinkan dan ditolak per peran (`StatusWorkflowTest`)
 
-## M2a — Persetujuan RT/RW berurutan
+## M2a — Persetujuan RT/RW berurutan (nonaktif bawaan, keputusan klien 2 November 2026)
 
-Bergantung pada M2 dan M3 (detail permohonan). Disetujui pengguna 20 Oktober 2026. Centang hanya setelah diverifikasi.
+Bergantung pada M2 dan M3 (detail permohonan). Keputusan 2 November menggantikan aktivasi bawaan 20 Oktober; kode dan hasil uji historis dipertahankan, bukan bukti verifikasi perubahan terbaru.
 
-- [x] Konfigurasi jenis surat di `backend/app/Domain/LetterType.php` dan cerminannya di `lib/letter-workflow.ts`: DOMISILI, SKTM, KTP_KK memerlukan RT/RW; SKU tidak
+- [x] Keputusan implementasi 2 November disetujui: nonaktifkan RT/RW secara bawaan hanya melalui `letters.neighborhood_approval` / `LETTER_NEIGHBORHOOD_APPROVAL=false`; perluas `backend/config/letters.php` yang sudah ada, jangan menimpanya. `LetterType` menjadi sumber kebutuhan dan digunakan `ApplicationStatus`; semua jenis bawaan `SUBMITTED → VERIFIED → PROCESSING → WAITING_APPROVAL → APPROVED → READY_FOR_PICKUP → COMPLETED`.
+- [x] Keputusan kontrak/UI 2 November disetujui: login RT/RW 401 generik saat off; token lama 403; pembuatan/penetapan/aktivasi akun RT/RW 422 jelas, nonaktifkan akun lama tetap boleh. `/staff/me` menambah `features.neighborhood_approval`; respons submit/status publik menambah `requires_neighborhood_approval` dari `LetterType`. Linimasa memakai boolean tersebut tanpa tabel jenis duplikat; teks publik memakai alur bawaan. Hapus impor/UI autofill dummy, pertahankan alamat RT/RW, fixture/tes, model/tabel/migration `residents` (hanya seeder/tes, tanpa route/fitur produksi).
+- [x] Verifikasi implementasi 2 November (SQLite): `php artisan test` 276 tes/2.979 assertion lulus (flag off/on, login/token/akun, kontrak API); lint, tsc, build, build:demo, test:demo, `scripts/test-neighborhood-panel.mjs`, `scripts/test-admin-filters.mjs` lulus; walkthrough HTTP SKTM ke Laravel 25 assertion lulus; beranda, `/pelayanan`, cek status 390px/1440px pada ekspor demo tanpa overflow. Lihat `docs/progres-2026-11-02.md`.
+- [x] Verifikasi implementasi 2 November di PostgreSQL: setelah pemulihan shutdown macet, `php artisan test --env=testing.pgsql --compact` lulus, 276 tes/2.981 assertion pada `watuagung_test`. Service kembali `Running` dan menerima koneksi; lihat `docs/progres-2026-11-02.md`.
+
+**Arsip implementasi dan verifikasi 20 Oktober (berlaku saat flag true):**
+
+- [x] Konfigurasi jenis surat di `backend/app/Domain/LetterType.php` dan cerminannya di `lib/letter-workflow.ts` pada saat itu: DOMISILI, SKTM, KTP_KK memerlukan RT/RW; SKU tidak. Cerminan tabel frontend digantikan boolean respons pada keputusan 2 November
 - [x] Status `RT_APPROVED` dan `RW_APPROVED`; alur `SUBMITTED → RT_APPROVED → RW_APPROVED → VERIFIED → … → COMPLETED`; RT/RW hanya boleh menyetujui atau menolak (catatan wajib)
 - [x] Peran `rt_head` (RT + RW) dan `rw_head` (RW); kolom `rt`/`rw` nullable di `users`, kode wilayah dinormalkan menjadi 3 digit
 - [x] Daftar dan detail dibatasi wilayah: detail di luar wilayah 404, perubahan status di luar wilayah 403, transisi melompat 422
@@ -154,7 +161,7 @@ Bergantung pada K2 dan K4.
   - [x] Berita C2: POST/DELETE `/staff/posts/{id}/cover`, throttle bersama 10/menit, peran C1, JPG/PNG/WebP ≤ 3 MB dan dimensi 600×400–6000×6000; GD resize lebar ≤1600, encode ulang WebP/JPEG tanpa EXIF/GPS, UUID disk public, hapus file saat ganti/hapus sampul; soft delete berita mempertahankan file. `MEDIA_URL` bawaan URL storage Laravel; kebutuhan Nginx/GD/backup dicatat di deploy-plan. SQLite 258 tes / 2.730 assertions, PostgreSQL 258 tes / 2.732 assertions, fallback JPEG 23 lulus / 2 skip WebP; lint, tsc, build lulus (29 Oktober 2026, `docs/progres-2026-10-29.md`). Pengguna mengizinkan mendahului K2/K4; UI dan infrastruktur belum.
 - [ ] CRUD di panel admin untuk peran `admin`, termasuk unggah foto konten
 - [ ] Frontend membaca dari API, dengan cadangan `lib/data.ts` untuk mode demo
-  - [x] Berita C4 (2 November 2026): adapter Zod/timeout 20 detik/no-store, daftar klien + Muat lebih banyak, detail `/berita/baca/?slug=...` berupa teks, 3 berita beranda, sampul img native, fallback demo sesuai F11, dan redirect browser route lama termasuk 404 hosting. Pengguna mengizinkan mendahului K2/K4. Lint, tsc, build, build:demo, test:demo serta uji Laravel lokal dan visual 390px/1440px dicatat di `docs/progres-2026-11-02.md`; test:no-sample lulus pada salinan index C4 tanpa C3 (working tree gabungan gagal pada teks contoh C3); temuan CORS DELETE lama belum diperbaiki, hapus diuji HTTP langsung. C3 tetap pekerjaan lokal terpisah, konten CMS lain belum.
+  - [x] Berita C4 (2 November 2026): adapter Zod/timeout 20 detik/no-store, daftar klien + Muat lebih banyak, detail `/berita/baca/?slug=...` berupa teks, 3 berita beranda, sampul img native, fallback demo sesuai F11, dan redirect browser route lama termasuk 404 hosting. Pengguna mengizinkan mendahului K2/K4. Lint, tsc, build, build:demo, test:demo serta uji Laravel lokal dan visual 390px/1440px dicatat di `docs/progres-2026-11-02.md`; test:no-sample lulus pada salinan index C4 tanpa C3 (working tree gabungan gagal pada teks contoh C3); temuan CORS DELETE lama belum diperbaiki, hapus diuji HTTP langsung. C3 sudah di-commit pada `1b2e6dd` (verifikasi/batas di `docs/progres-2026-11-02-c3.md`); konten CMS lain belum.
 - [ ] Hapus semua keterangan "konten contoh" yang sudah diganti data resmi
   - [x] Visi dan tiga misi Kepala Desa dari dokumen yang diterima 25 Oktober 2026, tanpa periode; alamat beranda/footer memakai sumber `/kontak` di `lib/data.ts`, ringkasan BUMDes beranda resmi. Lint, tsc, build, build:demo, test:demo serta visual beranda, `/visi-misi`, `/kontak` dan footer pada 390px/1440px lulus (`docs/progres-2026-10-25.md`). Placeholder data belum tersedia dan label contoh footer tetap.
   - [x] Konten potensi, BUMDes Watuagung Bangkit, lembaga aktif pada profil, dan program prioritas 2027 tanpa nominal dari RKP Desa 2027. Notice contoh di potensi/transparansi dihapus; notice BUMDes menjadi sumber. Lint, tsc, build, build:demo, test:demo dan visual empat halaman 390px/1440px lulus (25 Oktober 2026, `docs/progres-2026-10-25.md`). Bukan penyelesaian CMS atau seluruh konten situs.

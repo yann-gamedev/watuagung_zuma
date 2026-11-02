@@ -17,7 +17,7 @@ async function source(path) {
     }).outputText;
     code = code.replaceAll('"@/types/pelayanan"', JSON.stringify(`data:text/javascript;base64,${Buffer.from(types).toString("base64")}`));
   }
-  const loaded = await import(`data:text/javascript;base64,${Buffer.from(code).toString("base64")}`);
+  const loaded = await import(`data:text/javascript;base64,${Buffer.from(code).toString("base64")}#${process.env.NEXT_PUBLIC_DEMO_MODE}`);
   modules.set(path, loaded);
   return loaded;
 }
@@ -49,7 +49,8 @@ for (const jenis_surat of ["SKU", "DOMISILI", "SKTM", "KTP_KK"]) {
   const receipt = await pelayananService.submit(data);
   assert.deepEqual(await pelayananService.getStatus(receipt.request_id), receipt);
   assert.equal(receipt.jenis_surat, jenis_surat);
-  assert.deepEqual(Object.keys(JSON.parse(stored).at(-1)).sort(), ["jenis_surat", "request_id", "status", "success"]);
+  assert.equal(receipt.requires_neighborhood_approval, false);
+  assert.deepEqual(Object.keys(JSON.parse(stored).at(-1)).sort(), ["jenis_surat", "request_id", "requires_neighborhood_approval", "status", "success"]);
   assert.ok(!stored.includes(data.nama), "Do not persist identity");
 }
 for (const corrupt of ["{}", "null", "not json", '[{"status":"BAD"}]']) {
@@ -58,7 +59,7 @@ for (const corrupt of ["{}", "null", "not json", '[{"status":"BAD"}]']) {
   await pelayananService.submit(valid);
   assert.equal(JSON.parse(stored).length, 1);
 }
-for (const [suffix, status] of [["000002", "NEED_REVISION"], ["000003", "APPROVED"], ["000004", "REJECTED"], ["000005", "READY_FOR_PICKUP"], ["000006", "COMPLETED"], ["000007", "RT_APPROVED"], ["000008", "RW_APPROVED"]])
+for (const [suffix, status] of [["000002", "NEED_REVISION"], ["000003", "APPROVED"], ["000004", "REJECTED"], ["000005", "READY_FOR_PICKUP"], ["000006", "COMPLETED"], ["000007", "SUBMITTED"], ["000008", "VERIFIED"]])
   assert.equal((await pelayananService.getStatus(`REQ-2026-${suffix}`)).status, status);
 for (const status of ["READY_FOR_PICKUP", "COMPLETED", "RT_APPROVED", "RW_APPROVED"]) {
   const receipt = { success: true, request_id: "REQ-2026-PICKUPTEST", status };
@@ -71,16 +72,29 @@ await assert.rejects(pelayananService.getStatus("REQ-2026-UNKNOWN"), /tidak dite
 localStorage.setItem = () => { throw new Error("Storage blocked"); };
 await assert.rejects(pelayananService.submit(valid), /Penyimpanan simulasi tidak tersedia/);
 const { letterSteps } = await source("lib/letter-workflow.ts");
-assert.deepEqual(letterSteps("SKU").map(([status]) => status), ["SUBMITTED", "VERIFIED", "PROCESSING", "WAITING_APPROVAL", "APPROVED", "READY_FOR_PICKUP", "COMPLETED"]);
-for (const type of ["DOMISILI", "SKTM", "KTP_KK"]) {
-  assert.deepEqual(letterSteps(type).map(([status]) => status), ["SUBMITTED", "RT_APPROVED", "RW_APPROVED", ...letterSteps("SKU").slice(1).map(([status]) => status)]);
-}
+assert.deepEqual(letterSteps().map(([status]) => status), ["SUBMITTED", "VERIFIED", "PROCESSING", "WAITING_APPROVAL", "APPROVED", "READY_FOR_PICKUP", "COMPLETED"]);
+assert.deepEqual(letterSteps(true).map(([status]) => status), ["SUBMITTED", "RT_APPROVED", "RW_APPROVED", ...letterSteps().slice(1).map(([status]) => status)]);
+const form = readFileSync("features/pelayanan/application-form.tsx", "utf8");
+assert.doesNotMatch(form, /dummy-residents|dummyPreview|autofill/);
+for (const field of ["rt", "rw"]) assert.ok(form.includes(`field("${field}"`), "Keep address territory fields");
 assert.equal((await pelayananService.getStatus("REQ-2026-000007")).jenis_surat, "SKTM");
-assert.equal((await pelayananService.getStatus("REQ-2026-000008")).jenis_surat, "SKTM");
+assert.equal((await pelayananService.getStatus("REQ-2026-000008")).jenis_surat, "DOMISILI");
 const { parseComplaintFormUrl } = await source("lib/complaint.ts");
 for (const url of ["https://forms.gle/Abc123", " https://docs.google.com/forms/d/e/x/viewform "])
   assert.equal(parseComplaintFormUrl(url), url.trim());
 for (const url of [undefined, "", "https://forms.gle/", "http://forms.gle/Abc", "https://forms.gle.evil.com/x", "https://docs.google.com/document/d/x", "javascript:alert(1)", "https://evil.com/?https://forms.gle/x"])
   assert.equal(parseComplaintFormUrl(url), "", String(url));
+process.env.NEXT_PUBLIC_DEMO_MODE = "false";
+modules.delete("services/pelayanan.ts");
+const apiService = (await source("services/pelayanan.ts")).pelayananService;
+let apiReceipt = { success: true, request_id: "REQ-2026-APITEST", status: "SUBMITTED", jenis_surat: "SKTM", requires_neighborhood_approval: true, lookup_secret: "test-only" };
+globalThis.fetch = async () => ({ ok: true, json: async () => apiReceipt });
+assert.equal((await apiService.submit(valid)).requires_neighborhood_approval, true);
+assert.equal((await apiService.getStatus(apiReceipt.request_id, "test-only")).requires_neighborhood_approval, true);
+apiReceipt = { ...apiReceipt, requires_neighborhood_approval: false };
+assert.equal((await apiService.getStatus(apiReceipt.request_id, "test-only")).requires_neighborhood_approval, false);
+delete apiReceipt.requires_neighborhood_approval;
+await assert.rejects(apiService.submit(valid), /requires_neighborhood_approval/);
+await assert.rejects(apiService.getStatus(apiReceipt.request_id, "test-only"), /requires_neighborhood_approval/);
 execFileSync(process.execPath, ["scripts/test-public-news.mjs"], { stdio: "inherit" });
-console.log("PASS: demo isolation, autofill fixtures, four services, calendar validation, status lookup, corrupted/blocked storage, identity privacy, complaint form URL.");
+console.log("PASS: demo isolation, four services without RT/RW, optional server workflow metadata, removed autofill, calendar validation, storage privacy, complaint form URL, public news.");

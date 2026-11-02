@@ -57,7 +57,8 @@ class User extends Authenticatable {
 
     public function canAccessPanel(): bool {
         // Akun nonaktif langsung ditolak walau token lamanya belum tercabut.
-        return $this->is_active && ApplicationStatus::isPanelRole($this->role) && $this->hasValidTerritory();
+        return $this->is_active && ApplicationStatus::isPanelRole($this->role) && $this->hasValidTerritory()
+            && (! $this->isNeighborhoodHead() || config('letters.neighborhood_approval', false));
     }
 }
 

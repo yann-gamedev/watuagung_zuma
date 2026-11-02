@@ -67,7 +67,7 @@ class StaffController extends Controller {
         $user = $request->user();
         // Role can change after a token is issued; re-check on every call.
         if (! $user->canAccessPanel()) return $this->forbidden();
-        return response()->json(['name'=>$user->name,'username'=>$user->username,'role'=>$user->role,'rt'=>$user->rt,'rw'=>$user->rw,'must_change_password'=>(bool) $user->must_change_password]);
+        return response()->json(['name'=>$user->name,'username'=>$user->username,'role'=>$user->role,'rt'=>$user->rt,'rw'=>$user->rw,'must_change_password'=>(bool) $user->must_change_password,'features'=>['neighborhood_approval'=>(bool) config('letters.neighborhood_approval', false)]]);
     }
     public function index(Request $request): JsonResponse {
         $user = $request->user();

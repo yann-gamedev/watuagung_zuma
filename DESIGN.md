@@ -158,7 +158,8 @@ Pill kecil berlatar `--sand`, teks `--earth` 14px berat 700. Wajib ada di setiap
 - Tiga bagian: sidebar `--forest` (256px), bilah atas putih bergaris bawah `--line` (judul halaman 28px/800, nama + peran petugas, tombol "Lihat website" dan "Keluar"), dan area isi berlatar `--cream`.
 - Menu sidebar hanya berisi halaman yang berfungsi: Dashboard, Permohonan, Persetujuan (hanya tampil untuk kepala desa), Siap diambil. Item aktif memakai `aria-current="page"`.
 - Tombol aksi status di detail permohonan hanya muncul bila diizinkan server (`allowed_transitions`). Label: Verifikasi, Proses, Ajukan ke Kepala Desa, Setujui, Tandai siap diambil, Tandai sudah diambil, Minta perbaikan, Tolak. Bila tidak ada aksi, tampilkan kalimat "Tidak ada tindakan yang tersedia untuk peran Anda pada status ini."
-- Linimasa cek status warga mengikuti jenis surat (`lib/letter-workflow.ts`). SKU berisi tujuh tahap: Diterima → Diverifikasi desa → Diproses → Menunggu tanda tangan Kepala Desa → Disetujui → Siap diambil → Selesai. DOMISILI, SKTM, dan KTP/KK menambahkan Disetujui RT dan Disetujui RW setelah Diterima. Bukti tanpa jenis surat tidak menampilkan linimasa.
+- **Keputusan klien 2 November 2026:** linimasa bawaan semua jenis surat (`lib/letter-workflow.ts`) berisi tujuh tahap: Diterima → Diverifikasi desa → Diproses → Menunggu tanda tangan Kepala Desa → Disetujui → Siap diambil → Selesai. Tahap Disetujui RT dan Disetujui RW hanya ditambahkan bila `requires_neighborhood_approval` pada respons pengajuan/cek status bernilai true. Nilai berasal dari `LetterType` backend, bukan tabel jenis surat duplikat atau sakelar frontend. Bukti demo lama tanpa jenis surat tetap tidak menampilkan linimasa.
+- Teks publik statis menjelaskan alur bawaan langsung ke petugas desa lalu Kepala Desa; jangan menjanjikan verifikasi RT/RW. Formulir publik tidak mengimpor atau menampilkan autofill identitas dummy, tetapi kolom alamat RT/RW tetap ada; file fixture dan tesnya dipertahankan. Tidak ada perubahan token visual atau tata letak baru.
 - Pada ≤ 900px sidebar menjadi panel geser dari kiri (lebar `min(320px, 86vw)`) dengan lapisan `--forest` 55% di belakangnya. Tombol "Menu" (ikon + teks) di bilah atas; pola aksesibilitas sama dengan header publik: `aria-expanded`, fokus masuk panel, Tab terjebak di panel, Esc dan tombol tutup (`aria-label`) menutup, fokus kembali ke "Menu", scroll halaman dikunci. Panel tertutup saat berpindah halaman.
 - Pada ≤ 600px tombol bilah atas selebar layar dan bertumpuk.
 - Tabel bergulir di dalam kartunya; halaman tidak boleh bergulir horizontal.
@@ -172,9 +173,11 @@ Disetujui pengguna untuk M3:
 - NIK dan KK tampil utuh untuk semua peran panel karena dibutuhkan untuk verifikasi. Konfirmasi untuk Tolak, Setujui, dan Tandai sudah diambil. Catatan wajib untuk Tolak/Minta perbaikan.
 - Semua warna, font, radius, spasi, dan ukuran tetap memakai token dokumen ini; gaya dibatasi ke fitur admin, tidak mengubah halaman publik.
 
-### Antrean RT/RW — 20 Oktober 2026
+### Antrean RT/RW — 20 Oktober 2026 (nonaktif bawaan sejak 2 November 2026)
 
-Disetujui pengguna:
+Keputusan klien 2 November menggantikan aktivasi bawaan di bawah; aturan visual lama dipertahankan untuk saat fitur diaktifkan kembali. Satu-satunya sakelar adalah `letters.neighborhood_approval` backend (`LETTER_NEIGHBORHOOD_APPROVAL=false`). `GET /staff/me` mengirim `features.neighborhood_approval`; akun RT/RW lama tetap dapat dinonaktifkan. Otorisasi di server: login RT/RW ditolak 401 generik, token lama 403, dan pembuatan/penetapan/aktivasi akun RT/RW 422. Verifikasi perubahan ini masih menunggu sesi induk.
+
+Aturan bila aktif:
 
 - `rt_head` melihat **Dashboard** (`/admin`) dan **Antrean RT** (`/admin/antrean-rt`); `rw_head` melihat **Dashboard** dan **Antrean RW** (`/admin/antrean-rw`). Dashboard dan antrean tetap dibatasi wilayah/jenis surat. Halaman panel lain menampilkan "Halaman ini tidak tersedia untuk peran Anda." beserta tautan ke antreannya (perluasan dashboard disetujui 27 Oktober 2026).
 - Antrean memakai pilihan "Menunggu keputusan RT/RW" (bawaan) atau "Semua pengajuan wilayah" untuk riwayat baca-saja pada halaman yang sama. Filter jenis surat tidak menampilkan SKU.

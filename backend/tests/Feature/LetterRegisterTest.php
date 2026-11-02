@@ -137,6 +137,7 @@ class LetterRegisterTest extends TestCase
     #[DataProvider('voidStatuses')]
     public function test_head_decision_voids_number_with_reason_and_never_reuses_it(string $status): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $this->travelTo(now()->setDate(2026, 10, 21)->startOfSecond());
         $application = $this->application(['jenis_surat' => 'DOMISILI']);
         $this->act();
@@ -185,7 +186,7 @@ class LetterRegisterTest extends TestCase
             $application->update(['status' => $status]);
             $this->lookup($application)->assertOk()->assertExactJson([
                 'success' => true, 'request_id' => $application->request_id, 'jenis_surat' => 'SKU',
-                'status' => $status, 'catatan' => null,
+                'status' => $status, 'catatan' => null, 'requires_neighborhood_approval' => false,
                 'letter_number' => in_array($status, ['APPROVED', 'READY_FOR_PICKUP', 'COMPLETED']) ? $number : null,
             ]);
         }
