@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
+import { isDemo } from "@/services/pelayanan";
+import { LegacyNewsRedirect } from "@/features/news/legacy-news-redirect";
 import Link from "next/link";
-import Image from "next/image";
+import { NewsArticle } from "@/features/news/news-article";
 import { news } from "@/lib/data";
 import { PublicShell, PageHeading, NoOfficialNews } from "@/components/site";
 // Next 16 menolak generateStaticParams kosong; tanpa berita, satu slug pengganti menampilkan keadaan kosong.
@@ -22,6 +24,7 @@ export default async function Page({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  if (!isDemo) return <PublicShell><section className="section container"><LegacyNewsRedirect slug={slug} /></section></PublicShell>;
   if (!news.length && slug === emptySlug)
     return (
       <PublicShell>
@@ -43,38 +46,15 @@ export default async function Page({
       <PageHeading
         eyebrow={n.category}
         title={n.title}
-        intro={n.date + " · Artikel contoh"}
+        intro={n.date + " · Konten contoh"}
         parent={{ label: "Berita Desa", href: "/berita" }}
       />
       <section className="section container">
-        <article className="article-body">
-          <div className="notice article-sample-notice">
-            <strong>Artikel contoh</strong>
-            <span>Konten ilustrasi untuk pratinjau website. Bukan laporan kegiatan resmi dan belum diverifikasi.</span>
-          </div>
-          <figure className="article-image">
-            <div className="article-image-frame">
-              <Image
-                src="/village.jpg"
-                alt="Petani menanam padi di sawah"
-                fill
-                sizes="(max-width: 820px) 100vw, 780px"
-                priority
-              />
-            </div>
-            <figcaption>Foto ilustrasi suasana pertanian desa, bukan dokumentasi kegiatan dalam artikel.</figcaption>
-          </figure>
-          <p className="article-lead">{n.summary}</p>
-          <div className="article-copy">
-            {n.content.map((paragraph, index) => (
-              <p key={index}>{paragraph}</p>
-            ))}
-          </div>
-          <div className="article-endnote">Informasi dalam artikel contoh ini perlu dikonfirmasi melalui kanal resmi desa.</div>
+        <NewsArticle title={n.title} summary={n.summary} body={n.content.join("\n\n")} sample={true}>
           <Link href="/berita" className="text-link article-back-link">
             ← Kembali ke berita desa
           </Link>
-        </article>
+        </NewsArticle>
       </section>
     </PublicShell>
   );

@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { LegacyNewsRedirect } from "@/features/news/legacy-news-redirect";
 import { PublicShell } from "@/components/site";
 export default function NotFound() {
   return (
     <PublicShell>
+      <LegacyNewsRedirect />
       <div className="section container text-center">
         <div className="eyebrow">404 · HALAMAN TIDAK DITEMUKAN</div>
         <h1 className="text-4xl font-bold">Mari kembali ke beranda.</h1>

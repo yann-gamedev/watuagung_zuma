@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { ArrowRight, CheckCircle2, ClipboardCheck, Clock3, FileCheck2, FileClock, CircleX, CircleAlert, UserCheck, ShieldCheck } from "lucide-react";
-import { news, pages } from "@/lib/data";
+import { pages } from "@/lib/data";
+import { NewsCover } from "@/components/news-cover";
+import { newsHref, type NewsItem } from "@/services/posts";
 import type { ServiceCode, Status } from "@/types/pelayanan";
 import { requiresNeighborhoodApproval } from "@/lib/letter-workflow";
 import { SiteHeader, normalizePath } from "@/components/site-header";
@@ -120,12 +122,12 @@ export function NewsCard({
   item,
   index = 0,
 }: {
-  item: (typeof news)[number];
+  item: NewsItem;
   index?: number;
 }) {
   return (
-    <Link className="news-card" href={"/berita/" + item.slug}>
-      <div className={"news-art art-" + (index % 3)} aria-hidden="true" />
+    <Link className="news-card" href={newsHref(item.slug)}>
+      <NewsCover title={item.title} url={item.coverUrl} index={index} />
       <div className="news-body">
         <div className="news-meta">
           {item.category} <span>{item.date}</span>
