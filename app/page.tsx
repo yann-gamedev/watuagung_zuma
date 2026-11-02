@@ -69,7 +69,7 @@ export default function Home() {
                 <dd>[LUAS]</dd>
               </div>
             </dl>
-            <p className="home-profile-summary">
+            <p className="home-profile-summary home-profile-source">
               Sumber: penduduk dari Kasi Pemerintahan Desa Watuagung, September
               2025; dusun dari RKP Desa Watuagung 2027.
             </p>
