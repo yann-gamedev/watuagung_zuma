@@ -56,12 +56,14 @@ class NeighborhoodApprovalTest extends TestCase
 
     public function test_letter_type_configuration(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $this->assertSame(['SKU' => false, 'DOMISILI' => true, 'SKTM' => true, 'KTP_KK' => true],
             array_combine(array_column(LetterType::cases(), 'value'), array_map(fn ($type) => $type->requiresNeighborhoodApproval(), LetterType::cases())));
     }
 
     public function test_area_code_normalization(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         foreach (['1' => '001', '01' => '001', '001' => '001', '120' => '120'] as $input => $expected) $this->assertSame($expected, AreaCode::normalize((string) $input));
         $this->assertSame('001', AreaCode::normalize(1));
         foreach (['', '0001', 'a1', ' 1', null, -1, 1.0] as $input) $this->assertNull(AreaCode::normalize($input));
@@ -86,6 +88,7 @@ class NeighborhoodApprovalTest extends TestCase
 
     public function test_full_domisili_flow_with_five_accounts(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $application = $this->application();
         $accounts = [
             [$this->user('rt_head', '001', '2'), 'RT_APPROVED'],
@@ -109,6 +112,7 @@ class NeighborhoodApprovalTest extends TestCase
 
     public function test_sku_flow_is_unchanged_and_neighborhood_heads_cannot_act(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $application = $this->application(['jenis_surat' => 'SKU', 'nama_usaha' => 'Usaha Fiktif', 'jenis_usaha' => 'Dagang', 'alamat_usaha' => 'Alamat fiktif']);
         $this->actAs($this->user('rt_head', '001', '002'));
         $this->getJson('/api/v1/staff/applications')->assertOk()->assertJsonPath('total', 0);
@@ -121,6 +125,7 @@ class NeighborhoodApprovalTest extends TestCase
 
     public function test_staff_cannot_skip_neighborhood_approval(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         foreach (['DOMISILI', 'SKTM', 'KTP_KK'] as $type) {
             $application = $this->application(['jenis_surat' => $type]);
             $this->actAs($this->user('staff'));
@@ -133,6 +138,7 @@ class NeighborhoodApprovalTest extends TestCase
 
     public function test_rw_cannot_act_on_submitted_and_rt_cannot_act_on_rt_approved(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $application = $this->application();
         $this->actAs($this->user('rw_head', null, '002'));
         $this->change($application, 'RT_APPROVED')->assertForbidden();
@@ -145,6 +151,7 @@ class NeighborhoodApprovalTest extends TestCase
 
     public function test_cross_territory_mutation_is_403_and_detail_is_404(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $otherRt = $this->application(['rt' => '003']);
         $otherRw = $this->application(['status' => 'RT_APPROVED', 'rw' => '009']);
         $this->actAs($this->user('rt_head', '001', '002'));
@@ -164,6 +171,7 @@ class NeighborhoodApprovalTest extends TestCase
 
     public function test_list_is_scoped_to_territory(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $mine = $this->application(['rt' => '01', 'rw' => '2']);
         $sameRw = $this->application(['rt' => '004', 'rw' => '002']);
         $this->application(['rt' => '001', 'rw' => '003']);
@@ -178,6 +186,7 @@ class NeighborhoodApprovalTest extends TestCase
 
     public function test_neighborhood_detail_is_minimal_with_full_identity_and_audited(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $application = $this->application(['status' => 'RT_APPROVED']);
         DB::table('application_events')->insert(['application_id' => $application->id, 'to_status' => 'SUBMITTED', 'created_at' => now()]);
         $user = $this->actAs($this->user('rw_head', null, '002'));
@@ -196,6 +205,7 @@ class NeighborhoodApprovalTest extends TestCase
 
     public function test_rejection_requires_note_and_public_message_names_rejecting_head(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $rtRejected = $this->application();
         $rt = $this->actAs($this->user('rt_head', '001', '002'));
         $this->change($rtRejected, 'REJECTED')->assertUnprocessable()->assertJsonValidationErrors('catatan');
@@ -206,7 +216,7 @@ class NeighborhoodApprovalTest extends TestCase
         $this->lookup($rtRejected)->assertOk()->assertExactJson([
             'success' => true, 'request_id' => $rtRejected->request_id, 'jenis_surat' => 'DOMISILI', 'status' => 'REJECTED',
             'catatan' => 'Ditolak oleh Ketua RT: Alamat belum sesuai. Silakan ajukan ulang setelah data diperbaiki.',
-            'letter_number' => null,
+            'letter_number' => null, 'requires_neighborhood_approval' => true,
         ]);
 
         $rwRejected = $this->application(['status' => 'RT_APPROVED']);
@@ -229,12 +239,13 @@ class NeighborhoodApprovalTest extends TestCase
 
     public function test_invalid_area_accounts_fail_closed_and_cannot_be_created(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $user = $this->user('rt_head', '001', '002');
         $token = $this->postJson('/api/v1/staff/login', ['username' => $user->username, 'password' => 'password'])
             ->assertOk()->assertJsonPath('user.rt', '001')->assertJsonPath('user.rw', '002')->json('token');
         $this->app['auth']->forgetGuards();
         $this->withToken($token)->getJson('/api/v1/staff/me')->assertOk()
-            ->assertExactJson(['name' => $user->name, 'username' => $user->username, 'role' => 'rt_head', 'rt' => '001', 'rw' => '002', 'must_change_password' => false]);
+            ->assertExactJson(['name' => $user->name, 'username' => $user->username, 'role' => 'rt_head', 'rt' => '001', 'rw' => '002', 'must_change_password' => false, 'features' => ['neighborhood_approval' => true]]);
 
         DB::table('users')->where('id', $user->id)->update(['rt' => null]);
         $this->app['auth']->forgetGuards();
@@ -248,6 +259,7 @@ class NeighborhoodApprovalTest extends TestCase
 
     public function test_staff_create_validates_territory(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $this->artisan('staff:create', ['username' => 'rt-tanpa-wilayah', '--role' => 'rt_head', '--rw' => '1'])->assertFailed();
         $this->artisan('staff:create', ['username' => 'rw-salah', '--role' => 'rw_head', '--rw' => '1234'])->assertFailed();
         $this->artisan('staff:create', ['username' => 'rt-lokal', '--role' => 'rt_head', '--rt' => '1', '--rw' => '02'])

@@ -9,6 +9,7 @@ import { adminFetch, adminRequest, AdminUnauthorizedError, SESSION_EXPIRED_MESSA
 const STORAGE_KEY = "watuagung-staff-token";
 
 const profileSchema = z.object({
+  features: z.object({ neighborhood_approval: z.boolean() }),
   name: z.string(),
   username: z.string().nullable(),
   role: z.enum(["staff", "village_head", "admin", "rt_head", "rw_head"]),

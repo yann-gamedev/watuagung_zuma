@@ -15,6 +15,7 @@ const roleLabels: Record<StaffRole, string> = {
   rw_head: "Ketua RW",
 };
 const roles = Object.keys(roleLabels) as StaffRole[];
+const officeRoles = roles.filter((role) => role !== "rt_head" && role !== "rw_head");
 
 type Editor = { mode: "create" } | { mode: "edit"; user: StaffUser } | { mode: "reset"; user: StaffUser };
 type AccountValues = { name: string; username: string; role: StaffRole; password: string; rt: string | null; rw: string | null };
@@ -35,6 +36,8 @@ export function AccountsManager() {
 
 function Accounts() {
   const { user: currentUser, request } = useAdminSession();
+  const neighborhoodApproval = currentUser?.features.neighborhood_approval ?? false;
+  const availableRoles = neighborhoodApproval ? roles : officeRoles;
   const [users, setUsers] = useState<StaffUser[]>([]);
   const [warnings, setWarnings] = useState<StaffAccountWarning[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,7 +137,7 @@ function Accounts() {
         </button>
       </div>
 
-      {warnings.length > 0 && (
+      {neighborhoodApproval && warnings.length > 0 && (
         <section className={styles.warning} aria-labelledby="account-warnings">
           <h2 id="account-warnings">Wilayah tanpa ketua aktif</h2>
           <ul>
@@ -161,7 +164,7 @@ function Accounts() {
             <label htmlFor="account-role-filter">Peran</label>
             <select id="account-role-filter" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as StaffRole | "")}>
               <option value="">Semua peran</option>
-              {roles.map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}
+              {availableRoles.map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}
             </select>
           </div>
           <div className={styles.field}>
@@ -207,7 +210,7 @@ function Accounts() {
                             <button
                               type="button"
                               className="btn btn-secondary"
-                              disabled={self}
+                              disabled={self || (!account.is_active && !neighborhoodApproval && (account.role === "rt_head" || account.role === "rw_head"))}
                               title={self ? "Anda tidak dapat menonaktifkan akun sendiri." : undefined}
                               onClick={() => void toggle(account)}
                             >{account.is_active ? "Nonaktifkan" : "Aktifkan"}</button>
@@ -256,6 +259,10 @@ function AccountForm({ editor, lockRole, onCreate, onUpdate, onReset, onCancel }
 }) {
   const id = useId();
   const target = editor.mode === "create" ? null : editor.user;
+  const { user } = useAdminSession();
+  const enabledRoles = user?.features.neighborhood_approval ? roles : officeRoles;
+  // Peran lama tetap terlihat agar edit nama tidak diam-diam mengubah peran; server menolak bila tidak diizinkan.
+  const availableRoles = target && !enabledRoles.includes(target.role) ? [...enabledRoles, target.role] : enabledRoles;
   const [name, setName] = useState(target?.name ?? "");
   const [username, setUsername] = useState("");
   const [role, setRole] = useState<StaffRole>(target?.role ?? "staff");
@@ -330,7 +337,7 @@ function AccountForm({ editor, lockRole, onCreate, onUpdate, onReset, onCancel }
       <div className="field wide">
         <label htmlFor={`${id}-role`}>Peran</label>
         <select id={`${id}-role`} value={role} onChange={(event) => setRole(event.target.value as StaffRole)} disabled={lockRole}>
-          {roles.map((item) => <option key={item} value={item}>{roleLabels[item]}</option>)}
+          {availableRoles.map((item) => <option key={item} value={item}>{roleLabels[item]}</option>)}
         </select>
         {lockRole && <p className={styles.help}>Anda tidak dapat menurunkan peran akun sendiri.</p>}
       </div>

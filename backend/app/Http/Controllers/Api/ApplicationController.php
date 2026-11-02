@@ -36,7 +36,7 @@ class ApplicationController extends Controller {
             DB::table('application_events')->insert(['application_id'=>$application->id,'to_status'=>'SUBMITTED','created_at'=>now()]);
             return $application;
         });
-        return response()->json(['success'=>true,'request_id'=>$application->request_id,'status'=>$application->status,'jenis_surat'=>$application->jenis_surat,'lookup_secret'=>$secret], 201);
+        return response()->json(['success'=>true,'request_id'=>$application->request_id,'status'=>$application->status,'jenis_surat'=>$application->jenis_surat,'requires_neighborhood_approval'=>LetterType::from($application->jenis_surat)->requiresNeighborhoodApproval(),'lookup_secret'=>$secret], 201);
     }
     public function status(Request $request): JsonResponse {
         $data = $request->validate(['request_id'=>['required','string','max:64'],'lookup_secret'=>['required','string','max:128']]);
@@ -66,6 +66,6 @@ class ApplicationController extends Controller {
         $letterNumber = in_array($application->status, ['APPROVED', 'READY_FOR_PICKUP', 'COMPLETED'], true)
             ? DB::table('letter_numbers')->where('application_id', $application->id)->where('status', 'issued')->orderByDesc('id')->value('number')
             : null;
-        return response()->json(['success'=>true,'request_id'=>$application->request_id,'jenis_surat'=>$application->jenis_surat,'status'=>$application->status,'catatan'=>$note,'letter_number'=>$letterNumber]);
+        return response()->json(['success'=>true,'request_id'=>$application->request_id,'jenis_surat'=>$application->jenis_surat,'requires_neighborhood_approval'=>LetterType::from($application->jenis_surat)->requiresNeighborhoodApproval(),'status'=>$application->status,'catatan'=>$note,'letter_number'=>$letterNumber]);
     }
 }

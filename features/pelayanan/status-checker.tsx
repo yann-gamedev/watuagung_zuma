@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Check, Search, LoaderCircle, CircleAlert, CircleX } from "lucide-react";
 import { pelayananService, isDemo } from "@/services/pelayanan";
 import type { StatusReceipt } from "@/types/pelayanan";
-import { letterSteps, requiresNeighborhoodApproval } from "@/lib/letter-workflow";
+import { letterSteps } from "@/lib/letter-workflow";
 import { StatusBadge, statusDescriptions } from "@/components/site";
 export function StatusChecker() {
   const params = useSearchParams();
@@ -34,7 +34,7 @@ export function StatusChecker() {
       setBusy(false);
     }
   }
-  const steps = result?.jenis_surat ? letterSteps(result.jenis_surat) : [];
+  const steps = result?.jenis_surat ? letterSteps(result.requires_neighborhood_approval) : [];
   const current = result ? steps.findIndex((s) => s[0] === result.status) : -1;
   const exception =
     result && ["REJECTED", "NEED_REVISION"].includes(result.status);
@@ -78,7 +78,7 @@ export function StatusChecker() {
           {busy ? "Mencari…" : "Cek Status Surat"}
         </button>
       </form>
-      {!isDemo && <p className="lookup-intro">Lupa kode akses? Datang ke Ketua RT/RW atau kantor desa dengan membawa KTP/KK untuk dibuatkan kode baru.</p>}
+      {!isDemo && <p className="lookup-intro">Lupa kode akses? Minta kode baru ke kantor desa dengan membawa KTP/KK.</p>}
       {isDemo && (
         <div className="notice mt-5">
           <strong>Mode simulasi — bukan layanan resmi.</strong>
@@ -92,8 +92,8 @@ export function StatusChecker() {
               <li>REQ-2026-000004 — Ditolak</li>
               <li>REQ-2026-000005 — Siap diambil</li>
               <li>REQ-2026-000006 — Selesai</li>
-              <li>REQ-2026-000007 — Disetujui RT (contoh SKTM)</li>
-              <li>REQ-2026-000008 — Disetujui RW (contoh SKTM)</li>
+              <li>REQ-2026-000007 — Diterima (contoh SKTM)</li>
+              <li>REQ-2026-000008 — Diverifikasi (contoh domisili)</li>
             </ul>
           </details>
         </div>
@@ -116,7 +116,7 @@ export function StatusChecker() {
           <h2 id="lookup-result-heading">Status pengajuan Anda</h2>
           <div className="lookup-result-header">
             <strong className="receipt-value">{result.request_id}</strong>
-            <StatusBadge status={result.status} jenisSurat={result.jenis_surat} />
+            <StatusBadge status={result.status} neighborhoodApproval={result.requires_neighborhood_approval} />
           </div>
           {result.letter_number && ["APPROVED", "READY_FOR_PICKUP", "COMPLETED"].includes(result.status) && <div className="status-next-step">
             <h3>Nomor surat</h3><p className="receipt-value">{result.letter_number}</p>
@@ -128,7 +128,7 @@ export function StatusChecker() {
                 {result.status === "REJECTED" ? <CircleX size={24} aria-hidden="true" /> : <CircleAlert size={24} aria-hidden="true" />}
                 <h3>{result.status === "REJECTED" ? "Pengajuan ditolak" : "Pengajuan perlu diperbaiki"}</h3>
               </div>
-              <p>{result.status === "SUBMITTED" && requiresNeighborhoodApproval(result.jenis_surat) ? "Permohonan menunggu verifikasi Ketua RT, lalu Ketua RW, sebelum masuk kantor desa." : statusDescriptions[result.status]}</p>
+              <p>{result.status === "SUBMITTED" && result.requires_neighborhood_approval ? "Permohonan menunggu verifikasi Ketua RT, lalu Ketua RW, sebelum masuk kantor desa." : statusDescriptions[result.status]}</p>
               <h3>Catatan petugas</h3>
               <p className="officer-note">{result.catatan || "Catatan belum tersedia. Hubungi kantor desa untuk penjelasan."}</p>
               <Link href="/kontak" className="text-link">Lihat Kontak Kantor</Link>
@@ -137,7 +137,7 @@ export function StatusChecker() {
             <>
               <div className="status-next-step">
                 <h3>Langkah berikutnya</h3>
-                <p>{result.status === "SUBMITTED" && requiresNeighborhoodApproval(result.jenis_surat) ? "Permohonan menunggu verifikasi Ketua RT, lalu Ketua RW, sebelum masuk kantor desa." : statusDescriptions[result.status]}</p>
+                <p>{result.status === "SUBMITTED" && result.requires_neighborhood_approval ? "Permohonan menunggu verifikasi Ketua RT, lalu Ketua RW, sebelum masuk kantor desa." : statusDescriptions[result.status]}</p>
                 {(result.status === "APPROVED" || result.status === "READY_FOR_PICKUP") && <Link href="/kontak" className="text-link">Lihat Kontak Kantor</Link>}
               </div>
               {!result.jenis_surat && <p>Jenis surat tidak tersimpan pada bukti simulasi lama ini; linimasa tidak tersedia.</p>}

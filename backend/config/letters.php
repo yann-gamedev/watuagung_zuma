@@ -3,6 +3,7 @@
 use App\Domain\LetterType;
 
 return [
+    'neighborhood_approval' => env('LETTER_NEIGHBORHOOD_APPROVAL', false),
     'format' => '{kode_klasifikasi}/{urut}/{kode_desa}/{bulan_romawi}/{tahun}',
     'kode_desa' => '[PLACEHOLDER]',
     'kode_klasifikasi' => array_combine(

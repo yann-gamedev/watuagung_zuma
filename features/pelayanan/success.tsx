@@ -88,7 +88,7 @@ export function Success() {
           <strong>{isDemo ? "Simpan nomor pengajuan ini." : "Simpan nomor dan kode akses ini."}</strong>
           <p>{isDemo
             ? "Status simulasi hanya tersedia di browser yang sama dan tidak berubah otomatis. Menghapus penyimpanan browser akan menghapus riwayat. Simulasi tidak memerlukan kode akses."
-            : "Simpan di tempat aman; kode hanya tampil di tab ini. Jika hilang, Ketua RT/RW atau kantor desa dapat membuatkan kode baru setelah memeriksa KTP/KK Anda."}</p>
+            : "Simpan di tempat aman; kode hanya tampil di tab ini. Jika hilang, minta kode baru ke kantor desa dengan membawa KTP/KK."}</p>
           {!isDemo && !secret && <p>Kode akses tidak tersedia di tab ini. Gunakan kode yang telah Anda simpan atau hubungi kantor desa untuk arahan.</p>}
         </div>
       </div>

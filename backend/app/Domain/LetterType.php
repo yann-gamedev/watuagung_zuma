@@ -22,7 +22,7 @@ enum LetterType: string
     public function requiresNeighborhoodApproval(): bool
     {
         return match ($this) {
-            self::Domisili, self::Sktm, self::KtpKk => true,
+            self::Domisili, self::Sktm, self::KtpKk => (bool) config('letters.neighborhood_approval', false),
             self::Sku => false,
         };
     }

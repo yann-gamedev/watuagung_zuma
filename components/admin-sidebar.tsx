@@ -37,7 +37,7 @@ export const AdminSidebar = forwardRef<HTMLElement, Props>(function AdminSidebar
   const { user } = useAdminSession();
   const queue = user?.role === "rt_head" ? "/admin/antrean-rt" : user?.role === "rw_head" ? "/admin/antrean-rw" : null;
   const links = adminLinks.filter((link) => {
-    if (queue) return link.href === "/admin" || link.href === queue;
+    if (queue) return link.href === "/admin" || (user?.features.neighborhood_approval && link.href === queue);
     if (link.href === "/admin/antrean-rt" || link.href === "/admin/antrean-rw") return false;
     if (link.href === "/admin/akun") return user?.role === "admin";
     if (link.href === "/admin/berita") return user?.role === "admin" || user?.role === "staff";

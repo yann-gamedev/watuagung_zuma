@@ -21,7 +21,7 @@ const blocks = [
   },
   {
     title: "Siapa yang dapat melihat",
-    text: "Petugas desa, kepala desa, dan admin dapat melihat data untuk menangani permohonan. Ketua RT dan Ketua RW hanya dapat melihat permohonan di wilayahnya. Setiap pembukaan data dicatat.",
+    text: "Petugas desa, kepala desa, dan admin dapat melihat data untuk menangani permohonan. Semua jenis surat diverifikasi petugas desa lalu disetujui kepala desa. Setiap pembukaan data dicatat.",
   },
   {
     title: "Keamanan data",

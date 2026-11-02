@@ -71,6 +71,7 @@ class StaffAccountsTest extends TestCase
 
     public function test_admin_can_list_and_create_accounts(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $admin = $this->admin();
         $token = $this->login($admin);
 
@@ -110,6 +111,7 @@ class StaffAccountsTest extends TestCase
 
     public function test_create_validation_and_username_rules(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $token = $this->login($this->admin());
 
         foreach ([
@@ -196,6 +198,7 @@ class StaffAccountsTest extends TestCase
 
     public function test_only_one_active_head_per_territory(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $token = $this->login($this->admin());
         $this->withToken($token)->postJson('/api/v1/staff/users', $this->createPayload([
             'username' => 'rt-satu', 'role' => 'rt_head', 'rt' => '001', 'rw' => '001',
@@ -264,6 +267,7 @@ class StaffAccountsTest extends TestCase
 
     public function test_warnings_list_territories_with_pending_applications_without_active_heads(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $token = $this->login($this->admin());
         $this->application(['status' => 'SUBMITTED', 'rt' => '003', 'rw' => '001']);
         $this->application(['status' => 'RT_APPROVED', 'rt' => '003', 'rw' => '002']);

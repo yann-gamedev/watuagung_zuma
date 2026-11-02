@@ -6,7 +6,6 @@ import type { ReactNode } from "react";
 import { ArrowRight, CheckCircle2, ClipboardCheck, Clock3, FileCheck2, FileClock, CircleX, CircleAlert, UserCheck, ShieldCheck } from "lucide-react";
 import { news, pages } from "@/lib/data";
 import type { ServiceCode, Status } from "@/types/pelayanan";
-import { requiresNeighborhoodApproval } from "@/lib/letter-workflow";
 import { SiteHeader, normalizePath } from "@/components/site-header";
 import { complaintFormUrl, complaintNote, externalLinkProps } from "@/lib/complaint";
 export function Footer() {
@@ -188,12 +187,12 @@ const statusIcons = {
   REJECTED: CircleX,
   NEED_REVISION: CircleAlert,
 };
-export function StatusBadge({ status, jenisSurat }: { status: Status; jenisSurat?: ServiceCode }) {
+export function StatusBadge({ status, neighborhoodApproval = false }: { status: Status; jenisSurat?: ServiceCode; neighborhoodApproval?: boolean }) {
   const Icon = statusIcons[status];
   return (
     <span className={"status-badge status-" + status}>
       <Icon size={22} aria-hidden="true" />
-      {status === "SUBMITTED" && requiresNeighborhoodApproval(jenisSurat) ? "Menunggu verifikasi RT" : statusLabels[status]}
+      {status === "SUBMITTED" && neighborhoodApproval ? "Menunggu verifikasi RT" : statusLabels[status]}
     </span>
   );
 }

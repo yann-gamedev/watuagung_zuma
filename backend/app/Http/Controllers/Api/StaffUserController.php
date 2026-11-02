@@ -43,6 +43,7 @@ class StaffUserController extends Controller
             'rt' => ['nullable', 'string', 'regex:/\A[0-9]{1,3}\z/'],
             'rw' => ['nullable', 'string', 'regex:/\A[0-9]{1,3}\z/'],
         ]);
+        $this->assertRoleEnabled($data['role']);
         $territory = $this->territory($data);
 
         $user = DB::transaction(function () use ($request, $data, $territory) {
@@ -83,6 +84,8 @@ class StaffUserController extends Controller
         $result = DB::transaction(function () use ($request, $id, $data, $territory, $active) {
             $actor = $request->user();
             $target = User::whereKey($id)->lockForUpdate()->firstOrFail();
+            // Akun RT/RW lama boleh dinonaktifkan, bukan diaktifkan atau ditetapkan ulang.
+            if ($active || $data['role'] !== $target->role) $this->assertRoleEnabled($data['role']);
             $willRemainAdmin = $data['role'] === 'admin' && $active;
 
             if ($target->is($actor) && ! $willRemainAdmin) {
@@ -95,7 +98,7 @@ class StaffUserController extends Controller
                 }
             }
 
-            $this->assertTerritoryFree($data['role'], $territory['rt'], $territory['rw'], $target->id);
+            if ($active) $this->assertTerritoryFree($data['role'], $territory['rt'], $territory['rw'], $target->id);
             $target->forceFill([
                 'name' => $data['name'],
                 'role' => $data['role'],
@@ -168,6 +171,13 @@ class StaffUserController extends Controller
         return $user->canAccessPanel() && $user->role === 'admin' ? null : $this->forbidden();
     }
 
+    private function assertRoleEnabled(string $role): void
+    {
+        if (! config('letters.neighborhood_approval', false) && in_array($role, ['rt_head', 'rw_head'], true)) {
+            throw ValidationException::withMessages(['role' => 'Persetujuan RT/RW dinonaktifkan. Akun Ketua RT/RW tidak dapat dibuat, ditetapkan, atau diaktifkan.']);
+        }
+    }
+
     /** @return array{rt: ?string, rw: ?string} */
     private function territory(array $data): array
     {
@@ -221,6 +231,8 @@ class StaffUserController extends Controller
     /** Permohonan yang tertahan karena wilayahnya belum punya ketua aktif. */
     private function warnings(): array
     {
+        if (! config('letters.neighborhood_approval', false)) return [];
+
         $warnings = [];
         $pendingRt = DB::table('applications')
             ->where('status', 'SUBMITTED')

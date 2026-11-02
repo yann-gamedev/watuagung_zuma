@@ -64,6 +64,7 @@ class AccessCodeResetTest extends TestCase
 
     public function test_neighborhood_heads_reset_only_in_territory(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $application = $this->application();
         $this->user('rt_head', '001', '001');
         $this->reset($application)->assertOk();
@@ -93,6 +94,7 @@ class AccessCodeResetTest extends TestCase
 
     public function test_reset_unlocks_lookout_and_keeps_rt_rejection_note(): void
     {
+        config()->set('letters.neighborhood_approval', true);
         $application = $this->application(['status' => 'REJECTED', 'catatan' => 'Alamat tidak sesuai']);
         DB::table('application_events')->insert(['application_id' => $application->id, 'from_status' => 'SUBMITTED', 'to_status' => 'REJECTED', 'note' => 'Alamat tidak sesuai', 'created_at' => now()]);
         for ($i = 0; $i < 5; $i++) $this->lookup($application, 'WAD-0000-0000')->assertNotFound();

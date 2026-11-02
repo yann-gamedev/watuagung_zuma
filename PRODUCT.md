@@ -2,7 +2,7 @@
 
 <!-- impeccable:product-schema 1 -->
 
-> Revisi 15 Oktober 2026. Menggantikan versi sebelumnya. Keputusan baru ditandai **[BARU]**. Keputusan yang masih menunggu konfirmasi ditandai **[SEMENTARA]**.
+> Revisi keputusan pelayanan 2 November 2026. Persetujuan RT/RW dinonaktifkan secara bawaan atas keputusan klien, menggantikan alur aktif 20 Oktober 2026; kode tetap dipertahankan. Keputusan baru ditandai **[BARU]**. Keputusan yang masih menunggu konfirmasi ditandai **[SEMENTARA]**. Verifikasi perubahan 2 November lulus pada SQLite/PostgreSQL dan frontend; hasil serta batas pengujian ada di `docs/progres-2026-11-02.md`.
 
 ## Platform
 
@@ -25,7 +25,7 @@ Pengguna utama adalah warga Desa Watuagung yang ingin:
 
 Ukuran pastinya diatur di `DESIGN.md`.
 
-Pengguna panel adalah **ketua RT**, **ketua RW**, **petugas desa**, **kepala desa**, dan **admin**. Ketua RT/RW hanya menangani pengajuan sesuai wilayahnya. Panel tidak aktif di deployment demo Vercel; jangan menampilkannya seolah layanan operasional sudah tersedia.
+Pengguna panel bawaan adalah **petugas desa**, **kepala desa**, dan **admin**. Peran **ketua RT** dan **ketua RW** tetap ada dalam kode, tetapi aksesnya dinonaktifkan saat persetujuan RT/RW mati. Bila diaktifkan melalui konfigurasi backend, keduanya hanya menangani pengajuan sesuai wilayahnya. Panel tidak aktif di deployment demo Vercel; jangan menampilkannya seolah layanan operasional sudah tersedia.
 
 ## Product Purpose
 
@@ -39,12 +39,13 @@ Tujuan pelayanan harus dibedakan dari kemampuan yang sudah tersedia. Tidak ada t
 
 - Informasi publik: profil desa, sejarah, visi-misi, perangkat desa, berita, agenda, potensi, transparansi, kontak, BUMDes, UMKM, dan statistik.
 - Alur pelayanan: pilih jenis surat → baca persyaratan → isi formulir → terima nomor pengajuan (dan kode akses pada mode API) → cek status → ambil surat di kantor desa.
-- Alur persetujuan (disetujui 20 Oktober 2026): DOMISILI, SKTM, dan pengantar KTP/KK melewati Ketua RT → Ketua RW → petugas desa → kepala desa. SKU tidak berubah dan langsung ke petugas desa. Pengajuan yang sudah melewati tahap awal sebelum fitur ini tidak diulang dari RT/RW.
-- Persetujuan RT/RW tetap dicatat di sistem; tidak ada surat pengantar PDF, tanda tangan elektronik (TTE), stempel digital, atau notifikasi.
+- **[BARU] Alur bawaan (keputusan klien 2 November 2026):** semua jenis surat (SKU, DOMISILI, SKTM, KTP_KK) langsung ke petugas desa → Kepala Desa → siap diambil → selesai. Status: `SUBMITTED → VERIFIED → PROCESSING → WAITING_APPROVAL → APPROVED → READY_FOR_PICKUP → COMPLETED`.
+- Kode persetujuan RT/RW dipertahankan, tetapi hanya dikendalikan konfigurasi backend `letters.neighborhood_approval`, env `LETTER_NEIGHBORHOOD_APPROVAL=false` secara bawaan. Tidak ada sakelar frontend atau tabel jenis surat duplikat. Saat true, DOMISILI/SKTM/KTP_KK kembali melalui RT lalu RW; SKU tetap langsung ke kantor. `LetterType` menentukan kebutuhan ini dan `ApplicationStatus` menggunakannya.
+- Persetujuan RT/RW bila diaktifkan tetap hanya dicatat di sistem; tidak ada surat pengantar PDF, tanda tangan elektronik (TTE), stempel digital, atau notifikasi. Mengganti konfigurasi pada database berisi pengajuan wajib mengikuti prosedur di `backend/README.md`; bukan migrasi otomatis status.
 - **[BARU] Penerbitan surat (21 Oktober 2026):** surat sah setelah Kepala Desa menyetujui (`APPROVED`). Sistem mencatat siapa dan kapan, lalu membuat PDF final dari template sementara dengan QR verifikasi. Karena template resmi desa belum diterima, petugas juga dapat mengunggah surat yang disusun manual (QR ditempel, ditandatangani basah, distempel, lalu dipindai) untuk menggantikan PDF otomatis. PDF hanya untuk kantor desa dan Kepala Desa; warga tetap mengambil surat fisik di kantor desa.
 - Empat formulir: SKU, domisili, SKTM, dan pengantar KTP/KK.
 - Prototipe Vercel berjalan sebagai demo statis dengan data fiktif, bukan layanan resmi. Status pengajuan demo tidak bergerak otomatis.
-- Bukti simulasi hanya tersedia di browser/origin yang sama; menghapus penyimpanan browser menghapus riwayat. Alur demo hanya menambah jenis surat pada bukti tersimpan dan tidak menyimpan identitas pemohon; bukti demo lama tanpa jenis surat tidak menampilkan linimasa.
+- Bukti simulasi hanya tersedia di browser/origin yang sama; menghapus penyimpanan browser menghapus riwayat. Demo memakai alur bawaan tanpa persetujuan RT/RW dan tidak menyimpan identitas pemohon; bukti demo lama tanpa jenis surat tidak menampilkan linimasa.
 - Mode API Laravel (pengembangan lokal) adalah alur terpisah. Di mode ini cek status membutuhkan nomor pengajuan **dan** kode akses rahasia; jangan samakan dengan demo tanpa API.
 
 ## Capabilities and Constraints
@@ -56,10 +57,11 @@ Tujuan pelayanan harus dibedakan dari kemampuan yang sudah tersedia. Tidak ada t
 - Login petugas, daftar pengajuan dengan pencarian nomor/nama, filter, dan urutan; halaman detail pemohon untuk peran panel dengan audit akses; perubahan status dengan aturan transisi; dan riwayat perubahan di `application_events`.
 - Manajemen akun petugas melalui panel oleh `admin`: tambah/ubah akun, nonaktifkan, reset kata sandi sementara, dan ganti kata sandi sendiri. Kata sandi sementara wajib diganti saat login pertama; akun nonaktif langsung kehilangan sesi. Satu wilayah hanya punya satu ketua RT/RW aktif.
 - Status "Siap diambil" (`READY_FOR_PICKUP`) dan "Selesai" (`COMPLETED`), serta lima peran panel: `rt_head` (ketua RT), `rw_head` (ketua RW), `staff` (petugas), `village_head` (kepala desa), `admin`. Hanya kepala desa yang memutuskan pengajuan yang menunggu persetujuan; wewenang dijaga di server (lihat `backend/README.md`).
-- **[BARU] Persetujuan RT/RW:** status `RT_APPROVED` dan `RW_APPROVED`. Ketua RT/RW hanya melihat pengajuan di wilayahnya, menerima NIK/KK utuh untuk verifikasi, dan tidak menerima telepon, tempat/tanggal lahir, maupun jenis kelamin.
+- **[BARU] Persetujuan RT/RW nonaktif secara bawaan:** status `RT_APPROVED` dan `RW_APPROVED` serta pembatasan wilayah tetap disimpan dalam kode. Saat fitur mati, login RT/RW mendapat 401 generik; token lama mendapat 403. Pembuatan, penetapan peran/wilayah, atau aktivasi akun RT/RW ditolak 422 dengan pesan jelas; akun RT/RW lama tetap boleh dinonaktifkan.
+- `GET /staff/me` menyertakan `features: { neighborhood_approval: boolean }`. Respons pengajuan dan cek status publik menyertakan `requires_neighborhood_approval` dari `LetterType`; frontend memakai boolean ini untuk linimasa, bukan menebak kebutuhan dari jenis surat.
 - Field sensitif pemohon (NIK, KK, telepon, alamat) dienkripsi di database.
-- Fondasi tabel resident terenkripsi, seeder dummy, dan feature test backend.
-- Autofill NIK memakai tiga identitas dummy frontend. Ini bukan akses Dukcapil, bukan verifikasi identitas, dan belum terhubung ke database resident.
+- Model, tabel, dan migration `residents` terenkripsi dipertahankan hanya sebagai fondasi seeder/tes; tidak dihubungkan ke route atau fitur produksi.
+- Autofill identitas dummy dihapus dari impor dan UI formulir publik. Warga mengisi data sendiri; kolom alamat RT/RW tetap ada. `lib/dummy-residents.ts` dan tes fixture dipertahankan, bukan akses Dukcapil atau verifikasi identitas.
 
 - **[BARU] Surat PDF dan verifikasi QR:** draf PDF bertanda DRAF untuk kantor, PDF final ber-QR saat `APPROVED`, unggah surat manual hasil pindaian, dan halaman publik `/verifikasi/` yang hanya menampilkan nomor surat, jenis surat, tanggal terbit, nama tersamar, serta status sah/dibatalkan. Kop, nama Kepala Desa, dan isi template masih `[PLACEHOLDER]`.
 
@@ -118,7 +120,7 @@ Arahan berikut sudah dikonfirmasi pengguna:
 - Foto: `public/village.jpg`. Atribusi: Thomas Fuhrmann, CC BY-SA 4.0, dipotong, dengan tautan sumber di footer.
 - Logo: file PNG dari tim (4540×4540px). Simpan di `public/brand/logo-watuagung.png` beserta versi kecil yang sudah dioptimasi.
 - Konten publik, statistik, berita, persyaratan, dan estimasi waktu yang tampil masih contoh. Jangan jadikan klaim resmi tanpa sumber yang disetujui. Data yang belum ada ditulis sebagai placeholder `[NAMA DATA]`.
-- Data autofill: fixture fiktif di `lib/dummy-residents.ts`.
+- Fixture fiktif tersimpan di `lib/dummy-residents.ts` beserta tesnya; tidak lagi menjadi autofill formulir publik (keputusan 2 November 2026).
 - Panduan menjalankan aplikasi: `README.md`, `backend/README.md`, dan `docs/integrasi.md`.
 - Belum ada bukti persetujuan konten resmi desa, integrasi Dukcapil, atau layanan operasional yang boleh diklaim.
 

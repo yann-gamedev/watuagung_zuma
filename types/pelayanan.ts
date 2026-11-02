@@ -115,6 +115,7 @@ export interface StaffLoginResponse {
 }
 /** GET /staff/me. Akun lama boleh belum punya username. */
 export interface StaffProfile {
+  features: { neighborhood_approval: boolean };
   name: string;
   username: string | null;
   role: StaffRole;
@@ -166,6 +167,8 @@ export interface Submission {
   keperluan: string;
 }
 export interface Receipt {
+  /** Dihitung LetterType server; opsional hanya untuk bukti demo lama. */
+  requires_neighborhood_approval?: boolean;
   success: true;
   request_id: string;
   status: Status;
