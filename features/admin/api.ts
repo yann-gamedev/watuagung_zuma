@@ -56,6 +56,8 @@ async function send(path: string, token: string, options: RequestInit): Promise<
   if (response.status === 401) throw new AdminUnauthorizedError();
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { message?: string; errors?: Record<string, string[]> };
+    // Berita memakai pesan server apa adanya, termasuk validasi foto dan 404.
+    if (/^\/staff\/posts(?:[/?]|$)/.test(path)) throw new Error(body.errors ? Object.values(body.errors).flat().join(" ") : body.message || "Berita gagal diproses. Coba lagi nanti.");
     if (response.status === 403) throw new Error("Akun ini tidak memiliki akses untuk tindakan tersebut.");
     // Pesan bawaan Laravel untuk 404 berbahasa Inggris dan menyebut nama model internal.
     if (response.status === 404) throw new Error("Permohonan tidak ditemukan. Periksa nomor atau kembali ke daftar.");

@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { forwardRef } from "react";
-import { ClipboardList, FileCheck2, LayoutDashboard, Users, X } from "lucide-react";
+import { ClipboardList, FileCheck2, LayoutDashboard, Newspaper, Users, X } from "lucide-react";
 import { normalizePath } from "@/components/site-header";
 import { useAdminSession } from "@/features/admin/session";
 
@@ -16,15 +16,18 @@ export const adminLinks = [
   { title: "Antrean RW", href: "/admin/antrean-rw", Icon: ClipboardList },
   { title: "Siap diambil", href: "/admin/surat", Icon: FileCheck2 },
   { title: "Buku registrasi", href: "/admin/register", Icon: ClipboardList },
+  { title: "Berita", href: "/admin/berita", Icon: Newspaper },
   { title: "Akun", href: "/admin/akun", Icon: Users },
 ] as const;
 
 export function adminPageTitle(path: string) {
   if (normalizePath(path) === "/admin/permohonan/detail") return "Detail permohonan";
+  if (normalizePath(path) === "/admin/berita/tulis") return "Tulis berita";
+  if (normalizePath(path) === "/admin/berita/ubah") return "Sunting berita";
   return adminLinks.find((link) => link.href === normalizePath(path))?.title ?? "Panel Petugas";
 }
 function isActive(path: string, href: string) {
-  return path === href || (href === "/admin/permohonan" && path.startsWith(`${href}/`));
+  return path === href || (["/admin/permohonan", "/admin/berita"].includes(href) && path.startsWith(`${href}/`));
 }
 
 type Props = { open: boolean; onClose: () => void };
@@ -37,6 +40,7 @@ export const AdminSidebar = forwardRef<HTMLElement, Props>(function AdminSidebar
     if (queue) return link.href === "/admin" || link.href === queue;
     if (link.href === "/admin/antrean-rt" || link.href === "/admin/antrean-rw") return false;
     if (link.href === "/admin/akun") return user?.role === "admin";
+    if (link.href === "/admin/berita") return user?.role === "admin" || user?.role === "staff";
     return link.href !== "/admin/persetujuan" || user?.role === "village_head";
   });
   return (

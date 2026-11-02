@@ -140,6 +140,7 @@ function AdminFrame({ children }: { children: React.ReactNode }) {
   }, [open, closeMenu]);
 
   async function signOut() {
+    if (!window.dispatchEvent(new Event("admin-before-leave", { cancelable: true }))) return;
     setLeaving(true);
     await logout();
   }
