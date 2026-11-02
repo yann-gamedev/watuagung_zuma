@@ -140,30 +140,6 @@ npm run dev
 
 Sebelum kembali ke mode API, hentikan server, hapus override sesi PowerShell dengan `Remove-Item Env:NEXT_PUBLIC_DEMO_MODE`, pastikan `.env.local` tidak memaksa demo, lalu jalankan ulang. Setelah deploy, periksa formulir, cek status, refresh route bertingkat, mobile, dan pembatasan panel pada **URL Vercel sebenarnya**.
 
-## File lokal dan pengaman push
-
-`CLAUDE.md` dan folder `.claude/` di semua tingkat folder, tanpa membedakan huruf besar/kecil, tidak boleh dilacak atau dikirim ke GitHub. **Markdown lainnya tetap diperbolehkan.** Salinan lokal dipertahankan; riwayat yang sudah terbit tidak dihapus.
-
-Aktifkan hook di **setiap clone**, dari root:
-
-```powershell
-git config --local core.hooksPath .githooks
-node scripts/test-private-files.mjs
-```
-
-Hook `pre-push` memeriksa isi akhir dan perubahan commit yang akan dikirim, termasuk file yang ditambahkan lalu dihapus. Untuk branch baru, commit yang sudah tercatat pada remote tujuan dikecualikan dari pemeriksaan riwayat; jalankan `git fetch` agar referensi mutakhir. Node.js wajib tersedia; kegagalan pemeriksaan membatalkan push. Hook lokal dapat dilewati dengan `--no-verify`, bukan pengganti aturan server GitHub.
-
-Gabungkan pengaturan berikut ke `.claude/settings.json` **lokal**, tanpa menimpa pengaturan lain, untuk menonaktifkan atribusi otomatis Claude pada commit/PR berikutnya:
-
-```json
-{
-  "attribution": { "commit": "", "pr": "" },
-  "includeCoAuthoredBy": false
-}
-```
-
-Pengaturan ini tidak menghapus atribusi lama. Jangan commit `.env`, database, token, file build, atau folder `assets/` lokal yang belum disetujui. Gunakan branch per tugas dan Conventional Commits; jangan push/deploy tanpa permintaan.
-
 ## Batas prototipe
 
 Belum ada pengaduan warga, CMS, unggah **lampiran persyaratan warga**, atau OTP mandiri. Unggah surat final oleh petugas sudah ada dan merupakan fitur berbeda. Template resmi, konten desa, hosting/database produksi, backup, kebijakan privasi/retensi, serta uji keamanan dan operasional masih perlu dituntaskan sesuai [ROADMAP.md](ROADMAP.md). QR hanya membantu verifikasi; surat tetap memerlukan tanda tangan basah dan stempel sampai ada TTE tersertifikasi.

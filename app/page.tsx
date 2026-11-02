@@ -4,7 +4,8 @@ import { ServiceList } from "@/components/service-list";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { PublicShell } from "@/components/site";
-import { news, pages } from "@/lib/data";
+import { pages } from "@/lib/data";
+import { PublicNews } from "@/features/news/public-news";
 export default function Home() {
   return (
     <PublicShell>
@@ -83,29 +84,7 @@ export default function Home() {
           </div>
         </div>
       </section>
-      {/* Tanpa berita resmi bagian ini tidak dirender; /berita tetap tertaut di header dan footer. */}
-      {news.length > 0 && (
-      <section className="container home-bottom-container home-bottom home-news" aria-labelledby="news-title">
-        <div className="home-news-heading">
-          <h2 id="news-title">Kabar desa</h2>
-          <Link href="/berita" className="home-bottom-link">
-            Semua berita <ArrowRight size={22} aria-hidden="true" />
-          </Link>
-        </div>
-        <div className="home-news-grid">
-          {news.map((item) => (
-            <Link className="home-news-card" href={"/berita/" + item.slug} key={item.slug}>
-              <div className="home-news-photo">[FOTO KEGIATAN]</div>
-              <div className="home-news-body">
-                <p className="home-news-meta">{item.category} · {item.date}</p>
-                <h3>{item.title}</h3>
-              </div>
-            </Link>
-          ))}
-        </div>
-        <p className="home-news-note">Berita contoh untuk pratinjau website.</p>
-      </section>
-      )}
+      <PublicNews home />
       <section className="container home-bottom-container home-bottom home-economy" aria-label="BUMDes dan UMKM">
         <article className="home-economy-card home-bumdes">
           <h2>BUMDes Watuagung Bangkit</h2>

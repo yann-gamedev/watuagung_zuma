@@ -198,6 +198,8 @@ Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Untuk SKU, `nam
 
 ### Berita
 
+Frontend publik C4 (2 November 2026) membaca `/posts` dan `/posts/{slug}` langsung di browser lewat `services/posts.ts` (Zod, timeout 20 detik, no-store), tanpa perubahan kontrak API. Daftar `/berita/`, tiga berita beranda, dan detail `/berita/baca/?slug=...` tidak perlu build ulang setelah penerbitan/penghapusan; halaman yang sudah terbuka perlu dimuat ulang (tanpa polling). Draf tetap disaring server. Mode tanpa API memakai contoh sesuai flag F11, bukan fallback saat API gagal. Hosting frontend harus menyajikan `out/404.html` untuk redirect browser tautan lama `/berita/<slug>` yang tidak diekspor; detail baru memakai route query tetap. Lihat [integrasi C4](../docs/integrasi.md#berita-cms-c1c2).
+
 Kontrak lengkap di [docs/integrasi.md § Berita](../docs/integrasi.md). Hak kelola satu tempat: `User::canManageContent()` (`admin`/`staff` aktif); peran lain 403, tanpa token 401. Kategori di `App\Domain\PostCategory`. Isi teks biasa, HTML disimpan apa adanya dan tidak pernah dirender server. Slug tetap setelah terbit pertama. Audit `post.*` hanya aksi dan ID, tanpa judul/isi. `cover_url` berisi URL publik sampul atau `null`; `cover_path` tidak dikirim.
 
 **Foto sampul (C2):** POST `/staff/posts/{id}/cover` memakai multipart field `file`; DELETE pada path yang sama menghapus sampul. Keduanya berbagi throttle 10/menit per akun, hak kelola sama dengan C1, respons 200 berupa detail berita terbaru (`cover_url` null setelah hapus), `Cache-Control: private, no-store`. Validasi 422: JPG/JPEG/PNG/WebP ≤ 3.072 KiB, lebar 600–6.000 px, tinggi 400–6.000 px; isi rusak ditolak. Klien FormData tidak menetapkan `Content-Type` sendiri agar boundary benar.

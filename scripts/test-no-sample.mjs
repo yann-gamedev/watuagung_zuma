@@ -6,7 +6,7 @@ import { join } from "node:path";
 // Build produksi dengan konten contoh dimatikan, lalu periksa seluruh berkas teks di out/.
 const build = spawnSync(process.execPath, ["node_modules/next/dist/bin/next", "build"], {
   stdio: "inherit",
-  env: { ...process.env, NEXT_PUBLIC_SHOW_SAMPLE_CONTENT: "false" },
+  env: { ...process.env, NEXT_PUBLIC_API_URL: "", NEXT_PUBLIC_DEMO_MODE: "false", NEXT_PUBLIC_SHOW_SAMPLE_CONTENT: "false" },
 });
 if (build.status !== 0) process.exit(build.status ?? 1);
 

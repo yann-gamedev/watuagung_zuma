@@ -15,7 +15,7 @@
 | M3 — Dashboard | Sebagian selesai; manajemen akun dan ringkasan dashboard sudah ada | Uji manual akun dan review visual halaman akun |
 | M3a — Register | Implementasi dan uji konkurensi PostgreSQL selesai | Uji browser dengan Laravel |
 | M4 — Pengaduan | Dialihkan ke Google Form desa (24 Okt 2026); tautan selesai | URL Google Form dari desa (`NEXT_PUBLIC_COMPLAINT_FORM_URL`) |
-| M5 — CMS | API berita dan foto sampul (C1–C2) selesai; sisanya belum, menunggu K2/K4 | Panel dan halaman berita dari API (C3–C4), konten lain |
+| M5 — CMS | API berita, sampul, panel C3 dan halaman publik C4 sudah di-commit | CORS DELETE, konten lain dan keputusan produksi K2/K4 |
 | M6 — Lampiran persyaratan | Belum dibuat | Unggah privat, batas file, retensi; berbeda dari unggah surat final M7 |
 | M7 — PDF/QR | Implementasi dengan template sementara selesai | Format resmi desa, uji browser Laravel dan pindai QR; TTE di luar lingkup |
 | M8 — Produksi | Belum siap operasional | Infrastruktur, privasi/retensi, prosedur bantuan, verifikasi keamanan |
@@ -45,7 +45,7 @@ Sumber: kode/route API, file yang terlacak Git, `docs/progres-2026-10-21.md`, `d
 | K4 | Siapa di desa yang mengisi dan memperbarui konten? | M5 | Belum |
 | K5 | Library PDF (perlu persetujuan dependensi) | M7 | **Disetujui 21 Oktober 2026:** `barryvdh/laravel-dompdf` + `bacon/bacon-qr-code` |
 
-> **Catatan K2:** demo Vercel saat ini berupa static export. Konten dari API (M5) tidak akan muncul tanpa build ulang, kecuali konten diambil di sisi browser atau hosting diganti ke server. Putuskan K2 sebelum M5.
+> **Catatan K2:** demo Vercel saat ini berupa static export. Konten dari API (M5) tidak akan muncul tanpa build ulang, kecuali konten diambil di sisi browser atau hosting diganti ke server. Putuskan K2 sebelum M5. **Pengecualian C4 disetujui 2 November 2026:** berita publik tetap static export dan mengambil API di browser, boleh mendahului keputusan produksi K2/K4; bukan penyelesaian keputusan hosting/pemilik konten.
 
 ---
 
@@ -161,6 +161,7 @@ Bergantung pada K2 dan K4.
   - [x] Berita C2: POST/DELETE `/staff/posts/{id}/cover`, throttle bersama 10/menit, peran C1, JPG/PNG/WebP ≤ 3 MB dan dimensi 600×400–6000×6000; GD resize lebar ≤1600, encode ulang WebP/JPEG tanpa EXIF/GPS, UUID disk public, hapus file saat ganti/hapus sampul; soft delete berita mempertahankan file. `MEDIA_URL` bawaan URL storage Laravel; kebutuhan Nginx/GD/backup dicatat di deploy-plan. SQLite 258 tes / 2.730 assertions, PostgreSQL 258 tes / 2.732 assertions, fallback JPEG 23 lulus / 2 skip WebP; lint, tsc, build lulus (29 Oktober 2026, `docs/progres-2026-10-29.md`). Pengguna mengizinkan mendahului K2/K4; UI dan infrastruktur belum.
 - [ ] CRUD di panel admin untuk peran `admin`, termasuk unggah foto konten
 - [ ] Frontend membaca dari API, dengan cadangan `lib/data.ts` untuk mode demo
+  - [x] Berita C4 (2 November 2026): adapter Zod/timeout 20 detik/no-store, daftar klien + Muat lebih banyak, detail `/berita/baca/?slug=...` berupa teks, 3 berita beranda, sampul img native, fallback demo sesuai F11, dan redirect browser route lama termasuk 404 hosting. Pengguna mengizinkan mendahului K2/K4. Lint, tsc, build, build:demo, test:demo serta uji Laravel lokal dan visual 390px/1440px dicatat di `docs/progres-2026-11-02.md`; test:no-sample lulus pada salinan index C4 tanpa C3 (working tree gabungan gagal pada teks contoh C3); temuan CORS DELETE lama belum diperbaiki, hapus diuji HTTP langsung. C3 sudah di-commit pada `1b2e6dd` (verifikasi/batas di `docs/progres-2026-11-02-c3.md`); konten CMS lain belum.
 - [ ] Hapus semua keterangan "konten contoh" yang sudah diganti data resmi
   - [x] Visi dan tiga misi Kepala Desa dari dokumen yang diterima 25 Oktober 2026, tanpa periode; alamat beranda/footer memakai sumber `/kontak` di `lib/data.ts`, ringkasan BUMDes beranda resmi. Lint, tsc, build, build:demo, test:demo serta visual beranda, `/visi-misi`, `/kontak` dan footer pada 390px/1440px lulus (`docs/progres-2026-10-25.md`). Placeholder data belum tersedia dan label contoh footer tetap.
   - [x] Konten potensi, BUMDes Watuagung Bangkit, lembaga aktif pada profil, dan program prioritas 2027 tanpa nominal dari RKP Desa 2027. Notice contoh di potensi/transparansi dihapus; notice BUMDes menjadi sumber. Lint, tsc, build, build:demo, test:demo dan visual empat halaman 390px/1440px lulus (25 Oktober 2026, `docs/progres-2026-10-25.md`). Bukan penyelesaian CMS atau seluruh konten situs.

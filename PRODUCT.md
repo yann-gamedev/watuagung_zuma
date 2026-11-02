@@ -75,7 +75,7 @@ QR verifikasi **bukan** Tanda Tangan Elektronik tersertifikasi. TTE yang sah set
 
 - Unggah dokumen persyaratan.
 - Template surat resmi desa dan Tanda Tangan Elektronik tersertifikasi (BSrE).
-- Pengelolaan konten (profil, berita, BUMDes, UMKM) melalui backend; konten masih tersimpan di `lib/data.ts`.
+- Pengelolaan konten profil, BUMDes, dan UMKM melalui backend. Berita memiliki API CMS; halaman publik membaca berita terbit di browser tanpa build ulang (C4, 2 November 2026). Mode tanpa API tetap memakai contoh `lib/data.ts` sesuai `NEXT_PUBLIC_SHOW_SAMPLE_CONTENT`. Panel C3 sudah di-commit pada `1b2e6dd`; lihat `docs/progres-2026-11-02-c3.md` untuk verifikasi dan batasnya.
 - Pemulihan kode akses / OTP.
 
 Urutan pengembangannya ada di `ROADMAP.md`.
