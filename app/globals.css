@@ -1137,10 +1137,23 @@ p {
 }
 .home-profile .home-bottom-label {
   color: var(--gold-soft);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+}
+.home-profile #profile-title {
+  max-width: 16ch;
+  font-size: clamp(2rem, 3.2vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
 }
 .home-profile .home-profile-summary {
   margin-top: 20px;
+  max-width: 42rem;
   color: var(--white);
+  font-size: clamp(1rem, 1.15vw, 1.125rem);
+  line-height: 1.7;
+  letter-spacing: -0.005em;
 }
 .home-profile-stats {
   display: grid;
@@ -1155,14 +1168,25 @@ p {
 }
 .home-profile-stats dt {
   color: var(--on-dark-muted);
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
 }
 .home-profile-stats dd {
   order: -1;
   margin: 0;
-  font-size: 26px;
-  font-weight: 800;
-  line-height: 1.2;
+  font-size: clamp(1.75rem, 3vw, 2.375rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+.home-profile .home-profile-source {
+  margin-top: 16px;
+  color: var(--on-dark-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  letter-spacing: 0;
 }
 .home-profile-actions {
   display: flex;
@@ -1310,9 +1334,6 @@ p {
   .home-contact-card {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 48px;
-  }
-  .home-profile-stats dd {
-    font-size: 38px;
   }
   .home-news,
   .home-economy {
@@ -1769,6 +1790,125 @@ p {
 }
 .info-mission-list p {
   margin-top: 12px;
+}
+/* Profil Desa: tiga kartu bento khusus tanpa mengubah halaman informasi lain. */
+.profile-bento {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.35fr);
+  grid-template-rows: auto auto;
+  gap: clamp(14px, 2vw, 24px);
+}
+.profile-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 18px;
+  padding: clamp(20px, 2.3vw, 30px);
+  border-radius: 18px;
+  box-shadow: 0 5px 18px color-mix(in srgb, var(--ink) 5%, transparent);
+  animation: profile-rise 600ms ease both;
+}
+.profile-growth { grid-column: 1; grid-row: 1; }
+.profile-region { grid-column: 2; grid-row: 1 / span 2; }
+.profile-institutions { grid-column: 1; grid-row: 2; }
+.profile-region { gap: 0; }
+.profile-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 0;
+  font-size: clamp(20px, 2vw, 24px);
+  color: var(--forest);
+}
+.profile-card h2 svg { width: 22px; height: 22px; flex: 0 0 auto; color: var(--forest); }
+.profile-card p { max-width: none; margin: 0; font-size: 16px; line-height: 1.6; }
+.profile-card .profile-lead { color: var(--ink); font-size: clamp(18px, 2vw, 21px); line-height: 1.55; }
+.profile-themes, .profile-chips { display: flex; flex-wrap: wrap; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.profile-themes li, .profile-chip-button {
+  display: inline-flex; align-items: center; gap: 8px; max-width: 100%;
+  padding: 14px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--sage); color: var(--ink); font-size: 14px; line-height: 1.4;
+}
+.profile-chip-wrap { min-width: 0; max-width: 100%; }
+.profile-institutions .profile-chips { gap: 7px 8px; }
+.profile-institutions .profile-chip-button { padding: 8px 12px; }
+.profile-chip-button {
+  justify-content: flex-start; text-align: left; cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+.profile-chip-button:hover, .profile-chip-button[aria-expanded="true"] {
+  border-color: var(--forest); background: var(--forest); color: var(--white);
+}
+.profile-chip-button:hover { transform: translateY(-1px); }
+.profile-chip-button:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+.profile-institution-tooltip {
+  position: fixed; z-index: 1000; display: flex; flex-direction: column; gap: 6px;
+  box-sizing: border-box; max-width: calc(100vw - 24px); padding: 14px;
+  border: 1px solid var(--line); border-radius: 12px;
+  background: var(--sage); color: var(--ink);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 14%, transparent);
+  opacity: 0; visibility: hidden; pointer-events: none; transform: scale(.97);
+  transition: opacity 150ms ease, transform 150ms ease, visibility 0s linear 150ms;
+  transform-origin: top center;
+}
+.profile-institution-tooltip[data-side="above"] { transform-origin: bottom center; }
+.profile-institution-tooltip.is-open { opacity: 1; visibility: visible; pointer-events: auto; transform: scale(1); animation: profile-tooltip-enter 140ms ease both; }
+.profile-institution-tooltip.is-open { transition-delay: 0s; }
+.profile-institution-tooltip strong { color: var(--forest); font-size: 14px; font-weight: 700; line-height: 1.4; }
+.profile-institution-tooltip span { color: var(--ink); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+@keyframes profile-tooltip-enter { from { opacity: 0; transform: scale(.97) translateY(3px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+.profile-themes svg { width: 17px; height: 17px; color: var(--forest); }
+.profile-region-location { margin: 8px 0 24px; }
+.profile-region-location h3 { color: var(--muted); }
+.profile-location { max-width: none; margin: 0; color: var(--muted); font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
+.profile-map-placeholder { position: relative; aspect-ratio: 16 / 9; min-height: 160px; margin-bottom: 16px; overflow: hidden; border-radius: 12px; background: var(--sage); }
+.profile-map-contours { position: absolute; inset: 0; width: 100%; height: 100%; color: color-mix(in srgb, var(--forest) 29%, var(--sage)); }
+.profile-map-contours path { fill: none; stroke: currentColor; stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.profile-map-caption { position: absolute; bottom: 12px; left: 14px; z-index: 1; color: var(--muted); font-size: 13px; line-height: 1.4; }
+.profile-key-figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; padding: 0; }
+.profile-key-figures > div { display: flex; min-width: 0; align-items: baseline; justify-content: center; gap: 8px; text-align: center; }
+.profile-key-figures > div + div { border-left: 1px solid var(--line); }
+.profile-key-figures dt { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.profile-key-figures dd { order: -1; margin: 0; color: var(--forest); font-size: clamp(2rem, 4vw, 2.75rem); font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.profile-region p.profile-hamlet-names { width: 33.333%; margin: 0 0 16px; color: var(--ink); font-size: 15px; font-weight: 400; line-height: 1.5; text-align: center; }
+.profile-area-row { margin: 0 0 30px; }
+.profile-area-row > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.profile-area-row dt, .profile-area-row dd { margin: 0; font-size: 15px; line-height: 1.5; }
+.profile-area-row dt { color: var(--ink); font-weight: 500; }
+.profile-area-row dd { padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--sage); color: var(--forest); font-size: 14px; font-weight: 600; }
+.profile-region-bounds { display: grid; gap: 8px; margin: 30px 0 24px; }
+.profile-region-bounds h3 { margin: 0; color: var(--forest); font-size: 16px; font-weight: 600; line-height: 1.4; }
+.profile-boundaries { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 0; margin: 0; }
+.profile-boundaries > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: baseline; gap: 16px; min-width: 0; padding: 13px 0; border-bottom: 1px solid var(--line); }
+.profile-boundaries > div:last-child { border-bottom: 0; }
+.profile-boundaries dt { color: var(--muted); font-size: 14px; line-height: 1.5; }
+.profile-boundaries dd { margin: 0; color: var(--forest); font-size: 16px; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
+.profile-source { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.5; }
+.profile-region-source { font-size: 13px; }
+.profile-card:focus-within { outline: 3px solid var(--forest); outline-offset: 3px; }
+@keyframes profile-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@supports (animation-timeline: view()) {
+  .profile-card { animation-timeline: view(); animation-range: entry 0% entry 28%; }
+}
+@media (min-width: 851px) {
+  .profile-bento { grid-template-rows: minmax(250px, auto) minmax(250px, auto); }
+}
+@media (max-width: 850px) {
+  .profile-bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .profile-growth { grid-column: 1; grid-row: 1; }
+  .profile-institutions { grid-column: 2; grid-row: 1; }
+  .profile-region { grid-column: 1 / -1; grid-row: 2; }
+}
+@media (max-width: 600px) {
+  .profile-bento { grid-template-columns: minmax(0, 1fr); }
+  .profile-growth, .profile-region, .profile-institutions { grid-column: 1; grid-row: auto; }
+  .profile-card { gap: 15px; padding: 20px; }
+  .profile-map-placeholder { aspect-ratio: 4 / 3; min-height: 0; }
+  .profile-region { gap: 0; }
+  .profile-key-figures dd { font-size: clamp(2rem, 8vw, 2.5rem); }
+}
+@media (prefers-reduced-motion: reduce) { .profile-card { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .profile-chip-button, .profile-institution-tooltip { transition: none; animation: none; }
 }
 /* BUMDes: memakai pola .info-page; tata letak dua kolom khusus halaman. */
 .bumdes-layout {
