@@ -4,13 +4,12 @@ namespace App\Http\Controllers\Api;
 use App\Domain\PostCategory;
 use App\Http\Controllers\Controller;
 use App\Models\Post;
+use App\Support\ImageProcessor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 /** Berita: baca publik + kelola admin/staff. Isi disimpan sebagai teks biasa, tidak pernah diproses sebagai HTML. */
 class PostController extends Controller {
@@ -121,46 +120,13 @@ class PostController extends Controller {
     public function uploadCover(Request $request, int $id): JsonResponse {
         if (! $request->user()->canManageContent()) return $this->forbidden();
         Post::findOrFail($id);
-        $request->validate(['file'=>[
-            'bail', 'required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:3072',
-            'dimensions:min_width=600,min_height=400,max_width=6000,max_height=6000',
-        ]]);
-        abort_unless(extension_loaded('gd'), 503, 'Pengolah foto belum tersedia. Hubungi administrator.');
-        $bytes = file_get_contents($request->file('file')->getRealPath());
-        abort_if($bytes === false, 500, 'Foto gagal dibaca.');
-        $source = @imagecreatefromstring($bytes);
-        if ($source === false) throw ValidationException::withMessages(['file'=>'Foto tidak dapat dibaca. Pilih JPG, PNG, atau WebP yang valid.']);
-        $webp = function_exists('imagewebp') && (imagetypes() & IMG_WEBP) !== 0;
-        $width = min(1600, imagesx($source));
-        $height = max(1, (int) round(imagesy($source) * $width / imagesx($source)));
-        $image = imagecreatetruecolor($width, $height);
-        $stream = tmpfile();
+        $request->validate(['file'=>['bail', 'required', 'file']]);
+        $path = ImageProcessor::store($request->file('file'), 'posts', 3072, 1600);
         try {
-            abort_if($image === false || $stream === false, 500, 'Foto gagal diproses.');
-            // Kanvas baru hanya berisi piksel: EXIF/GPS dan metadata lain tidak disalin.
-            if ($webp) {
-                imagealphablending($image, false);
-                imagesavealpha($image, true);
-                imagefill($image, 0, 0, imagecolorallocatealpha($image, 0, 0, 0, 127));
-            } else {
-                imagefill($image, 0, 0, imagecolorallocate($image, 255, 255, 255));
-            }
-            abort_unless(imagecopyresampled($image, $source, 0, 0, 0, 0, $width, $height, imagesx($source), imagesy($source)), 500, 'Foto gagal diperkecil.');
-            $encoded = $webp ? imagewebp($image, $stream, 80) : imagejpeg($image, $stream, 82);
-            abort_unless($encoded && ftell($stream) > 0, 500, 'Foto gagal disimpan.');
-            rewind($stream);
-            $path = 'posts/'.Str::uuid().($webp ? '.webp' : '.jpg');
-            try {
-                abort_unless(Storage::disk('public')->put($path, $stream), 500, 'Foto gagal disimpan.');
-                $post = $this->changeCover($request, $id, $path, $oldPath);
-            } catch (\Throwable $e) {
-                Storage::disk('public')->delete($path);
-                throw $e;
-            }
-        } finally {
-            imagedestroy($source);
-            if ($image !== false) imagedestroy($image);
-            if (is_resource($stream)) fclose($stream);
+            $post = $this->changeCover($request, $id, $path, $oldPath);
+        } catch (\Throwable $e) {
+            Storage::disk('public')->delete($path);
+            throw $e;
         }
         // Hapus hanya setelah commit; kegagalan DB tidak merusak sampul sebelumnya.
         $this->removeCoverFile($oldPath);

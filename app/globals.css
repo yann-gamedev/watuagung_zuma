@@ -1303,16 +1303,39 @@ p {
   margin-top: 24px;
 }
 .home-contact-map {
-  display: grid;
-  place-items: center;
-  min-height: 240px;
-  padding: 24px;
-  border: 1px dashed var(--muted);
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 0;
   border-radius: 14px;
-  background: var(--placeholder);
-  color: var(--muted);
-  font-size: 16px;
-  text-align: center;
+}
+.contact-number {
+  margin-top: 16px;
+}
+.contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.contact-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  min-width: 48px;
+  padding: 8px 16px;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  color: var(--leaf);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.footer-contact .contact-actions a {
+  color: var(--on-dark-muted);
+}
+.task-office-hours a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
 }
 @media (min-width: 901px) {
   .container.home-bottom-container {
@@ -1324,14 +1347,15 @@ p {
   .home-bottom-label {
     font-size: 16px;
   }
-  .home-bottom-button {
+  .home-bottom-button,
+  .contact-actions a {
     min-height: 52px;
   }
   .home-profile {
     padding-block: 64px;
   }
   .home-profile-grid,
-  .home-contact-card {
+  .home-contact-card.has-map {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 48px;
   }
@@ -1516,6 +1540,9 @@ p {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.12em;
+}
+.footer-contact p {
+  color: var(--on-dark-muted);
 }
 .footer-contact {
   color: var(--on-dark-muted);

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { ArrowRight, CheckCircle2, ClipboardCheck, Clock3, FileCheck2, FileClock, CircleX, CircleAlert, UserCheck, ShieldCheck } from "lucide-react";
-import { pages } from "@/lib/data";
+import { contact } from "@/lib/data";
+import { ContactNumber } from "@/components/office-contact";
 import { NewsCover } from "@/components/news-cover";
 import { newsHref, type NewsItem } from "@/services/posts";
 import type { ServiceCode, Status } from "@/types/pelayanan";
@@ -26,9 +27,11 @@ export function Footer() {
               WATUAGUNG<small>PEMERINTAH DESA</small>
             </span>
           </Link>
-          <p className="footer-contact">
-            {pages.kontak.blocks[0].text} · [TELEPON/WA] · [EMAIL]
-          </p>
+          <div className="footer-contact">
+            <p>{contact.address}</p>
+            <p>{contact.hours}</p>
+            <ContactNumber />
+          </div>
         </div>
         <nav className="footer-links" aria-label="Layanan di footer">
           <h3>Layanan</h3>

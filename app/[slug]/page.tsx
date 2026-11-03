@@ -4,6 +4,7 @@ import { ExternalLink, Sprout, MapPin, Landmark, Wheat, House, HandHeart } from 
 import { complaintFormUrl, complaintNote, externalLinkProps } from "@/lib/complaint";
 import { pages, showSampleContent } from "@/lib/data";
 import { PublicShell, PageHeading } from "@/components/site";
+import { OfficeContact } from "@/components/office-contact";
 import { ProfileInstitutionChips } from "@/components/profile-institution-chips";
 
 export function generateStaticParams() {
@@ -35,7 +36,7 @@ export default async function Page({
       <section className={`section container info-page${slug === "visi-misi" ? " visi-misi-page" : ""}`}>
         {/* Tanpa konten contoh, agenda/pengumuman hanya berisi keadaan kosong resmi. */}
         {![
-          "profil", "struktur-pemerintahan", "sejarah", "visi-misi", "potensi", "transparansi",
+          "profil", "struktur-pemerintahan", "sejarah", "visi-misi", "potensi", "transparansi", "kontak",
           ...(showSampleContent ? [] : ["agenda", "pengumuman"]),
         ].includes(slug) && (
           <div className="notice">
@@ -79,16 +80,7 @@ export default async function Page({
           </div>
         ) : slug === "kontak" ? (
           <div className="info-contact">
-            <article className="home-contact-card">
-              <div>
-                <h2>Kantor Desa Watuagung</h2>
-                <p>{page.blocks[0].text}</p>
-                <p>Buka [HARI &amp; JAM LAYANAN]</p>
-                <p>Telepon: [NOMOR TELEPON KANTOR DESA]</p>
-                <p>Email: [EMAIL KANTOR DESA]</p>
-              </div>
-              <div className="home-contact-map">[PETA LOKASI KANTOR DESA]</div>
-            </article>
+            <OfficeContact />
             {complaintFormUrl ? (
               <article className="info-complaint">
                 <h2>Pengaduan</h2>

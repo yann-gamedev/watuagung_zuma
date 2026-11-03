@@ -91,6 +91,35 @@ Detail `/berita/baca/?slug=...` membaca query dalam `Suspense`, memperbarui `doc
 - **URL media**: `MEDIA_URL` URL dasar absolut disk public, tanpa `/posts`; kosong/tidak diisi memakai `${APP_URL}/storage` Laravel (`php artisan storage:link` untuk lokal). Produksi `MEDIA_URL=https://[DOMAIN]/media`, sesuai `APP_URL`; hasil `/media/posts/<uuid>.webp` atau `.jpg`. Cache ulang konfigurasi setelah mengganti env. Jangan memakai `/media/posts` sebagai MEDIA_URL karena path tersimpan sudah diawali `posts/`.
 - **Siklus file**: transaksi mengunci berita dan menyimpan path + audit; kegagalan DB membersihkan file baru, mempertahankan file lama. Penggantian/hapus sampul menghapus file lama setelah commit. Gagal hapus file lama → 500 dengan pesan sampul sudah diperbarui; administrator perlu membersihkan sisa. Soft delete berita tidak menghapus sampul, agar restore lewat database tetap utuh. File publik tetap dapat dibaca bila URL diketahui, termasuk draf/terhapus; bukan tempat dokumen pribadi. Retensi permohonan F10 tidak menyentuh berita; pembersihan berkala terpisah belum dibuat.
 
+### Bagian situs (backend R3, 3 November 2026)
+
+Tipe: `types/site.ts`, diekspor ulang lewat `types/pelayanan.ts`. Frontend/panel belum membaca endpoint ini; static export dan cadangan `lib/data.ts` tidak berubah. Sesuai koreksi pengguna, `profileDetails` tidak termasuk kontrak sesi ini; dikelola pekerjaan frontend terpisah. **Visi-misi tetap statis** di `lib/data.ts`, berubah saat pergantian Kepala Desa, bukan key CMS.
+
+| Metode | Path relatif `/api/v1` | Kontrak |
+|---|---|---|
+| GET | `/site/{key}` | Publik, 60/menit per IP; 200 `{ key, data, updated_at }`, `public, max-age=60`; belum diisi/key tidak dikenal 404 |
+| GET | `/staff/site/{key}` | Staff/admin aktif + ability `applications:manage`; objek yang sama, belum diisi 404 |
+| PUT | `/staff/site/{key}` | Body `{ "data": { ... } }`; ganti seluruh objek (bukan merge), buat bila belum ada; 200 objek terbaru |
+| POST | `/staff/site/{key}/image` | Scaffold multipart `file`, 10/menit per akun; semua key saat ini menolak 422 `errors.file`, tanpa menyimpan file; belum ada upload aktif |
+
+Semua endpoint petugas memeriksa `User::canManageContent()` di server. Tanpa token 401; peran lain (termasuk Kepala Desa/RT/RW), akun nonaktif, atau ability salah 403 **sebelum** pencarian key. Key tidak dikenal 404 setelah otorisasi. Respons petugas, termasuk kegagalan, `private, no-store`. CORS menambah PUT; temuan DELETE berita lama tetap belum diperbaiki.
+
+Validasi terpusat di `App\\Domain\\SiteSectionRules`, key di enum `App\\Domain\\SiteSection`:
+
+- `profile` dan `history`: `intro` wajib teks 1–2.000 karakter; `blocks` wajib list 1–20 baris. Tiap baris hanya `title` (1–160) dan `text` (1–10.000). Judul halaman/eyebrow tetap milik frontend.
+- `contact`: seluruh enam field wajib hadir: `address` (1–1.000), `hours` (1–200), `contactName` (1–160); `phone` (maks. 15), `mapsEmbedUrl`/`mapsLinkUrl` (maks. 2.048) boleh `""` atau `[PLACEHOLDER]`. Nomor selain itu wajib digit `62` diikuti 1–13 digit. Nomor kantor publik berizin, **bukan** telepon warga.
+- Embed wajib URL valid berawalan `https://www.google.com/maps/embed?`; link wajib `https://maps.app.goo.gl/` atau `https://www.google.com/maps/`. Tidak menerima HTML iframe, domain tiruan, atau protokol lain.
+- `statistics`, `transparency`, `structure`, `videos`: key dikenal tetapi seluruh PUT ditolak 422 `errors.data`, termasuk objek kosong; skema menyusul R5–R8.
+- Field asing di semua tingkat ditolak, bukan diabaikan. Semua teks di-trim; karakter kontrol ditolak sebelum trim. **Pengecualian disetujui:** CR/LF boleh hanya di `blocks.*.text` demi isi multiline saat ini; tab/NUL/DEL/kontrol lain ditolak. HTML disimpan sebagai teks biasa; React wajib merender teks, jangan `dangerouslySetInnerHTML`.
+
+Tabel `site_sections`: `key` primary unik, `data` JSON, `updated_by` FK users nullable/nullOnDelete, timestamps. Data publik saja; jangan simpan identitas warga, NIK/KK, token atau dokumen pribadi. Cast terenkripsi pelayanan tidak berubah; tidak ada endpoint daftar baru yang mengirim data warga.
+
+PUT menyimpan objek dan audit `site.updated` (`subject_type=site_section`, `subject_id=key`) dalam satu transaksi. Audit tanpa isi; gagal audit membatalkan penyimpanan. Native upsert menjaga satu baris saat penulisan pertama bersamaan; objek terakhir menang, belum ada versi/konflik edit. `audit_logs.subject_id` diperluas dari integer ke string 64 agar menampung key; ID audit lama menjadi string, bukan perubahan respons pelayanan. Rollback mempertahankan tipe string dan audit historis.
+
+Jalankan migration lalu `php artisan site:import-defaults` dari `backend/`. Command menyalin `profile`, `contact`, `history` dari snapshot `lib/data.ts` pada `bb6861e`, ditulis ulang di `database/seeders/SiteSectionDefaults.php`; tidak membaca/mengubah TypeScript saat runtime. Hanya key belum ada diisi, bahkan baris dengan data kosong tetap dipertahankan. Idempoten, tidak otomatis dipanggil seeder/migration; seluruh impor + audit sistem (`user_id=null`) satu transaksi. Output hanya jumlah, bukan isi. Placeholder dan sumber konten dipertahankan; bukan pengesahan data baru.
+
+Pemroses `App\\Support\\ImageProcessor` dipakai berita, parameter ukuran/lebar maks; GD encode ulang, batas/format/kualitas/siklus sampul berita tetap C2. Aktivasi gambar site nanti harus menambah izin key, skema path, tes upload sukses dan kebijakan file sisa; respons scaffold `{ path }` belum bisa dicapai saat semua key menolak gambar.
+
 ### Login username
 
 Frontend mengirim `{ username, password }`. Username unik, 1–64 karakter, diawali huruf kecil/angka, selanjutnya huruf kecil, angka, `_`, atau `-`. Spasi luar dibuang; huruf besar ditolak. Klien lama masih dapat mengirim `{ email, password }`, tetapi kedua identitas tidak boleh dikirim bersama. Identitas tidak dikenal, kata sandi salah, peran di luar lima peran panel, ketua RT/RW tanpa wilayah lengkap, serta akun RT/RW saat fitur mati menghasilkan pesan 401 generik yang sama. Token RT/RW lama yang belum dicabut tetap ditolak 403 pada endpoint panel saat fitur mati. Validasi gagal menghasilkan 422; rate limit tetap 5/menit.
@@ -195,6 +224,18 @@ Build menghasilkan static export pada `out/`; hosting harus mendukung direktori 
 ESLint mengecualikan dependensi Composer dan output/cache generasi secara spesifik; kode aplikasi tetap diperiksa. Pengujian PHP terpisah dijelaskan pada README backend.
 
 Uji menggunakan data fiktif: formulir kosong, NIK/KK tidak valid, tanggal masa depan, SKU tanpa informasi usaha, pengajuan valid, salin receipt, kode akses salah, perubahan status, filter dan pagination, serta logout. Jangan mengklaim alur API lulus hanya berdasarkan build frontend.
+
+## Kontak kantor dan peta
+
+Satu objek `contact` di `lib/data.ts` menjadi sumber beranda, `/kontak`, footer, menu, baris jam layanan, dan alamat kebijakan privasi. R4 nanti memindahkan pengelolaannya ke panel; saat ini tanpa env dan perlu build ulang static export setelah perubahan.
+
+- Alamat resmi dipertahankan. Jam: **Hari kerja, 08.00–13.00 WIB**; nama hari menunggu konfirmasi. Kontak resmi berizin: **Pelayanan Desa (Bu Ita)**.
+- Tech Lead mengisi `phone`, `mapsEmbedUrl`, `mapsLinkUrl` yang masih `[PLACEHOLDER]`. Jangan mengisi nomor rekaan. `getContactLinks()` hanya memakai nomor digit berawalan `62`, embed berawalan `https://www.google.com/maps/embed?`, dan tautan berawalan `https://maps.app.goo.gl/` atau `https://www.google.com/maps/`. Nilai lain dianggap belum diisi.
+- Nomor kosong: **Nomor kontak segera diumumkan.** Nomor valid: `tel:` dan tombol **Chat WhatsApp** (`https://wa.me/<nomor>`), area sentuh ≥48px. Email kosong tidak ditampilkan.
+- Embed: Google Maps → cari Balai Desa → Bagikan → Sematkan peta → salin isi `src`. Link: Bagikan → Salin link. Komentar pengisian juga ada di objek kontak.
+- Iframe memakai title **Peta lokasi Balai Desa Watuagung**, `loading="lazy"`, `referrerpolicy="no-referrer-when-downgrade"`, rasio responsif 4:3. Tanpa embed tidak ada kotak placeholder; alamat tetap tampil. Tautan **Buka di Google Maps** dibuka di tab baru bila valid, independen dari embed.
+- Rating tidak diambil terpisah: kartu tempat di embed Google sudah menampilkannya. Tidak ada API rating atau dependensi Maps tambahan. CSP hosting perlu `frame-src https://www.google.com` (lihat `docs/deploy-plan.md`).
+- Tes regresi: `node scripts/test-contact.mjs`; memakai nilai fiktif di memori, tidak mengganti kontak produksi.
 
 ## Konten publik dan produksi
 

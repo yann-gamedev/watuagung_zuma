@@ -91,7 +91,7 @@ class StaffApplicationsTest extends TestCase
         $this->assertEqualsCanonicalizing(['id', 'user_id', 'action', 'subject_type', 'subject_id', 'created_at'], array_keys($audit));
         $this->assertSame([
             'id' => $audit['id'], 'user_id' => $user->id, 'action' => 'application.viewed',
-            'subject_type' => 'application', 'subject_id' => $application->id, 'created_at' => now()->format('Y-m-d H:i:s'),
+            'subject_type' => 'application', 'subject_id' => (string) $application->id, 'created_at' => now()->format('Y-m-d H:i:s'),
         ], $audit);
         foreach (['nik', 'no_kk', 'telepon', 'alamat', 'alamat_usaha'] as $field) {
             $this->assertNotSame($expected[$field], DB::table('applications')->where('id', $application->id)->value($field));

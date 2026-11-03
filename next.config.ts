@@ -5,7 +5,8 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   images: { unoptimized: true },
   experimental: {
-    // Vercel pernah menyajikan CSS basi dari cache Turbopack; build demo dibuat bersih.
+    // CSS basi pernah muncul di Vercel dan dev setelah merge; kompilasi ulang tanpa cache persisten.
+    turbopackFileSystemCacheForDev: false,
     turbopackFileSystemCacheForBuild: false,
   },
 };

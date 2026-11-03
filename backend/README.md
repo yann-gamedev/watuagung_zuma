@@ -210,6 +210,27 @@ Konfigurasi `MEDIA_URL` adalah **URL dasar absolut**, tanpa `/posts`: bawaan kos
 
 File baru disimpan sebelum transaksi penggantian dan audit `post.updated`; bila transaksi gagal, file baru dibersihkan dan sampul lama tetap. Baris dikunci saat penggantian; file lama dihapus setelah commit. Gagal hapus file lama → 500 dengan pesan bahwa sampul sudah diperbarui; perlu pembersihan administrator. Soft delete berita **tidak** menghapus file agar bisa dipulihkan. File sampul bersifat publik, termasuk sampul draf/berita terhapus bila URL diketahui; jangan unggah dokumen pribadi. Pembersihan berkala file sisa belum dibuat dan tidak termasuk retensi permohonan F10. Backup harus mencakup folder media.
 
+### Bagian situs — API konten R3 (3 November 2026)
+
+Satu tabel `site_sections` (`key` primary unik, `data` JSON, `updated_by` nullable FK users/nullOnDelete, timestamps). Enum `App\Domain\SiteSection` membatasi `profile`, `contact`, `history`, `statistics`, `transparency`, `structure`, `videos`. Visi-misi **tidak** masuk CMS: tetap statis di `lib/data.ts` sampai pergantian Kepala Desa. Koreksi pengguna: `profileDetails` dilewati karena ditangani frontend terpisah, tidak diterima PUT sesi ini.
+
+- Publik `GET /api/v1/site/{key}`: 60/menit per IP, 200 `{ key, data, updated_at }`, `Cache-Control: public, max-age=60`; key belum diisi/tidak dikenal 404. Tidak mengirim ID pengguna atau field internal.
+- Petugas `GET`/`PUT /api/v1/staff/site/{key}`: `User::canManageContent()` (staff/admin aktif), ability `applications:manage`; 401 tanpa token, 403 peran/ability/akun salah sebelum key diperiksa, 404 key tak dikenal/belum diisi saat GET. PUT `{ data: {...} }` membuat atau mengganti **seluruh** objek, 200 format sama; tanpa merge/draf/versi. Semua respons petugas termasuk gagal `private, no-store`. CORS PUT ditambahkan; DELETE berita lama masih belum diizinkan.
+- Petugas `POST /api/v1/staff/site/{key}/image`: multipart `file`, 10/menit per akun. Scaffold sudah terhubung ke `ImageProcessor`, tetapi `allowsImages()` false untuk **semua** key; terotorisasi mendapat 422 `errors.file`, tidak menyimpan file. Kontrak sukses mendatang `{ path }`; aktivasi dan tes sukses menunggu R7.
+- `SiteSectionRules` satu sumber validasi: `profile`/`history` hanya `intro` (1–2.000 karakter) dan `blocks` (list 1–20), tiap baris `title` (1–160), `text` (1–10.000). `contact` tepat enam field dari objek `contact` frontend: `address` (1–1.000), `hours` (1–200), `contactName` (1–160), `phone` (maks.15), `mapsEmbedUrl`/`mapsLinkUrl` (maks.2.048). Tiga field terakhir wajib hadir tetapi boleh string kosong atau `[PLACEHOLDER]`. Nomor wajib `62` + 1–13 digit; URL wajib valid dan awalan Google sesuai [kontrak integrasi](../docs/integrasi.md#bagian-situs-backend-r3-3-november-2026).
+- Empat key lainnya menolak **semua** payload PUT (422 `errors.data`), termasuk kosong, sampai skema R5–R8 tersedia. Unknown fields ditolak di tiap tingkat. Semua teks trim; kontrol diperiksa sebelum trim. Pengecualian disetujui: CR/LF hanya di `blocks.*.text`; tab/NUL/DEL tetap ditolak. HTML teks biasa, renderer React wajib aman, bukan HTML mentah.
+- PUT dan audit `site.updated` (`subject_type=site_section`, `subject_id=key`) satu transaksi; gagal audit membatalkan data. Audit tidak berisi konten. Native upsert menangani perebutan baris pertama; edit terakhir menang. Migration mengubah `audit_logs.subject_id` dari integer ke string 64; ID lama menjadi string. Rollback menjatuhkan tabel situs saja, mempertahankan tipe string dan audit historis agar key tidak hilang.
+
+```powershell
+php artisan migrate
+php artisan site:import-defaults
+php artisan test --filter=SiteSectionsApiTest
+```
+
+Command opt-in mengisi hanya key `profile`, `contact`, `history` yang **belum ada**. `SiteSectionDefaults` menulis ulang snapshot `lib/data.ts` pada `bb6861e`, sumber dicatat; tidak membaca TypeScript saat runtime. Baris lama, termasuk data kosong, tidak ditimpa; aman diulang. Seluruh impor + audit sistem `user_id=null` satu transaksi; output hanya jumlah. Tidak dipanggil otomatis oleh migration/DatabaseSeeder. Belum dijalankan pada database pengembangan lewat sesi ini; pengujian hanya database tes. Kontak adalah **kontak kantor publik berizin**, bukan telepon/alamat warga. Data warga tetap terenkripsi di modul pelayanan; jangan simpan NIK/KK/dokumen privat di situs publik.
+
+Tipe baru `types/site.ts`, re-export `types/pelayanan.ts`; dokumentasi lengkap di `docs/integrasi.md`. Tidak mengubah halaman publik/panel, tidak mengaktifkan pembacaan API frontend. Static export tetap. `ImageProcessor::store()` mengekstrak pipeline GD sampul tanpa mengubah batas/format/kualitas atau siklus file C2. Pemilik konten/hosting produksi K2/K4 belum diputuskan.
+
 ### Kontrak manajemen akun
 
 - `GET /staff/users` hanya untuk `admin`; peran lain dan tamu mendapat 403/401. Tidak ada endpoint hapus akun: gunakan `is_active=false` agar riwayat status tetap merujuk ke akun itu.

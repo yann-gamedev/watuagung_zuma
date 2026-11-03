@@ -118,7 +118,9 @@ Identitas teks "WATUAGUNG" memakai berat 800 dan letter-spacing `.08em`. Judul l
 - Layanan Warga: Ajukan Surat, Cek Status Surat, Pengaduan *(Segera hadir)*
 - Profil Desa: Sejarah, Visi & Misi, Perangkat Desa, Peta Wilayah
 - Ekonomi & Info: BUMDes, UMKM, Berita & Agenda, Transparansi Anggaran
-- Kotak kontak: alamat, jam layanan, tombol **Lihat Kontak Kantor** → `/kontak`. Tidak ada WhatsApp kantor desa; jangan mengarang nomor.
+- Kotak kontak menu: alamat, jam layanan, tombol **Lihat Kontak Kantor** → `/kontak`, dari objek `contact` di `lib/data.ts`.
+- **Keputusan 2 November 2026:** kontak resmi pelayanan Balai Desa berlabel **Pelayanan Desa (Bu Ita)**, sudah dengan izin. Beranda, `/kontak`, dan footer memakai sumber yang sama; nomor belum diisi Tech Lead berarti tampil **Nomor kontak segera diumumkan.** Bila valid, tampil tautan telepon dan **Chat WhatsApp**, area sentuh ≥48px. Jangan mengarang nomor.
+- Kartu kontak beranda dan `/kontak` mempertahankan token/pola yang ada; peta valid berupa iframe responsif rasio 4:3 di kolom kedua desktop, bertumpuk di ponsel. Tanpa embed, kartu satu kolom tanpa kotak placeholder. Tautan peta valid memakai tombol **Buka di Google Maps** (tab baru). Email yang belum tersedia tidak ditampilkan.
 - **Perangkat Desa** → `/struktur-pemerintahan`.
 - **Pengaduan** berbadge **Segera hadir** → `/kontak`, bukan formulir palsu.
 
@@ -130,7 +132,7 @@ Kartu putih radius 18px, menumpuk hero sebanyak −96px (desktop) / −88px (pon
 - Cek Status Surat (latar `--sage`)
 - Sampaikan Pengaduan (latar `--sand`, ikon kotak `--earth`, badge "Segera hadir" selama fitur belum ada)
 
-Di bawah panel tampil satu baris jam layanan kantor dan tautan kontak kantor; data resmi yang belum tersedia tetap placeholder, tanpa nomor WhatsApp rekaan.
+Di bawah panel tampil jam **Hari kerja, 08.00–13.00 WIB** dan tautan kontak kantor dari objek `contact`; nama hari menunggu konfirmasi. Nilai kontak `[PLACEHOLDER]` tidak dirender ke halaman.
 
 ### Daftar layanan surat
 

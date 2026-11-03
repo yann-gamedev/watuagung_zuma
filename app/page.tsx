@@ -4,7 +4,7 @@ import { ServiceList } from "@/components/service-list";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { PublicShell } from "@/components/site";
-import { pages } from "@/lib/data";
+import { OfficeContact } from "@/components/office-contact";
 import { PublicNews } from "@/features/news/public-news";
 export default function Home() {
   return (
@@ -103,17 +103,10 @@ export default function Home() {
         </article>
       </section>
       <section className="container home-bottom-container home-bottom home-contact" aria-labelledby="contact-title">
-        <div className="home-contact-card">
-          <div>
-            <h2 id="contact-title">Kantor Desa Watuagung</h2>
-            <p>{pages.kontak.blocks[0].text}</p>
-            <p>Buka [HARI &amp; JAM LAYANAN]</p>
-            <Link href="/kontak" className="home-bottom-button">
-              Lihat Kontak Kantor
-            </Link>
-          </div>
-          <div className="home-contact-map">[PETA LOKASI KANTOR DESA]</div>
-        </div>
+        <OfficeContact titleId="contact-title" />
+        <Link href="/kontak" className="home-bottom-button mt-6">
+          Lihat Kontak Kantor
+        </Link>
       </section>
     </PublicShell>
   );
