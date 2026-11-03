@@ -145,6 +145,19 @@ export const pages: Record<
     eyebrow: string;
     intro: string;
     blocks: { title: string; text: string }[];
+    visionMission?: {
+      vision: { text: string; source: string };
+      missions: string[];
+      theme: { text: string; source: string };
+    };
+    profileDetails?: {
+      themes: string[];
+      stats: { value: string; label: string; detail?: string }[];
+      location: string;
+      boundaries: { direction: string; place: string }[];
+      institutions: { name: string; description: string }[];
+      source: string;
+    };
   }
 > = {
   profil: {
@@ -152,6 +165,34 @@ export const pages: Record<
     eyebrow: "PROFIL DESA",
     intro:
       "Rumah bagi semangat gotong royong, alam yang lestari, dan masyarakat yang terus bertumbuh.",
+    profileDetails: {
+      themes: ["Pertanian", "Usaha rumahan", "Kegiatan sosial"],
+      stats: [
+        { value: "3", label: "Dusun", detail: "Watuagung, Talang, Sekar" },
+        { value: "10", label: "RW" },
+        { value: "31", label: "RT" },
+      ],
+      location: "Kec. Prigen, Kab. Pasuruan, Prov. Jawa Timur",
+      boundaries: [
+        { direction: "Utara", place: "Desa Gunting (Kec. Prigen)" },
+        { direction: "Timur", place: "Desa Karangrejo (Kec. Purwosari)" },
+        { direction: "Selatan", place: "Desa Jatiarjo (Kec. Prigen)" },
+        { direction: "Barat", place: "Desa Dayurejo (Kec. Prigen)" },
+      ],
+      institutions: [
+        { name: "Pemerintah Desa", description: "Penyelenggara urusan pemerintahan desa yang dipimpin kepala desa dan dibantu perangkat desa, mencakup pelayanan administrasi dan pembangunan desa." },
+        { name: "BPD", description: "Badan Permusyawaratan Desa, mitra pemerintah desa yang menampung aspirasi warga, membahas Peraturan Desa, dan mengawasi kinerja pemerintah desa." },
+        { name: "RT/RW", description: "Lembaga kemasyarakatan tingkat lingkungan yang membantu pelayanan warga, pendataan, dan menjaga kerukunan." },
+        { name: "Kader Posyandu", description: "Relawan warga yang membantu layanan kesehatan ibu, bayi, dan balita di Pos Pelayanan Terpadu." },
+        { name: "Kader Pembangunan Manusia (KPM)", description: "Warga yang mendampingi keluarga untuk mencegah stunting dan meningkatkan akses layanan dasar seperti kesehatan, gizi, dan pendidikan anak." },
+        { name: "BUMDes Watuagung Bangkit", description: "Badan usaha milik desa yang mengelola potensi ekonomi desa untuk menambah pendapatan desa dan kesejahteraan warga." },
+        { name: "Koperasi Desa Merah Putih", description: "Koperasi desa sebagai wadah usaha bersama warga, seperti simpan pinjam dan penyediaan kebutuhan sehari-hari." },
+        { name: "PKK", description: "Gerakan pemberdayaan keluarga yang menggerakkan kegiatan kesejahteraan keluarga, kesehatan, pendidikan, dan ekonomi rumah tangga." },
+        { name: "Gapoktan/Poktan", description: "Kelompok tani dan gabungannya, tempat petani berbagi ilmu, sarana produksi, dan pemasaran hasil tani." },
+        { name: "HIPPA", description: "Himpunan Petani Pemakai Air, yang mengelola dan membagi air irigasi untuk lahan pertanian." },
+      ],
+      source: "Sumber: RKP Desa Watuagung 2027",
+    },
     blocks: [
       {
         title: "Desa yang tumbuh bersama",
@@ -159,7 +200,7 @@ export const pages: Record<
       },
       {
         title: "Informasi wilayah",
-        text: "Desa Watuagung berada di Kecamatan Prigen, Kabupaten Pasuruan, Provinsi Jawa Timur, pada bentang alam dataran pegunungan dan berjarak ±11 km dari kecamatan. Wilayahnya terdiri atas 3 dusun (Watuagung, Talang, Sekar) dengan 10 RW dan 31 RT. Batas wilayah: utara Desa Gunting (Kec. Prigen), timur Desa Karangrejo (Kec. Purwosari), selatan Desa Jatiarjo (Kec. Prigen), barat Desa Dayurejo (Kec. Prigen). Luas wilayah sedang dikonfirmasi. Sumber: RKP Desa Watuagung 2027.",
+        text: "Desa Watuagung berada di Kecamatan Prigen, Kabupaten Pasuruan, Provinsi Jawa Timur, pada bentang alam dataran pegunungan. Wilayahnya terdiri atas 3 dusun (Watuagung, Talang, Sekar) dengan 10 RW dan 31 RT. Batas wilayah: utara Desa Gunting (Kec. Prigen), timur Desa Karangrejo (Kec. Purwosari), selatan Desa Jatiarjo (Kec. Prigen), barat Desa Dayurejo (Kec. Prigen). Luas wilayah sedang dikonfirmasi. Sumber: RKP Desa Watuagung 2027.",
       },
       {
         title: "Lembaga desa",
@@ -209,28 +250,22 @@ export const pages: Record<
     title: "Visi dan Misi",
     eyebrow: "Visi dan misi Kepala Desa Watuagung",
     intro: "Arah pembangunan Desa Watuagung menurut dokumen perencanaan desa.",
-    blocks: [
-      {
-        title: "Visi",
-        text: 'Gerakan perubahan menuju terwujudnya tata kelola pemerintahan Desa Watuagung yang bersih dan transparan.\nSumber: dokumen "Visi Misi Kepala Desa Watuagung" dari perangkat desa, diterima 25 Oktober 2026.',
+    blocks: [],
+    visionMission: {
+      vision: {
+        text: "Gerakan perubahan menuju terwujudnya tata kelola pemerintahan Desa Watuagung yang bersih dan transparan.",
+        source: 'Sumber: dokumen "Visi Misi Kepala Desa Watuagung" dari perangkat desa, diterima 25 Oktober 2026.',
       },
-      {
-        title: "Misi 01",
-        text: "Penyelenggaraan pemerintahan desa yang demokratis, bersih, dan terbebas dari segala bentuk penyelewengan, korupsi, kolusi, dan nepotisme.",
+      missions: [
+        "Penyelenggaraan pemerintahan desa yang demokratis, bersih, dan terbebas dari segala bentuk penyelewengan, korupsi, kolusi, dan nepotisme.",
+        "Mengembangkan perekonomian masyarakat melalui pemanfaatan potensi desa.",
+        "Mewujudkan kesejahteraan masyarakat guna mencapai taraf kehidupan yang lebih baik.",
+      ],
+      theme: {
+        text: "Terbangunnya tata kelola pemerintah desa yang baik, bersih, terbuka, partisipatif guna mewujudkan kehidupan masyarakat Watuagung yang maju, cerdas, adil, makmur, sejahtera, dan berdaulat.",
+        source: "Sumber: RKP Desa Watuagung 2027",
       },
-      {
-        title: "Misi 02",
-        text: "Mengembangkan perekonomian masyarakat melalui pemanfaatan potensi desa.",
-      },
-      {
-        title: "Misi 03",
-        text: "Mewujudkan kesejahteraan masyarakat guna mencapai taraf kehidupan yang lebih baik.",
-      },
-      {
-        title: "Tema pembangunan 2027",
-        text: "Terbangunnya tata kelola pemerintah desa yang baik, bersih, terbuka, partisipatif guna mewujudkan kehidupan masyarakat Watuagung yang maju, cerdas, adil, makmur, sejahtera, dan berdaulat. Sumber: RKP Desa Watuagung 2027.",
-      },
-    ],
+    },
   },
   "struktur-pemerintahan": {
     title: "Perangkat Desa",

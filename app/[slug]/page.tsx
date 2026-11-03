@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Sprout, MapPin, Landmark, Wheat, House, HandHeart } from "lucide-react";
 import { complaintFormUrl, complaintNote, externalLinkProps } from "@/lib/complaint";
 import { pages, showSampleContent } from "@/lib/data";
 import { PublicShell, PageHeading } from "@/components/site";
 import { OfficeContact } from "@/components/office-contact";
+import { ProfileInstitutionChips } from "@/components/profile-institution-chips";
 
 export function generateStaticParams() {
   return Object.keys(pages).map((slug) => ({ slug }));
@@ -27,8 +28,12 @@ export default async function Page({
   if (!page) notFound();
   return (
     <PublicShell>
-      <PageHeading {...page} />
-      <section className="section container info-page">
+      {slug === "visi-misi" ? (
+        <div className="visi-heading-wrap"><PageHeading {...page} /></div>
+      ) : (
+        <PageHeading {...page} />
+      )}
+      <section className={`section container info-page${slug === "visi-misi" ? " visi-misi-page" : ""}`}>
         {/* Tanpa konten contoh, agenda/pengumuman hanya berisi keadaan kosong resmi. */}
         {![
           "profil", "struktur-pemerintahan", "sejarah", "visi-misi", "potensi", "transparansi", "kontak",
@@ -39,7 +44,41 @@ export default async function Page({
             verifikasi.
           </div>
         )}
-        {slug === "kontak" ? (
+        {slug === "visi-misi" && page.visionMission ? (
+          <div className="constructive-page">
+            <section className="constructive-board" aria-labelledby="visi-misi-title">
+              <h2 className="sr-only" id="visi-misi-title">Visi dan Misi</h2>
+              <article className="content-card profile-card constructive-vision">
+                <h3>Visi</h3>
+                <p className="constructive-vision-copy"><span className="visi-quote-mark" aria-hidden="true">“</span>{page.visionMission.vision.text}<span className="visi-quote-mark" aria-hidden="true">”</span></p>
+                <p className="source">{page.visionMission.vision.source}</p>
+              </article>
+              <section className="content-card profile-card constructive-missions" aria-labelledby="misi-heading">
+                <h3 className="constructive-missions-title" id="misi-heading">Misi</h3>
+                <ol>
+                {page.visionMission.missions.map((mission, index) => {
+                  const number = String(index + 1).padStart(2, "0");
+                  return (
+                    <li className="constructive-mission" key={number}>
+                      <span className="constructive-number" aria-hidden="true">{number}</span>
+                      <div>
+                        <h4 className="sr-only">Misi {number}</h4>
+                        <p>{mission}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+                </ol>
+              </section>
+            </section>
+            <article className="content-card profile-card constructive-theme">
+              <div className="constructive-theme-copy">
+                <h3>Tema pembangunan 2027</h3>
+                <p>{page.visionMission.theme.text}</p>
+              </div>
+            </article>
+          </div>
+        ) : slug === "kontak" ? (
           <div className="info-contact">
             <OfficeContact />
             {complaintFormUrl ? (
@@ -67,14 +106,64 @@ export default async function Page({
             )}
           </div>
         ) : (
-          <div className="content-grid">
-            {page.blocks.map((block) => (
-              <article className="content-card" key={block.title}>
-                <h2>{block.title}</h2>
-                <p>{block.text}</p>
+          slug === "profil" && page.profileDetails ? (
+            <div className="content-grid profile-bento">
+              <article className="content-card profile-card profile-growth">
+                <h2><Sprout aria-hidden="true" />{page.blocks[0].title}</h2>
+                <p className="profile-lead">{page.blocks[0].text.split(" Pertanian,")[0]}</p>
+                <ul className="profile-themes">
+                  {page.profileDetails.themes.map((theme, index) => {
+                    const Icon = [Wheat, House, HandHeart][index];
+                    return <li key={theme}><Icon aria-hidden="true" />{theme}</li>;
+                  })}
+                </ul>
               </article>
-            ))}
-          </div>
+              <article className="content-card profile-card profile-region">
+                <h2><MapPin aria-hidden="true" />{page.blocks[1].title}</h2>
+                <div className="profile-region-location">
+                  <h3 className="sr-only">Lokasi</h3>
+                  <p className="profile-location">{page.profileDetails.location}</p>
+                </div>
+                <div id="village-map" className="profile-map-placeholder" role="region" aria-label="Peta interaktif Desa Watuagung">
+                  <iframe
+                    className="profile-map-frame"
+                    title="Peta interaktif area Desa Watuagung, Prigen"
+                    src="https://maps.google.com/maps?q=Desa%20Watuagung%2C%20Prigen%2C%20Pasuruan%2C%20Jawa%20Timur&output=embed"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                  />
+                </div>
+                <a className="profile-map-link" href="https://www.google.com/maps/search/?api=1&query=Desa%20Watuagung%2C%20Prigen%2C%20Pasuruan%2C%20Jawa%20Timur" target="_blank" rel="noopener noreferrer">Buka peta lebih besar <ExternalLink size={15} aria-hidden="true" /><span className="sr-only"> (dibuka di tab baru)</span></a>
+                <dl className="profile-area-row"><div><dt>Luas wilayah</dt><dd>Sedang dikonfirmasi</dd></div></dl>
+                <dl className="profile-key-figures">
+                  {page.profileDetails.stats.map((stat) => <div key={stat.label}><dt>{stat.label}</dt><dd>{stat.value}</dd></div>)}
+                </dl>
+                <p className="profile-hamlet-names">{page.profileDetails.stats.find((stat) => stat.label === "Dusun")?.detail}</p>
+                <div className="profile-region-bounds">
+                  <h3>Batas wilayah</h3>
+                  <dl className="profile-boundaries">
+                    {page.profileDetails.boundaries.map((item) => <div key={item.direction}><dt>{item.direction}</dt><dd>{item.place}</dd></div>)}
+                  </dl>
+                </div>
+                <small className="profile-source profile-region-source">{page.profileDetails.source}</small>
+              </article>
+              <article className="content-card profile-card profile-institutions">
+                <h2><Landmark aria-hidden="true" />{page.blocks[2].title}</h2>
+                <ProfileInstitutionChips items={page.profileDetails.institutions} />
+                <small className="profile-source">{page.profileDetails.source}</small>
+              </article>
+            </div>
+          ) : (
+            <div className="content-grid">
+              {page.blocks.map((block) => (
+                <article className="content-card" key={block.title}>
+                  <h2>{block.title}</h2>
+                  <p>{block.text}</p>
+                </article>
+              ))}
+            </div>
+          )
         )}
         {slug === "profil" && (
           <div className="button-row mt-8">
