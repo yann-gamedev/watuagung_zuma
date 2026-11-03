@@ -1755,8 +1755,7 @@ p {
 .info-page .content-card p {
   white-space: pre-line;
 }
-.info-contact,
-.info-vision-mission {
+.info-contact {
   display: grid;
   gap: 24px;
 }
@@ -1766,31 +1765,46 @@ p {
   align-items: center;
   gap: 8px;
 }
-.info-page blockquote {
-  max-width: min(65ch, 36rem);
-  margin: 0;
-  color: var(--ink);
-  font-size: 28px;
-  line-height: 1.6;
+/* Visi dan Misi: page-specific layout; shared hero and information styles stay intact. */
+.visi-heading-wrap .page-heading { padding-top: 96px; }
+.visi-heading-wrap .eyebrow { width: fit-content; margin-bottom: 16px; font-size: 15px; letter-spacing: .02em; }
+.visi-misi-page { padding-top: 64px; padding-bottom: 64px; }
+.constructive-page { width: 100%; max-width: 1120px; margin-inline: auto; display: grid; gap: 20px; }
+.constructive-board { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 20px; align-items: stretch; }
+.constructive-vision, .constructive-mission, .constructive-theme { min-width: 0; animation: profile-rise 600ms ease both; }
+.constructive-vision { display: flex; min-height: 100%; flex-direction: column; align-items: flex-start; }
+.constructive-vision h3 { margin: 0 0 14px; color: var(--forest); font-size: 24px; font-weight: 700; line-height: 1.35; }
+.visi-misi-page p.constructive-vision-copy { max-width: 36rem; margin: 0 0 28px; color: var(--ink); font-size: clamp(18px, 2vw, 21px); font-weight: 500; line-height: 1.55; }
+.visi-quote-mark { margin-inline: .06em; color: var(--leaf); font-size: 1.35em; font-weight: 700; line-height: 0; vertical-align: -.08em; }
+.visi-misi-page p.source { max-width: 70ch; margin: auto 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.constructive-missions { display: block; align-self: stretch; }
+.constructive-missions-title { margin: 0 0 8px; color: var(--forest); font-size: 24px; font-weight: 700; line-height: 1.35; }
+.constructive-missions ol { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.constructive-mission { display: grid; grid-template-columns: 60px minmax(0, 1fr); align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.constructive-mission:first-child { padding-top: 0; }
+.constructive-mission:last-child { padding-bottom: 0; border-bottom: 0; }
+.constructive-number { display: grid; box-sizing: border-box; width: 52px; padding: 8px; aspect-ratio: 1; place-items: center; border-radius: 11px; background: var(--sage); color: var(--forest); font-size: 20px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.constructive-mission h4 { margin: 0 0 6px; color: var(--forest); font-size: 16px; font-weight: 700; line-height: 1.35; }
+.constructive-mission p { max-width: 56ch; margin: 0; color: var(--ink); font-size: 16px; line-height: 1.6; }
+.constructive-theme-copy { position: relative; z-index: 1; display: flex; width: 100%; min-width: 0; flex-direction: column; align-items: flex-start; padding: 0; }
+.constructive-theme-copy h3 { margin: 0 0 14px; color: var(--forest); font-size: 24px; font-weight: 700; line-height: 1.35; }
+.constructive-theme-copy > p { max-width: 65ch; margin: 0; padding-left: 18px; border-left: 3px solid var(--leaf); color: var(--forest); font-size: clamp(1.05rem, 1rem + .25vw, 1.2rem); font-weight: 500; line-height: 1.6; }
+@media (max-width: 760px) {
+  .constructive-page { gap: clamp(28px, 5vw, 56px); }
+  .constructive-board { grid-template-columns: minmax(0, 1fr); gap: 26px; }
+  .constructive-vision { min-height: 300px; }
+  .constructive-theme-copy { width: 100%; min-height: 0; }
 }
-.info-mission-list {
-  display: grid;
-  gap: 24px;
-  margin: 0;
-  padding: 0;
-  list-style: decimal inside;
+@media (max-width: 600px) {
+  .visi-heading-wrap .page-heading { padding-top: 88px; }
+  .visi-misi-page { padding-top: 40px; padding-bottom: 40px; }
+  .constructive-vision { min-height: 0; }
+  .constructive-mission { grid-template-columns: 58px minmax(0, 1fr); gap: 10px; padding: 12px 0; }
+  .constructive-number { width: 52px; }
+  .constructive-theme-copy { min-height: 0; padding: 0; }
 }
-.info-mission-list li::marker {
-  color: var(--forest);
-  font-size: 24px;
-  font-weight: 700;
-}
-.info-mission-list h2 {
-  display: inline;
-}
-.info-mission-list p {
-  margin-top: 12px;
-}
+@supports (animation-timeline: view()) { .constructive-vision, .constructive-mission, .constructive-theme { animation-timeline: view(); animation-range: entry 0% entry 28%; } }
+@media (prefers-reduced-motion: reduce) { .constructive-vision, .constructive-mission, .constructive-theme { animation: none; } }
 /* Profil Desa: tiga kartu bento khusus tanpa mengubah halaman informasi lain. */
 .profile-bento {
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.35fr);
