@@ -122,6 +122,11 @@ export const pages: Record<
     eyebrow: string;
     intro: string;
     blocks: { title: string; text: string }[];
+    visionMission?: {
+      vision: { text: string; source: string };
+      missions: string[];
+      theme: { text: string; source: string };
+    };
     profileDetails?: {
       themes: string[];
       stats: { value: string; label: string; detail?: string }[];
@@ -222,28 +227,22 @@ export const pages: Record<
     title: "Visi dan Misi",
     eyebrow: "Visi dan misi Kepala Desa Watuagung",
     intro: "Arah pembangunan Desa Watuagung menurut dokumen perencanaan desa.",
-    blocks: [
-      {
-        title: "Visi",
-        text: 'Gerakan perubahan menuju terwujudnya tata kelola pemerintahan Desa Watuagung yang bersih dan transparan.\nSumber: dokumen "Visi Misi Kepala Desa Watuagung" dari perangkat desa, diterima 25 Oktober 2026.',
+    blocks: [],
+    visionMission: {
+      vision: {
+        text: "Gerakan perubahan menuju terwujudnya tata kelola pemerintahan Desa Watuagung yang bersih dan transparan.",
+        source: 'Sumber: dokumen "Visi Misi Kepala Desa Watuagung" dari perangkat desa, diterima 25 Oktober 2026.',
       },
-      {
-        title: "Misi 01",
-        text: "Penyelenggaraan pemerintahan desa yang demokratis, bersih, dan terbebas dari segala bentuk penyelewengan, korupsi, kolusi, dan nepotisme.",
+      missions: [
+        "Penyelenggaraan pemerintahan desa yang demokratis, bersih, dan terbebas dari segala bentuk penyelewengan, korupsi, kolusi, dan nepotisme.",
+        "Mengembangkan perekonomian masyarakat melalui pemanfaatan potensi desa.",
+        "Mewujudkan kesejahteraan masyarakat guna mencapai taraf kehidupan yang lebih baik.",
+      ],
+      theme: {
+        text: "Terbangunnya tata kelola pemerintah desa yang baik, bersih, terbuka, partisipatif guna mewujudkan kehidupan masyarakat Watuagung yang maju, cerdas, adil, makmur, sejahtera, dan berdaulat.",
+        source: "Sumber: RKP Desa Watuagung 2027",
       },
-      {
-        title: "Misi 02",
-        text: "Mengembangkan perekonomian masyarakat melalui pemanfaatan potensi desa.",
-      },
-      {
-        title: "Misi 03",
-        text: "Mewujudkan kesejahteraan masyarakat guna mencapai taraf kehidupan yang lebih baik.",
-      },
-      {
-        title: "Tema pembangunan 2027",
-        text: "Terbangunnya tata kelola pemerintah desa yang baik, bersih, terbuka, partisipatif guna mewujudkan kehidupan masyarakat Watuagung yang maju, cerdas, adil, makmur, sejahtera, dan berdaulat. Sumber: RKP Desa Watuagung 2027.",
-      },
-    ],
+    },
   },
   "struktur-pemerintahan": {
     title: "Perangkat Desa",

@@ -27,8 +27,12 @@ export default async function Page({
   if (!page) notFound();
   return (
     <PublicShell>
-      <PageHeading {...page} />
-      <section className="section container info-page">
+      {slug === "visi-misi" ? (
+        <div className="visi-heading-wrap"><PageHeading {...page} /></div>
+      ) : (
+        <PageHeading {...page} />
+      )}
+      <section className={`section container info-page${slug === "visi-misi" ? " visi-misi-page" : ""}`}>
         {/* Tanpa konten contoh, agenda/pengumuman hanya berisi keadaan kosong resmi. */}
         {![
           "profil", "struktur-pemerintahan", "sejarah", "visi-misi", "potensi", "transparansi",
@@ -39,7 +43,41 @@ export default async function Page({
             verifikasi.
           </div>
         )}
-        {slug === "kontak" ? (
+        {slug === "visi-misi" && page.visionMission ? (
+          <div className="constructive-page">
+            <section className="constructive-board" aria-labelledby="visi-misi-title">
+              <h2 className="sr-only" id="visi-misi-title">Visi dan Misi</h2>
+              <article className="content-card profile-card constructive-vision">
+                <h3>Visi</h3>
+                <p className="constructive-vision-copy"><span className="visi-quote-mark" aria-hidden="true">“</span>{page.visionMission.vision.text}<span className="visi-quote-mark" aria-hidden="true">”</span></p>
+                <p className="source">{page.visionMission.vision.source}</p>
+              </article>
+              <section className="content-card profile-card constructive-missions" aria-labelledby="misi-heading">
+                <h3 className="constructive-missions-title" id="misi-heading">Misi</h3>
+                <ol>
+                {page.visionMission.missions.map((mission, index) => {
+                  const number = String(index + 1).padStart(2, "0");
+                  return (
+                    <li className="constructive-mission" key={number}>
+                      <span className="constructive-number" aria-hidden="true">{number}</span>
+                      <div>
+                        <h4 className="sr-only">Misi {number}</h4>
+                        <p>{mission}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+                </ol>
+              </section>
+            </section>
+            <article className="content-card profile-card constructive-theme">
+              <div className="constructive-theme-copy">
+                <h3>Tema pembangunan 2027</h3>
+                <p>{page.visionMission.theme.text}</p>
+              </div>
+            </article>
+          </div>
+        ) : slug === "kontak" ? (
           <div className="info-contact">
             <article className="home-contact-card">
               <div>
