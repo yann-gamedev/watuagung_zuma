@@ -94,25 +94,17 @@ export default async function Page({
                   <h3 className="sr-only">Lokasi</h3>
                   <p className="profile-location">{page.profileDetails.location}</p>
                 </div>
-                {/* Inisialisasi peta interaktif dapat ditempatkan di dalam kontainer ini. */}
-                <div id="village-map" className="profile-map-placeholder" role="region" aria-label="Peta wilayah Desa Watuagung">
-                  <svg className="profile-map-contours" viewBox="0 0 800 450" preserveAspectRatio="none" aria-hidden="true">
-                    <path d="M0 54C170 42 285 66 410 54S650 43 800 57" />
-                    <path d="M0 122C150 111 278 134 405 121s252-12 395 2" />
-                    <path d="M0 190c154-13 270 13 406 0s250-14 394 1" />
-                    <path d="M0 258c166-12 276 12 408 0s246-14 392 1" />
-                    <path d="M0 326c160-12 276 12 408 0s246-14 392 1" />
-                    <path d="M0 394c155-12 275 12 408 0s246-14 392 1" />
-                    <path d="M68 0c-10 81 11 135 0 218s9 150 0 232" />
-                    <path d="M178 0c-9 78 10 139 0 218s9 151 0 232" />
-                    <path d="M288 0c-8 80 9 138 0 218s8 150 0 232" />
-                    <path d="M398 0c-8 80 9 138 0 218s8 150 0 232" />
-                    <path d="M508 0c-8 80 9 138 0 218s8 150 0 232" />
-                    <path d="M618 0c-8 80 9 138 0 218s8 150 0 232" />
-                    <path d="M728 0c-8 80 9 138 0 218s8 150 0 232" />
-                  </svg>
-                  <span className="profile-map-caption">Peta interaktif segera hadir</span>
+                <div id="village-map" className="profile-map-placeholder" role="region" aria-label="Peta interaktif Desa Watuagung">
+                  <iframe
+                    className="profile-map-frame"
+                    title="Peta interaktif area Desa Watuagung, Prigen"
+                    src="https://maps.google.com/maps?q=Desa%20Watuagung%2C%20Prigen%2C%20Pasuruan%2C%20Jawa%20Timur&output=embed"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                  />
                 </div>
+                <a className="profile-map-link" href="https://www.google.com/maps/search/?api=1&query=Desa%20Watuagung%2C%20Prigen%2C%20Pasuruan%2C%20Jawa%20Timur" target="_blank" rel="noopener noreferrer">Buka peta lebih besar <ExternalLink size={15} aria-hidden="true" /><span className="sr-only"> (dibuka di tab baru)</span></a>
                 <dl className="profile-area-row"><div><dt>Luas wilayah</dt><dd>Sedang dikonfirmasi</dd></div></dl>
                 <dl className="profile-key-figures">
                   {page.profileDetails.stats.map((stat) => <div key={stat.label}><dt>{stat.label}</dt><dd>{stat.value}</dd></div>)}
