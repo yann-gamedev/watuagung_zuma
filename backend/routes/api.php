@@ -2,6 +2,7 @@
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\LetterController;
 use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\SiteSectionController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Api\StaffUserController;
 use Illuminate\Support\Facades\Route;
@@ -11,6 +12,7 @@ Route::post('/v1/staff/login', [StaffController::class, 'login'])->middleware('t
 Route::get('/v1/verify/{code}', [LetterController::class, 'verify'])->middleware('throttle:30,1');
 Route::get('/v1/posts', [PostController::class, 'index'])->middleware('throttle:60,1');
 Route::get('/v1/posts/{slug}', [PostController::class, 'show'])->middleware('throttle:60,1');
+Route::get('/v1/site/{key}', [SiteSectionController::class, 'show'])->middleware('throttle:60,1');
 Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/staff')->group(function () {
     Route::post('/logout', [StaffController::class, 'logout']);
     Route::get('/me', [StaffController::class, 'me']);
@@ -28,6 +30,9 @@ Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/
     Route::post('/users', [StaffUserController::class, 'store']);
     Route::patch('/users/{id}', [StaffUserController::class, 'update']);
     Route::post('/users/{id}/reset-password', [StaffUserController::class, 'resetPassword']);
+    Route::get('/site/{key}', [SiteSectionController::class, 'staffShow']);
+    Route::put('/site/{key}', [SiteSectionController::class, 'update']);
+    Route::post('/site/{key}/image', [SiteSectionController::class, 'image'])->middleware('throttle:10,1,site-image');
     Route::get('/posts', [PostController::class, 'staffIndex']);
     Route::post('/posts', [PostController::class, 'store']);
     Route::get('/posts/{id}', [PostController::class, 'staffShow'])->whereNumber('id');

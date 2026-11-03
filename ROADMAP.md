@@ -154,9 +154,13 @@ Dipisahkan dari M7/PDF atas persetujuan pengguna 21 Oktober 2026; bergantung pad
 
 ## M5 — Pengelolaan konten (CMS)
 
-Bergantung pada K2 dan K4.
+Bergantung pada K2 dan K4. **Pengecualian R3 disetujui 3 November 2026:** backend bagian situs + tipe boleh mendahului K2/K4; tidak menambah layar/pembaca API. Visi-misi tetap statis di `lib/data.ts`, hanya berubah saat ganti Kepala Desa; bukan konten CMS. `site_sections` menggantikan rencana `village_profile` untuk bagian profil/kontak/sejarah/statistik/transparansi/struktur/video, bukan satu tabel campuran visi-misi.
 
-- [ ] Tabel: `village_profile` (satu baris: nama, alamat, jam layanan, kontak, visi, misi, sejarah, luas, jumlah dusun/penduduk), `officials` (perangkat desa), `posts` (berita/pengumuman), `agendas`, `bumdes_units`, `umkm`
+- [x] R3 — API bagian situs: `site_sections`, enum/rules terpusat; GET publik/petugas, PUT penuh, scaffold gambar tertutup, audit tanpa isi; command impor profil/kontak/sejarah idempoten; `ImageProcessor` bersama berita; tipe dan dokumentasi. Koreksi pengguna: `profileDetails` dilewati, dikerjakan frontend terpisah; kontrak sesi ini `intro` + `blocks`. CR/LF diperbolehkan hanya di teks blok atas persetujuan; kontrol lain ditolak. Verifikasi sesi dicatat di `docs/progres-2026-11-03.md`.
+- [ ] R4 — Panel/pembaca API profil, kontak, sejarah; belum dikerjakan sesi backend R3.
+- [ ] R5–R8 — Skema dan pengelolaan statistik, transparansi, struktur, video; key sudah terdaftar tetapi seluruh isi ditolak sampai skema tersedia. Izin gambar belum aktif untuk key mana pun.
+
+- [ ] Tabel CMS lain: `posts` (berita/pengumuman, sudah ada), `agendas`, `bumdes_units`, `umkm`; profil/kontak/sejarah dan kerangka statistik/transparansi/struktur/video memakai `site_sections` R3, tanpa visi-misi. Struktur terperinci menunggu R5–R8.
 - [ ] Endpoint publik `GET` per jenis konten
   - [x] Berita C1 (`docs/PROMPTS-CMS-BERITA.md`): tabel `posts` (soft delete), `GET /posts` dan `/posts/{slug}` publik (hanya terbit, `public, max-age=60`), CRUD `/staff/posts` untuk `admin`/`staff` (`User::canManageContent()`), slug stabil setelah terbit, audit `post.*` tanpa isi. `PostsApiTest` 15 tes; suite SQLite 233 tes / 2.547 assertions, PostgreSQL 18.6 233 tes / 2.549 assertions, rollback/migrate PostgreSQL lulus (27 Oktober 2026, `docs/progres-2026-10-27.md`). Pengguna mengizinkan mendahului K2/K4. Foto sampul selesai di C2 di bawah; belum: panel (C3), halaman publik membaca API (C4).
   - [x] Berita C2: POST/DELETE `/staff/posts/{id}/cover`, throttle bersama 10/menit, peran C1, JPG/PNG/WebP ≤ 3 MB dan dimensi 600×400–6000×6000; GD resize lebar ≤1600, encode ulang WebP/JPEG tanpa EXIF/GPS, UUID disk public, hapus file saat ganti/hapus sampul; soft delete berita mempertahankan file. `MEDIA_URL` bawaan URL storage Laravel; kebutuhan Nginx/GD/backup dicatat di deploy-plan. SQLite 258 tes / 2.730 assertions, PostgreSQL 258 tes / 2.732 assertions, fallback JPEG 23 lulus / 2 skip WebP; lint, tsc, build lulus (29 Oktober 2026, `docs/progres-2026-10-29.md`). Pengguna mengizinkan mendahului K2/K4; UI dan infrastruktur belum.

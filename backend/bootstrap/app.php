@@ -13,6 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Site content validates raw controls before trimming, and preserves optional empty strings.
+        $siteInput = fn (Request $request) => $request->is('api/v1/staff/site/*');
+        $middleware->trimStrings(except: [$siteInput]);
+        $middleware->convertEmptyStringsToNull(except: [$siteInput]);
         $middleware->alias([
             'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
         ]);
@@ -22,7 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
         $exceptions->respond(function (\Symfony\Component\HttpFoundation\Response $response) {
-            if (request()->isMethod('GET') && request()->is('api/v1/staff/applications', 'api/v1/staff/applications/*', 'api/v1/staff/letter-register', 'api/v1/staff/summary', 'api/v1/staff/posts', 'api/v1/staff/posts/*')) {
+            if (request()->is('api/v1/staff/site/*') || (request()->isMethod('GET') && request()->is('api/v1/staff/applications', 'api/v1/staff/applications/*', 'api/v1/staff/letter-register', 'api/v1/staff/summary', 'api/v1/staff/posts', 'api/v1/staff/posts/*'))) {
                 $response->headers->set('Cache-Control', 'private, no-store');
             }
 
