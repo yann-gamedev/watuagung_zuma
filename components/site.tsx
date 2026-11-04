@@ -4,14 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { ArrowRight, CheckCircle2, ClipboardCheck, Clock3, FileCheck2, FileClock, CircleX, CircleAlert, UserCheck, ShieldCheck } from "lucide-react";
-import { contact } from "@/lib/data";
-import { ContactNumber } from "@/components/office-contact";
+import { ContactNumber, useContact } from "@/components/office-contact";
+import { ContactProvider } from "@/components/contact-provider";
 import { NewsCover } from "@/components/news-cover";
 import { newsHref, type NewsItem } from "@/services/posts";
 import type { ServiceCode, Status } from "@/types/pelayanan";
 import { SiteHeader, normalizePath } from "@/components/site-header";
 import { complaintFormUrl, complaintNote, externalLinkProps } from "@/lib/complaint";
 export function Footer() {
+  const contact = useContact();
   return (
     <footer className="site-footer">
       <div className="container footer-grid">
@@ -91,14 +92,14 @@ export function Footer() {
 export function PublicShell({ children }: { children: ReactNode }) {
   const isHome = normalizePath(usePathname()) === "/";
   return (
-    <>
+    <ContactProvider>
       <SiteHeader />
       {/* Beranda: ruang header diberikan oleh .hero; halaman lain 72px. */}
       <main id="main" className={isHome ? undefined : "main-offset"}>
         {children}
       </main>
       <Footer />
-    </>
+    </ContactProvider>
   );
 }
 export function StatisticCard({

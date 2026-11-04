@@ -229,7 +229,9 @@ php artisan test --filter=SiteSectionsApiTest
 
 Command opt-in mengisi hanya key `profile`, `contact`, `history` yang **belum ada**. `SiteSectionDefaults` menulis ulang snapshot `lib/data.ts` pada `bb6861e`, sumber dicatat; tidak membaca TypeScript saat runtime. Baris lama, termasuk data kosong, tidak ditimpa; aman diulang. Seluruh impor + audit sistem `user_id=null` satu transaksi; output hanya jumlah. Tidak dipanggil otomatis oleh migration/DatabaseSeeder. Belum dijalankan pada database pengembangan lewat sesi ini; pengujian hanya database tes. Kontak adalah **kontak kantor publik berizin**, bukan telepon/alamat warga. Data warga tetap terenkripsi di modul pelayanan; jangan simpan NIK/KK/dokumen privat di situs publik.
 
-Tipe baru `types/site.ts`, re-export `types/pelayanan.ts`; dokumentasi lengkap di `docs/integrasi.md`. Tidak mengubah halaman publik/panel, tidak mengaktifkan pembacaan API frontend. Static export tetap. `ImageProcessor::store()` mengekstrak pipeline GD sampul tanpa mengubah batas/format/kualitas atau siklus file C2. Pemilik konten/hosting produksi K2/K4 belum diputuskan.
+**R4 (4–5 November 2026):** frontend membaca `profile`, `history`, dan `contact` dan menyediakan panel `/admin/konten/`. Aturan `contact` tidak berubah sejak R3; tes regresi panel kontak (trim, terbit ke GET publik, key lain tidak tersentuh) ditambah di `SiteSectionsApiTest`. Galat 422 tetap memakai key `data.<field>`.
+
+Tipe baru `types/site.ts`, re-export `types/pelayanan.ts`; dokumentasi lengkap di `docs/integrasi.md`. Saat R3 tidak mengubah halaman publik/panel. Static export tetap. `ImageProcessor::store()` mengekstrak pipeline GD sampul tanpa mengubah batas/format/kualitas atau siklus file C2. Pemilik konten/hosting produksi K2/K4 belum diputuskan.
 
 ### Kontrak manajemen akun
 

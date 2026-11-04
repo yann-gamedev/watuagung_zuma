@@ -246,6 +246,12 @@
 .oldest .cardNumber, .oldest .cardAction { margin: 0; }
 .oldest time { color: var(--muted); }
 
+/* /admin/konten: pola kartu ringkasan; judul kartu ukuran H3 (DESIGN.md §3). */
+.contentCards { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 0; list-style: none; }
+.contentCards li { display: grid; }
+.contentCards .summaryCard strong { font-size: 21px; line-height: 1.35; }
+.contentCards .summaryCard span:last-child { color: var(--muted); }
+
 @media (max-width: 900px) {
   .summaryCards { grid-template-columns: minmax(0, 1fr); }
 }

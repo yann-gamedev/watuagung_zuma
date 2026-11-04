@@ -1,4 +1,5 @@
-// Kontak publik kantor desa; R4 nanti memindahkan pengelolaannya ke panel.
+// Kontak publik kantor desa. Sejak R4 diubah di panel /admin/konten/kontak/; nilai ini cadangan
+// untuk demo, API mati, atau bagian belum pernah disimpan. Petunjuk di bawah disalin ke panel.
 // Tech Lead: ganti [PLACEHOLDER] di sini, tanpa env. Phone: format internasional
 // diawali 62, hanya digit (tanpa +, spasi, atau tanda hubung); jangan isi nomor rekaan.
 // Embed: Google Maps → cari Balai Desa → Bagikan → Sematkan peta → salin isi src.
