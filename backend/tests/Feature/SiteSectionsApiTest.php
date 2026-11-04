@@ -31,6 +31,18 @@ class SiteSectionsApiTest extends TestCase
         return ['intro' => 'Pengantar fiktif', 'blocks' => [['title' => 'Judul fiktif', 'text' => "Baris satu\nBaris dua"]]];
     }
 
+    private function profile(): array
+    {
+        return $this->text() + ['profileDetails' => [
+            'themes' => ['Tema fiktif'],
+            'stats' => [['value' => '1', 'label' => 'Label fiktif', 'detail' => 'Rincian fiktif']],
+            'location' => 'Lokasi fiktif',
+            'boundaries' => array_map(fn ($direction) => ['direction' => $direction, 'place' => 'Tempat fiktif'], ['Utara', 'Timur', 'Selatan', 'Barat']),
+            'institutions' => [['name' => 'Lembaga fiktif', 'description' => 'Deskripsi fiktif']],
+            'source' => 'Sumber fiktif',
+        ]];
+    }
+
     private function contact(): array
     {
         return ['address' => 'Alamat kantor fiktif', 'hours' => 'Jam fiktif', 'contactName' => 'Kontak fiktif', 'phone' => '', 'mapsEmbedUrl' => '', 'mapsLinkUrl' => ''];
@@ -140,6 +152,127 @@ class SiteSectionsApiTest extends TestCase
         $this->assertDatabaseCount('audit_logs', 0);
     }
 
+    public function test_profile_details_round_trip_trim_empty_lists_and_legacy_replacement(): void
+    {
+        $this->act();
+        $data = $this->profile();
+        $padded = $data;
+        foreach (array_keys(self::profileTextLimits()) as $path) data_set($padded, $path, '  '.data_get($data, $path).'  ');
+        $this->putJson('/api/v1/staff/site/profile', ['data' => $padded])->assertOk()->assertJsonPath('data', $data);
+        $this->getJson('/api/v1/site/profile')->assertOk()->assertJsonPath('data', $data)->assertHeader('Cache-Control', 'max-age=60, public');
+        $this->getJson('/api/v1/staff/site/profile')->assertOk()->assertJsonPath('data', $data);
+        foreach (['themes', 'stats', 'institutions'] as $field) $data['profileDetails'][$field] = [];
+        $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertOk()->assertJsonPath('data', $data);
+        $data = $this->profile();
+        unset($data['profileDetails']['stats'][0]['detail']);
+        $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertOk()->assertJsonPath('data', $data);
+        $this->putJson('/api/v1/staff/site/profile', ['data' => $this->text()])->assertOk()->assertJsonPath('data', $this->text());
+        $this->getJson('/api/v1/site/profile')->assertOk()->assertJsonMissingPath('data.profileDetails');
+        $this->putJson('/api/v1/staff/site/history', ['data' => $this->profile()])->assertUnprocessable()->assertJsonValidationErrors('data');
+    }
+
+    public static function profileTextLimits(): array
+    {
+        return [
+            'profileDetails.themes.0' => 160,
+            'profileDetails.stats.0.value' => 160,
+            'profileDetails.stats.0.label' => 160,
+            'profileDetails.stats.0.detail' => 1000,
+            'profileDetails.location' => 1000,
+            'profileDetails.boundaries.0.place' => 1000,
+            'profileDetails.institutions.0.name' => 160,
+            'profileDetails.institutions.0.description' => 2000,
+            'profileDetails.source' => 1000,
+        ];
+    }
+
+    public function test_profile_details_text_max_lengths_types_and_controls_before_trim(): void
+    {
+        $this->act();
+        foreach (self::profileTextLimits() as $path => $max) {
+            $data = $this->profile();
+            data_set($data, $path, str_repeat('é', $max));
+            $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertOk();
+            foreach ([str_repeat('é', $max + 1), '', '   ', null, 1, true, [], ['x'], "\0text", "text\t", "text\x7f", "text\x1b", "text\n", "\rtext", "text\u{0085}"] as $bad) {
+                data_set($data, $path, $bad);
+                $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertUnprocessable()->assertJsonValidationErrors('data.'.$path);
+            }
+            unset($data);
+            $data = $this->profile();
+            data_forget($data, $path);
+            $response = $this->putJson('/api/v1/staff/site/profile', ['data' => $data]);
+            if (in_array($path, ['profileDetails.stats.0.detail', 'profileDetails.themes.0'], true)) $response->assertOk();
+            else $response->assertUnprocessable()->assertJsonValidationErrors('data.'.$path);
+        }
+        $data = $this->profile();
+        $data['blocks'][0]['text'] = "Baris satu\r\nBaris dua\rBaris tiga";
+        $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertOk()->assertJsonPath('data.blocks.0.text', $data['blocks'][0]['text']);
+    }
+
+    public function test_profile_details_counts_shapes_required_fields_and_unknown_fields(): void
+    {
+        $this->act();
+        foreach (['themes' => 6, 'stats' => 6, 'institutions' => 20] as $field => $max) {
+            $data = $this->profile();
+            $row = $data['profileDetails'][$field][0];
+            $data['profileDetails'][$field] = array_fill(0, $max, $row);
+            $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertOk();
+            $data['profileDetails'][$field][] = $row;
+            $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertUnprocessable()->assertJsonValidationErrors('data.profileDetails.'.$field);
+        }
+        $paths = ['profileDetails', 'profileDetails.themes', 'profileDetails.stats', 'profileDetails.boundaries', 'profileDetails.institutions'];
+        foreach ($paths as $path) {
+            foreach ([null, 'text', 1, true, ['named' => 'value']] as $bad) {
+                $data = $this->profile();
+                data_set($data, $path, $bad);
+                $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertUnprocessable()->assertJsonValidationErrors('data.'.$path);
+            }
+            $data = $this->profile();
+            data_forget($data, $path);
+            $response = $this->putJson('/api/v1/staff/site/profile', ['data' => $data]);
+            if ($path === 'profileDetails') $response->assertOk();
+            else $response->assertUnprocessable()->assertJsonValidationErrors('data.'.$path);
+        }
+        foreach (['profileDetails.stats.0', 'profileDetails.boundaries.0', 'profileDetails.institutions.0'] as $path) {
+            foreach ([null, 'text', 1, true, [], ['unknown' => 'value']] as $bad) {
+                $data = $this->profile();
+                data_set($data, $path, $bad);
+                $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertUnprocessable();
+            }
+        }
+        foreach (['', 'profileDetails', 'profileDetails.stats.0', 'profileDetails.boundaries.0', 'profileDetails.institutions.0'] as $path) {
+            $data = $this->profile();
+            data_set($data, ($path === '' ? '' : $path.'.').'unknown', 'value');
+            $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertUnprocessable()->assertJsonValidationErrors($path === '' ? 'data' : 'data.'.$path);
+        }
+        $this->putJson('/api/v1/staff/site/profile', ['data' => $this->profile(), 'unknown' => 'value'])->assertUnprocessable()->assertJsonValidationErrors('data');
+    }
+
+    public function test_profile_boundaries_require_exact_order_and_only_places_can_change(): void
+    {
+        $this->act();
+        foreach (['Utara', 'Timur', 'Selatan', 'Barat'] as $index => $direction) {
+            $path = 'profileDetails.boundaries.'.$index.'.direction';
+            foreach ([...array_diff(['Utara', 'Timur', 'Selatan', 'Barat'], [$direction]), null, '', strtolower($direction), 'Tidak dikenal', 'Utara,Timur', 1, true, [], "\t$direction", "$direction\n", "$direction\r", "$direction\0", "$direction\x7f"] as $bad) {
+                $data = $this->profile();
+                data_set($data, $path, $bad);
+                $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertUnprocessable()->assertJsonValidationErrors('data.'.$path);
+            }
+            $data = $this->profile();
+            data_forget($data, $path);
+            $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertUnprocessable()->assertJsonValidationErrors('data.'.$path);
+            $data = $this->profile();
+            $data['profileDetails']['boundaries'][$index]['place'] = str_repeat('x', 1000);
+            $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertOk();
+        }
+        $original = $this->profile()['profileDetails']['boundaries'];
+        foreach ([[], array_slice($original, 0, 3), [...$original, $original[0]], array_reverse($original), array_fill(0, 4, $original[0]), ['named' => $original[0]]] as $boundaries) {
+            $data = $this->profile();
+            $data['profileDetails']['boundaries'] = $boundaries;
+            $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertUnprocessable();
+        }
+    }
+
     public function test_contact_validates_all_fields_phone_and_google_maps_urls(): void
     {
         $this->act();
@@ -204,6 +337,26 @@ class SiteSectionsApiTest extends TestCase
         $this->assertDatabaseCount('site_sections', 3);
         foreach (['contact', 'history'] as $key) $this->assertSame(SiteSectionDefaults::data()[$key], SiteSection::find($key)->data);
         $this->getJson('/api/v1/site/history')->assertOk();
+    }
+
+    public function test_import_profile_details_public_read_and_repeat_preserves_edited_details(): void
+    {
+        $this->artisan('site:import-defaults')->expectsOutput('Dibuat: 3. Dipertahankan: 0.')->assertSuccessful();
+        $defaults = SiteSectionDefaults::data()['profile'];
+        $this->assertSame($defaults, SiteSection::find('profile')->data);
+        $this->assertSame(['Utara', 'Timur', 'Selatan', 'Barat'], array_column($defaults['profileDetails']['boundaries'], 'direction'));
+        $this->assertCount(10, $defaults['profileDetails']['institutions']);
+        $this->assertSame('Sumber: RKP Desa Watuagung 2027', $defaults['profileDetails']['source']);
+        $this->assertStringNotContainsString('±11 km', $defaults['blocks'][1]['text']);
+        $this->getJson('/api/v1/site/profile')->assertOk()->assertJsonPath('data', $defaults);
+        $this->act();
+        $edited = $this->profile();
+        $this->putJson('/api/v1/staff/site/profile', ['data' => $edited])->assertOk();
+        $before = SiteSection::find('profile')->getRawOriginal();
+        $this->artisan('site:import-defaults')->expectsOutput('Dibuat: 0. Dipertahankan: 3.')->assertSuccessful();
+        $this->assertSame($before, SiteSection::find('profile')->getRawOriginal());
+        $this->getJson('/api/v1/site/profile')->assertOk()->assertJsonPath('data', $edited);
+        $this->assertDatabaseCount('audit_logs', 4);
     }
 
     public function test_audit_failure_rolls_back_create_and_replace(): void

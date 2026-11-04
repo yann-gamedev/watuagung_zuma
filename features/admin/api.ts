@@ -10,6 +10,8 @@ export class AdminUnauthorizedError extends Error {
   }
 }
 
+export class AdminSiteNotFoundError extends Error {}
+
 /** Gagal menghubungi server, bukan penolakan token. */
 export class AdminNetworkError extends Error {
   constructor(message = "Server belum dapat dihubungi. Periksa koneksi lalu coba lagi.") {
@@ -56,6 +58,12 @@ async function send(path: string, token: string, options: RequestInit): Promise<
   if (response.status === 401) throw new AdminUnauthorizedError();
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { message?: string; errors?: Record<string, string[]> };
+    if (path.startsWith("/staff/site/")) {
+      if (response.status === 404) throw new AdminSiteNotFoundError("Bagian situs belum diisi.");
+      if (response.status === 403) throw new Error("Akun ini tidak memiliki akses untuk tindakan tersebut.");
+      if (response.status === 422 && body.errors) throw new Error(Object.entries(body.errors).map(([field, messages]) => `${field}: ${messages.join(" ")}`).join(" "));
+      throw new Error("Bagian situs gagal diproses. Coba lagi nanti.");
+    }
     // Berita memakai pesan server apa adanya, termasuk validasi foto dan 404.
     if (/^\/staff\/posts(?:[/?]|$)/.test(path)) throw new Error(body.errors ? Object.values(body.errors).flat().join(" ") : body.message || "Berita gagal diproses. Coba lagi nanti.");
     if (response.status === 403) throw new Error("Akun ini tidak memiliki akses untuk tindakan tersebut.");

@@ -11,47 +11,12 @@ import { AdminUnauthorizedError } from "./api";
 import { categoryLabels, parsePost, postDate, postInputSchema } from "./news-data";
 import { NewsStatus } from "./news-list";
 import styles from "./news.module.css";
+import { useUnsavedChanges } from "./use-unsaved-changes";
 
 const empty: StaffPostInput = { title: "", category: "kegiatan_desa", summary: "", body: "", status: "draft" };
-const leaveMessage = "Ada perubahan belum disimpan. Tinggalkan halaman?";
+// Penjagaan navigasi dipakai bersama editor bagian situs.
 function fields(post: StaffPostInput): StaffPostInput {
   return { title: post.title, category: post.category, summary: post.summary, body: post.body, status: post.status };
-}
-
-function useUnsavedChanges(dirty: boolean) {
-  useEffect(() => {
-    if (!dirty) return;
-    const unload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
-    const leave = (event: Event) => { if (!window.confirm(leaveMessage)) event.preventDefault(); };
-    // Navigation API also guards same-document browser Back/Forward, before Next changes the page.
-    const navigation = (window as Window & { navigation?: EventTarget }).navigation;
-    const navigate = (event: Event) => {
-      const transition = event as Event & { destination: { sameDocument: boolean; url: string } };
-      if (transition.destination.sameDocument && transition.destination.url !== location.href) leave(event);
-    };
-    const click = (event: MouseEvent) => {
-      const anchor = event.target instanceof Element ? event.target.closest("a[href]") : null;
-      if (!(anchor instanceof HTMLAnchorElement) || anchor.target === "_blank" || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0 || anchor.href === location.href) return;
-      if (!window.confirm(leaveMessage)) { event.preventDefault(); event.stopImmediatePropagation(); }
-      else {
-        // Full navigation avoids a second SPA prompt; beforeunload no longer needs to ask.
-        window.removeEventListener("beforeunload", unload);
-        navigation?.removeEventListener("navigate", navigate);
-        event.preventDefault(); event.stopImmediatePropagation();
-        location.assign(anchor.href);
-      }
-    };
-    window.addEventListener("beforeunload", unload);
-    window.addEventListener("admin-before-leave", leave);
-    document.addEventListener("click", click, true);
-    navigation?.addEventListener("navigate", navigate);
-    return () => {
-      window.removeEventListener("beforeunload", unload);
-      window.removeEventListener("admin-before-leave", leave);
-      document.removeEventListener("click", click, true);
-      navigation?.removeEventListener("navigate", navigate);
-    };
-  }, [dirty]);
 }
 
 export function NewsEditPage() {

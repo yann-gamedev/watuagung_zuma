@@ -93,7 +93,23 @@ Detail `/berita/baca/?slug=...` membaca query dalam `Suspense`, memperbarui `doc
 
 ### Bagian situs (backend R3, 3 November 2026)
 
-Tipe: `types/site.ts`, diekspor ulang lewat `types/pelayanan.ts`. Frontend/panel belum membaca endpoint ini; static export dan cadangan `lib/data.ts` tidak berubah. Sesuai koreksi pengguna, `profileDetails` tidak termasuk kontrak sesi ini; dikelola pekerjaan frontend terpisah. **Visi-misi tetap statis** di `lib/data.ts`, berubah saat pergantian Kepala Desa, bukan key CMS.
+Tipe: `types/site.ts`, diekspor ulang lewat `types/pelayanan.ts`. **Visi-misi tetap statis** di `lib/data.ts`, berubah saat pergantian Kepala Desa, bukan key CMS.
+
+**Pembaruan R4 (4 November 2026):** `profile` menerima `profileDetails` opsional, bentuk sama dengan `pages.profil.profileDetails` di `lib/data.ts`. Profil lama tanpa details tetap valid; `history` tetap menolak field ini. Bila dikirim, semua field wajib kecuali `stats.*.detail`:
+
+| Field | Aturan |
+|---|---|
+| `themes` | list 0–6, tiap item 1–160 |
+| `stats` | list 0–6 `{ value, label, detail? }`; `value`/`label` 1–160, `detail` bila ada 1–1.000 |
+| `location` | 1–1.000 |
+| `boundaries` | tepat 4 `{ direction, place }`, urutan `Utara`, `Timur`, `Selatan`, `Barat`; `place` 1–1.000 |
+| `institutions` | list 0–20 `{ name, description }`; `name` 1–160, `description` 1–2.000 |
+| `source` | 1–1.000 |
+
+Field asing ditolak di tiap tingkat; karakter kontrol ditolak (CR/LF hanya di `blocks.*.text`). `site:import-defaults` mengisi details dari `lib/data.ts` hanya untuk key yang belum ada.
+
+- **Panel**: `/admin/konten/profil/` dan `/admin/konten/sejarah/` (admin/staff; server tetap memeriksa peran). GET staff 404 memulai dari nilai `lib/data.ts`; profil lama tanpa details memakai details statis. Simpan = PUT seluruh objek; peringatan saat meninggalkan perubahan belum disimpan.
+- **Publik**: `/profil/` dan `/sejarah/` merender `lib/data.ts` lebih dulu, lalu `getSiteSection()` (`services/site.ts`, browser, `no-store`, timeout 20 detik, tanpa token) mengganti isi bila respons lolos skema Zod ketat. Demo, 404, format salah, atau galat jaringan tetap memakai data statis. Peta dan judul halaman tidak dari CMS. Teks dirender sebagai teks React, bukan HTML.
 
 | Metode | Path relatif `/api/v1` | Kontrak |
 |---|---|---|
