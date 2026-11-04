@@ -1,10 +1,26 @@
+"use client";
+import { createContext, useContext } from "react";
 import { contact, getContactLinks } from "@/lib/data";
+import type { SiteContact } from "@/types/site";
+
+/** Nilai awal statis lib/data.ts; ContactProvider menimpanya dengan data API. */
+export const ContactContext = createContext<SiteContact>(contact);
+export const useContact = () => useContext(ContactContext);
+
+// Untuk server component (task panel, kebijakan privasi) yang tidak bisa memanggil hook.
+export function ContactAddress() {
+  return <>{useContact().address}</>;
+}
+export function ContactHours() {
+  return <>{useContact().hours}</>;
+}
 
 export function ContactNumber() {
-  const { phone } = getContactLinks();
+  const values = useContact();
+  const { phone } = getContactLinks(values);
   return (
     <div className="contact-number">
-      <p>{contact.contactName}</p>
+      <p>{values.contactName}</p>
       {phone ? (
         <div className="contact-actions">
           <a href={`tel:+${phone}`}>+{phone}</a>
@@ -20,13 +36,14 @@ export function ContactNumber() {
 }
 
 export function OfficeContact({ titleId }: { titleId?: string }) {
-  const { mapsEmbedUrl, mapsLinkUrl } = getContactLinks();
+  const values = useContact();
+  const { mapsEmbedUrl, mapsLinkUrl } = getContactLinks(values);
   return (
     <div className={`home-contact-card${mapsEmbedUrl ? " has-map" : ""}`}>
       <div>
         <h2 id={titleId}>Kantor Desa Watuagung</h2>
-        <p>{contact.address}</p>
-        <p>{contact.hours}</p>
+        <p>{values.address}</p>
+        <p>{values.hours}</p>
         <ContactNumber />
         {mapsLinkUrl && (
           <a className="home-bottom-button" href={mapsLinkUrl} target="_blank" rel="noopener noreferrer">

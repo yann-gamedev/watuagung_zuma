@@ -300,6 +300,27 @@ class SiteSectionsApiTest extends TestCase
         $this->putJson('/api/v1/staff/site/contact', ['data' => $valid])->assertOk();
     }
 
+    public function test_contact_panel_flow_trims_publishes_and_leaves_other_keys_untouched(): void
+    {
+        $this->act();
+        $this->putJson('/api/v1/staff/site/profile', ['data' => $this->profile()])->assertOk();
+        $profile = SiteSection::find('profile')->data;
+        $data = array_replace($this->contact(), ['phone' => ' 620000000000 ', 'mapsEmbedUrl' => ' https://www.google.com/maps/embed?pb=fiktif ']);
+        $this->putJson('/api/v1/staff/site/contact', ['data' => $data])->assertOk()
+            ->assertJsonPath('data.phone', '620000000000')->assertJsonPath('data.mapsEmbedUrl', 'https://www.google.com/maps/embed?pb=fiktif');
+        $this->getJson('/api/v1/site/contact')->assertOk()->assertJsonPath('data.phone', '620000000000')->assertJsonPath('key', 'contact');
+        $this->assertSame($profile, SiteSection::find('profile')->data);
+        $this->assertNull(SiteSection::find('history'));
+        // Panel memetakan errors.data.<field> ke input; tab di nomor dan HTML iframe ditolak per field.
+        $this->putJson('/api/v1/staff/site/contact', ['data' => array_replace($this->contact(), ['phone' => "62\t0"])])
+            ->assertUnprocessable()->assertJsonValidationErrors('data.phone');
+        $this->putJson('/api/v1/staff/site/contact', ['data' => array_replace($this->contact(), ['mapsEmbedUrl' => '<iframe src="https://www.google.com/maps/embed?pb=x"></iframe>'])])
+            ->assertUnprocessable()->assertJsonValidationErrors('data.mapsEmbedUrl');
+        $this->putJson('/api/v1/staff/site/contact', ['data' => array_replace($this->contact(), ['phone' => '081234'])])
+            ->assertUnprocessable()->assertJsonValidationErrors('data.phone');
+        $this->assertSame('620000000000', SiteSection::find('contact')->data['phone']);
+    }
+
     public function test_reserved_keys_reject_every_payload_and_unknown_keys_are_404(): void
     {
         $this->act();

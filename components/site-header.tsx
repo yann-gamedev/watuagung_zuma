@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronRight, ExternalLink, Menu, X } from "lucide-react";
 import { complaintFormUrl, complaintNote, externalLinkProps } from "@/lib/complaint";
-import { contact } from "@/lib/data";
+import { useContact } from "@/components/office-contact";
 
 /** Pathname tanpa garis miring di akhir (next.config memakai trailingSlash). */
 export function normalizePath(path: string | null) {
@@ -125,6 +125,7 @@ function MenuAnchor({
 export function SiteHeader() {
   const path = normalizePath(usePathname());
   const isHome = path === "/";
+  const contact = useContact();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [prevPath, setPrevPath] = useState(path);

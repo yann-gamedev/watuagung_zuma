@@ -12,6 +12,15 @@ export class AdminUnauthorizedError extends Error {
 
 export class AdminSiteNotFoundError extends Error {}
 
+/** 422 bagian situs: server mengirim `data.phone`; disimpan relatif `data` (`phone`, `blocks.0.title`). */
+export class AdminValidationError extends Error {
+  fields: Record<string, string[]>;
+  constructor(errors: Record<string, string[]>) {
+    super("Periksa kembali isian yang ditandai.");
+    this.fields = Object.fromEntries(Object.entries(errors).map(([field, messages]) => [field.replace(/^data\./, ""), messages]));
+  }
+}
+
 /** Gagal menghubungi server, bukan penolakan token. */
 export class AdminNetworkError extends Error {
   constructor(message = "Server belum dapat dihubungi. Periksa koneksi lalu coba lagi.") {
@@ -61,7 +70,7 @@ async function send(path: string, token: string, options: RequestInit): Promise<
     if (path.startsWith("/staff/site/")) {
       if (response.status === 404) throw new AdminSiteNotFoundError("Bagian situs belum diisi.");
       if (response.status === 403) throw new Error("Akun ini tidak memiliki akses untuk tindakan tersebut.");
-      if (response.status === 422 && body.errors) throw new Error(Object.entries(body.errors).map(([field, messages]) => `${field}: ${messages.join(" ")}`).join(" "));
+      if (response.status === 422 && body.errors) throw new AdminValidationError(body.errors);
       throw new Error("Bagian situs gagal diproses. Coba lagi nanti.");
     }
     // Berita memakai pesan server apa adanya, termasuk validasi foto dan 404.

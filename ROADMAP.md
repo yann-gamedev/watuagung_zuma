@@ -158,9 +158,9 @@ Bergantung pada K2 dan K4. **Pengecualian R3 disetujui 3 November 2026:** backen
 
 - [x] Sinkronisasi desain profil dan visi-misi rekan (3 November 2026): merge `origin/main` `eee6f2d` (PR #47–#49), pertahankan profil bento/peta dan visi-misi baru tanpa mengembalikan kontak kantor lama. Lint, tsc, build, 292 tes backend SQLite, tes kontak dan pemeriksaan 390px/1440px lulus; lihat `docs/progres-2026-11-03.md`. Bukan pembaca CMS R4.
 - [x] R3 — API bagian situs: `site_sections`, enum/rules terpusat; GET publik/petugas, PUT penuh, scaffold gambar tertutup, audit tanpa isi; command impor profil/kontak/sejarah idempoten; `ImageProcessor` bersama berita; tipe dan dokumentasi. Koreksi pengguna: `profileDetails` dilewati, dikerjakan frontend terpisah; kontrak sesi ini `intro` + `blocks`. CR/LF diperbolehkan hanya di teks blok atas persetujuan; kontrol lain ditolak. Verifikasi sesi dicatat di `docs/progres-2026-11-03.md`.
-- [ ] R4 — Panel/pembaca API profil, kontak, sejarah.
+- [x] R4 — Panel/pembaca API profil, kontak, sejarah (selesai 5 November 2026).
   - [x] Profil dan sejarah (4 November 2026): `profileDetails` opsional diterima backend (batas di `docs/integrasi.md`), panel `/admin/konten/profil/` dan `/admin/konten/sejarah/` (admin/staff), halaman publik membaca `GET /v1/site/<key>` dengan cadangan `lib/data.ts`; peta dan tata letak tetap. Lihat `docs/progres-2026-11-04.md`.
-  - [ ] Kontak kantor: panel dan pembaca API belum dikerjakan.
+  - [x] Kontak kantor (5 November 2026): menu "Konten desa" `/admin/konten/`, panel `/admin/konten/kontak/` dengan pratinjau peta dan galat per field; `ContactProvider`/`useContact()` satu permintaan per halaman untuk beranda, `/kontak/`, menu, footer, kebijakan privasi, cadangan `lib/data.ts`. Lihat `docs/progres-2026-11-05.md`.
 - [ ] R5–R8 — Skema dan pengelolaan statistik, transparansi, struktur, video; key sudah terdaftar tetapi seluruh isi ditolak sampai skema tersedia. Izin gambar belum aktif untuk key mana pun.
 
 - [ ] Tabel CMS lain: `posts` (berita/pengumuman, sudah ada), `agendas`, `bumdes_units`, `umkm`; profil/kontak/sejarah dan kerangka statistik/transparansi/struktur/video memakai `site_sections` R3, tanpa visi-misi. Struktur terperinci menunggu R5–R8.

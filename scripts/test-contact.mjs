@@ -10,12 +10,12 @@ function compile(path) {
     compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
     fileName: path,
   }).outputText;
-  for (const name of ["react/jsx-runtime", "lucide-react"]) code = code.replaceAll(JSON.stringify(name), JSON.stringify(import.meta.resolve(name)));
+  for (const name of ["react/jsx-runtime", "react", "lucide-react"]) code = code.replaceAll(JSON.stringify(name), JSON.stringify(import.meta.resolve(name)));
   return code;
 }
 const data = dataUrl(compile("lib/data.ts"));
 const { contact, getContactLinks } = await import(data);
-const { OfficeContact, ContactNumber } = await import(dataUrl(compile("components/office-contact.tsx").replaceAll('"@/lib/data"', JSON.stringify(data))));
+const { OfficeContact, ContactNumber, ContactContext, ContactAddress } = await import(dataUrl(compile("components/office-contact.tsx").replaceAll('"@/lib/data"', JSON.stringify(data))));
 const original = { ...contact };
 const render = (component) => renderToStaticMarkup(createElement(component));
 try {
@@ -52,7 +52,14 @@ try {
   contact.mapsLinkUrl = "[PLACEHOLDER]";
   assert.ok(render(OfficeContact).includes("<iframe"));
   assert.ok(!render(OfficeContact).includes("Buka di Google Maps"));
-  console.log("PASS: validasi kontak, fallback, nomor/WhatsApp, iframe, tautan peta, konfigurasi parsial.");
+  // Provider menimpa nilai statis untuk semua komponen di bawahnya (data API R4).
+  Object.assign(contact, original);
+  const api = { ...original, address: "Alamat API fiktif", hours: "Jam API fiktif", contactName: "Kontak API fiktif", phone: "6200000000001" };
+  const provided = renderToStaticMarkup(createElement(ContactContext.Provider, { value: api }, createElement(OfficeContact), createElement(ContactAddress)));
+  for (const text of [api.address, api.hours, api.contactName, "tel:+6200000000001"]) assert.ok(provided.includes(text), text);
+  assert.ok(!provided.includes(original.address));
+  assert.ok(render(OfficeContact).includes(original.address), "tanpa provider tetap nilai statis");
+  console.log("PASS: validasi kontak, fallback, nomor/WhatsApp, iframe, tautan peta, konfigurasi parsial, provider API.");
 } finally {
   Object.assign(contact, original);
 }

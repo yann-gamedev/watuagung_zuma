@@ -1,6 +1,6 @@
 import { PageHeading, PublicShell } from "@/components/site";
 import Link from "next/link";
-import { contact } from "@/lib/data";
+import { ContactAddress } from "@/components/office-contact";
 
 export const metadata = {
   title: "Kebijakan Privasi",
@@ -10,7 +10,7 @@ export const metadata = {
 const blocks = [
   {
     title: "Pengelola data",
-    text: `Data dikelola oleh Pemerintah Desa Watuagung.\nAlamat kantor: ${contact.address}.`,
+    text: <>Data dikelola oleh Pemerintah Desa Watuagung.{"\n"}Alamat kantor: <ContactAddress />.</>,
   },
   {
     title: "Data yang dikumpulkan",
