@@ -17,6 +17,8 @@ export const adminLinks = [
   { title: "Siap diambil", href: "/admin/surat", Icon: FileCheck2 },
   { title: "Buku registrasi", href: "/admin/register", Icon: ClipboardList },
   { title: "Berita", href: "/admin/berita", Icon: Newspaper },
+  { title: "Konten profil", href: "/admin/konten/profil", Icon: ClipboardList },
+  { title: "Konten sejarah", href: "/admin/konten/sejarah", Icon: ClipboardList },
   { title: "Akun", href: "/admin/akun", Icon: Users },
 ] as const;
 
@@ -40,7 +42,7 @@ export const AdminSidebar = forwardRef<HTMLElement, Props>(function AdminSidebar
     if (queue) return link.href === "/admin" || (user?.features.neighborhood_approval && link.href === queue);
     if (link.href === "/admin/antrean-rt" || link.href === "/admin/antrean-rw") return false;
     if (link.href === "/admin/akun") return user?.role === "admin";
-    if (link.href === "/admin/berita") return user?.role === "admin" || user?.role === "staff";
+    if (link.href === "/admin/berita" || link.href.startsWith("/admin/konten/")) return user?.role === "admin" || user?.role === "staff";
     return link.href !== "/admin/persetujuan" || user?.role === "village_head";
   });
   return (

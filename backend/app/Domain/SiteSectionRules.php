@@ -12,13 +12,37 @@ final class SiteSectionRules
         $text = fn (int $max) => ['required', 'string', "max:$max"];
         $rules = [
             'payload' => ['required', 'array:data'],
-            'payload.data' => ['required', 'array:intro,blocks'],
+            'payload.data' => ['required', $section === SiteSection::Profile ? 'array:intro,blocks,profileDetails' : 'array:intro,blocks'],
             'payload.data.intro' => $text(2000),
             'payload.data.blocks' => ['required', 'array', 'list', 'min:1', 'max:20'],
             'payload.data.blocks.*' => ['required', 'array:title,text'],
             'payload.data.blocks.*.title' => $text(160),
             'payload.data.blocks.*.text' => $text(10000),
         ];
+        if ($section === SiteSection::Profile && is_array($input['data'] ?? null) && array_key_exists('profileDetails', $input['data'])) {
+            $rules += [
+                'payload.data.profileDetails' => ['required', 'array:themes,stats,location,boundaries,institutions,source'],
+                'payload.data.profileDetails.themes' => ['present', 'array', 'list', 'max:6'],
+                'payload.data.profileDetails.themes.*' => $text(160),
+                'payload.data.profileDetails.stats' => ['present', 'array', 'list', 'max:6'],
+                'payload.data.profileDetails.stats.*' => ['required', 'array:value,label,detail'],
+                'payload.data.profileDetails.stats.*.value' => $text(160),
+                'payload.data.profileDetails.stats.*.label' => $text(160),
+                'payload.data.profileDetails.stats.*.detail' => ['sometimes', ...$text(1000)],
+                'payload.data.profileDetails.location' => $text(1000),
+                'payload.data.profileDetails.boundaries' => ['required', 'array', 'list', 'size:4'],
+                'payload.data.profileDetails.boundaries.*' => ['required', 'array:direction,place'],
+                'payload.data.profileDetails.boundaries.*.place' => $text(1000),
+                'payload.data.profileDetails.institutions' => ['present', 'array', 'list', 'max:20'],
+                'payload.data.profileDetails.institutions.*' => ['required', 'array:name,description'],
+                'payload.data.profileDetails.institutions.*.name' => $text(160),
+                'payload.data.profileDetails.institutions.*.description' => $text(2000),
+                'payload.data.profileDetails.source' => $text(1000),
+            ];
+            foreach (['Utara', 'Timur', 'Selatan', 'Barat'] as $index => $direction) {
+                $rules["payload.data.profileDetails.boundaries.$index.direction"] = ['required', 'string', "in:$direction"];
+            }
+        }
         if ($section === SiteSection::Contact) {
             $rules = [
                 'payload' => ['required', 'array:data'],

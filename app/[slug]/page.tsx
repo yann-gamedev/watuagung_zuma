@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ExternalLink, Sprout, MapPin, Landmark, Wheat, House, HandHeart } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { complaintFormUrl, complaintNote, externalLinkProps } from "@/lib/complaint";
 import { pages, showSampleContent } from "@/lib/data";
 import { PublicShell, PageHeading } from "@/components/site";
 import { OfficeContact } from "@/components/office-contact";
-import { ProfileInstitutionChips } from "@/components/profile-institution-chips";
+import { SiteTextPage } from "@/components/site-text-page";
 
 export function generateStaticParams() {
   return Object.keys(pages).map((slug) => ({ slug }));
@@ -26,6 +25,13 @@ export default async function Page({
   const { slug } = await params;
   const page = pages[slug];
   if (!page) notFound();
+  if (slug === "profil" || slug === "sejarah") {
+    return (
+      <PublicShell>
+        <SiteTextPage key={slug} sectionKey={slug === "profil" ? "profile" : "history"} initialPage={page} />
+      </PublicShell>
+    );
+  }
   return (
     <PublicShell>
       {slug === "visi-misi" ? (
@@ -106,76 +112,12 @@ export default async function Page({
             )}
           </div>
         ) : (
-          slug === "profil" && page.profileDetails ? (
-            <div className="content-grid profile-bento">
-              <article className="content-card profile-card profile-growth">
-                <h2><Sprout aria-hidden="true" />{page.blocks[0].title}</h2>
-                <p className="profile-lead">{page.blocks[0].text.split(" Pertanian,")[0]}</p>
-                <ul className="profile-themes">
-                  {page.profileDetails.themes.map((theme, index) => {
-                    const Icon = [Wheat, House, HandHeart][index];
-                    return <li key={theme}><Icon aria-hidden="true" />{theme}</li>;
-                  })}
-                </ul>
+          <div className="content-grid">
+            {page.blocks.map((block) => (
+              <article className="content-card" key={block.title}>
+                <h2>{block.title}</h2>
+                <p>{block.text}</p>
               </article>
-              <article className="content-card profile-card profile-region">
-                <h2><MapPin aria-hidden="true" />{page.blocks[1].title}</h2>
-                <div className="profile-region-location">
-                  <h3 className="sr-only">Lokasi</h3>
-                  <p className="profile-location">{page.profileDetails.location}</p>
-                </div>
-                <div id="village-map" className="profile-map-placeholder" role="region" aria-label="Peta interaktif Desa Watuagung">
-                  <iframe
-                    className="profile-map-frame"
-                    title="Peta interaktif area Desa Watuagung, Prigen"
-                    src="https://maps.google.com/maps?q=Desa%20Watuagung%2C%20Prigen%2C%20Pasuruan%2C%20Jawa%20Timur&output=embed"
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    allowFullScreen
-                  />
-                </div>
-                <a className="profile-map-link" href="https://www.google.com/maps/search/?api=1&query=Desa%20Watuagung%2C%20Prigen%2C%20Pasuruan%2C%20Jawa%20Timur" target="_blank" rel="noopener noreferrer">Buka peta lebih besar <ExternalLink size={15} aria-hidden="true" /><span className="sr-only"> (dibuka di tab baru)</span></a>
-                <dl className="profile-area-row"><div><dt>Luas wilayah</dt><dd>Sedang dikonfirmasi</dd></div></dl>
-                <dl className="profile-key-figures">
-                  {page.profileDetails.stats.map((stat) => <div key={stat.label}><dt>{stat.label}</dt><dd>{stat.value}</dd></div>)}
-                </dl>
-                <p className="profile-hamlet-names">{page.profileDetails.stats.find((stat) => stat.label === "Dusun")?.detail}</p>
-                <div className="profile-region-bounds">
-                  <h3>Batas wilayah</h3>
-                  <dl className="profile-boundaries">
-                    {page.profileDetails.boundaries.map((item) => <div key={item.direction}><dt>{item.direction}</dt><dd>{item.place}</dd></div>)}
-                  </dl>
-                </div>
-                <small className="profile-source profile-region-source">{page.profileDetails.source}</small>
-              </article>
-              <article className="content-card profile-card profile-institutions">
-                <h2><Landmark aria-hidden="true" />{page.blocks[2].title}</h2>
-                <ProfileInstitutionChips items={page.profileDetails.institutions} />
-                <small className="profile-source">{page.profileDetails.source}</small>
-              </article>
-            </div>
-          ) : (
-            <div className="content-grid">
-              {page.blocks.map((block) => (
-                <article className="content-card" key={block.title}>
-                  <h2>{block.title}</h2>
-                  <p>{block.text}</p>
-                </article>
-              ))}
-            </div>
-          )
-        )}
-        {slug === "profil" && (
-          <div className="button-row mt-8">
-            {[
-              ["Sejarah Desa", "sejarah"],
-              ["Visi dan Misi", "visi-misi"],
-              ["Struktur Pemerintahan", "struktur-pemerintahan"],
-              ["Statistik Desa", "statistik"],
-            ].map(([title, target]) => (
-              <Link className="btn btn-secondary" href={"/" + target} key={target}>
-                {title}
-              </Link>
             ))}
           </div>
         )}

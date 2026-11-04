@@ -12,8 +12,17 @@ export type SiteContact = {
   mapsEmbedUrl: string;
   mapsLinkUrl: string;
 };
+export type SiteProfileDetails = {
+  themes: string[];
+  stats: { value: string; label: string; detail?: string }[];
+  location: string;
+  boundaries: { direction: string; place: string }[];
+  institutions: { name: string; description: string }[];
+  source: string;
+};
+export type SiteProfile = SiteTextSection & { profileDetails?: SiteProfileDetails };
 export type SiteSectionData = {
-  profile: SiteTextSection; // profileDetails di luar kontrak sesi ini, sesuai keputusan 3 Nov 2026.
+  profile: SiteProfile;
   contact: SiteContact;
   history: SiteTextSection;
   statistics: never;
