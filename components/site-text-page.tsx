@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ExternalLink, Sprout, MapPin, Landmark, Wheat, House, HandHeart } from "lucide-react";
 import { PageHeading } from "@/components/site";
 import { ProfileInstitutionChips } from "@/components/profile-institution-chips";
+import { SiteVideo } from "@/components/site-video";
 import { getSiteSection } from "@/services/site";
 import type { SiteProfile } from "@/types/site";
 
@@ -32,6 +33,7 @@ export function SiteTextPage({ sectionKey, initialPage }: {
     <>
       <PageHeading {...page} />
       <section className="section container info-page">
+        {sectionKey === "profile" && <SiteVideo slot="profile" heading="Video profil desa" />}
         {sectionKey === "profile" && details ? (
           <div className="content-grid profile-bento">
             <article className="content-card profile-card profile-growth">

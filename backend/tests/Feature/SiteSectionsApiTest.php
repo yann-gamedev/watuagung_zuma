@@ -719,10 +719,8 @@ class SiteSectionsApiTest extends TestCase
     public function test_reserved_keys_reject_every_payload_and_unknown_keys_are_404(): void
     {
         $this->act();
-        foreach (['statistics', 'videos'] as $key) {
-            foreach ([[], ['data' => []], ['data' => (object) []], ['data' => ['x' => 'y']]] as $payload) {
-                $this->putJson('/api/v1/staff/site/'.$key, $payload)->assertUnprocessable()->assertJsonValidationErrors('data');
-            }
+        foreach ([[], ['data' => []], ['data' => (object) []], ['data' => ['x' => 'y']]] as $payload) {
+            $this->putJson('/api/v1/staff/site/statistics', $payload)->assertUnprocessable()->assertJsonValidationErrors('data');
         }
         $this->getJson('/api/v1/staff/site/unknown')->assertNotFound();
         $this->putJson('/api/v1/staff/site/unknown', [])->assertNotFound();
@@ -812,6 +810,108 @@ class SiteSectionsApiTest extends TestCase
         $this->assertNull(SiteSection::find('profile')->updated_by);
         $this->expectException(\Illuminate\Database\QueryException::class);
         SiteSection::create(['key' => 'profile', 'data' => $this->text()]);
+    }
+
+    private function videos(?string $profileUrl = 'https://www.youtube.com/watch?v=AbCdEfGh_1-', ?string $tutorialUrl = null): array
+    {
+        $video = fn (?string $url, string $title) => $url === null ? null : ['url' => $url, 'title' => $title];
+        return ['profile' => $video($profileUrl, 'Video profil fiktif'), 'tutorial' => $video($tutorialUrl, 'Tutorial fiktif')];
+    }
+
+    public function test_videos_extract_id_store_only_id_and_publish_without_touching_other_keys(): void
+    {
+        $this->freezeSecond();
+        $staff = $this->act();
+        $this->putJson('/api/v1/staff/site/contact', ['data' => $this->contact()])->assertOk();
+        $contact = SiteSection::find('contact')->data;
+        $this->getJson('/api/v1/staff/site/videos')->assertNotFound();
+        $this->getJson('/api/v1/site/videos')->assertNotFound();
+        $data = $this->videos('  https://youtu.be/AbCdEfGh_1-?si=fiktif  ', 'https://www.youtube.com/shorts/ZyXwVuT_9-8');
+        $data['tutorial']['title'] = '  Tutorial fiktif  ';
+        $expected = ['profile' => ['youtubeId' => 'AbCdEfGh_1-', 'title' => 'Video profil fiktif'], 'tutorial' => ['youtubeId' => 'ZyXwVuT_9-8', 'title' => 'Tutorial fiktif']];
+        $this->putJson('/api/v1/staff/site/videos', ['data' => $data])->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')->assertJsonPath('data', $expected);
+        $this->assertSame($expected, SiteSection::find('videos')->data);
+        $this->assertSame($staff->id, SiteSection::find('videos')->updated_by);
+        $public = $this->getJson('/api/v1/site/videos')->assertOk()->assertHeader('Cache-Control', 'max-age=60, public');
+        $this->assertSame(['key', 'data', 'updated_at'], array_keys($public->json()));
+        $this->assertSame($expected, $public->json('data'));
+        $this->assertStringNotContainsString('youtu.be', $public->getContent());
+        $this->assertSame($expected, $this->getJson('/api/v1/staff/site/videos')->assertOk()->json('data'));
+        // Hapus video = null; admin juga boleh.
+        $this->act('admin');
+        $this->putJson('/api/v1/staff/site/videos', ['data' => $this->videos(null, null)])->assertOk()
+            ->assertJsonPath('data', ['profile' => null, 'tutorial' => null]);
+        $this->assertSame($contact, SiteSection::find('contact')->data);
+        $this->assertNull(SiteSection::find('profile'));
+        $audit = DB::table('audit_logs')->where('subject_id', 'videos')->get();
+        $this->assertCount(2, $audit);
+        $this->assertStringNotContainsString('fiktif', json_encode(DB::table('audit_logs')->get()));
+    }
+
+    public function test_videos_accept_only_youtube_url_forms(): void
+    {
+        $this->act();
+        $id = 'AbCdEfGh_1-';
+        foreach ([
+            "https://www.youtube.com/watch?v=$id", "https://youtube.com/watch?v=$id&t=42s", "https://m.youtube.com/watch?feature=share&v=$id",
+            "http://www.youtube.com/watch/?v=$id", "HTTPS://WWW.YOUTUBE.COM/watch?v=$id", "https://youtu.be/$id", "https://youtu.be/$id/",
+            "https://www.youtube.com/shorts/$id?feature=share", "https://youtube.com/embed/$id?start=10", "https://www.youtube.com/embed/$id#x",
+        ] as $url) {
+            $this->putJson('/api/v1/staff/site/videos', ['data' => $this->videos($url)])->assertOk()->assertJsonPath('data.profile.youtubeId', $id);
+        }
+        foreach ([
+            $id, "www.youtube.com/watch?v=$id", "ftp://youtu.be/$id", "javascript:alert('$id')", "https://www.youtube-nocookie.com/embed/$id",
+            "https://youtube.com.evil.test/watch?v=$id", "https://evil.test/?u=https://youtu.be/$id", "https://user@youtu.be/$id",
+            "https://youtu.be:8443/$id", "https://www.youtube.com/watch?v=AbCdEfGh_1", "https://www.youtube.com/watch?v={$id}x",
+            "https://www.youtube.com/watch?v[]=$id", "https://www.youtube.com/watch?list=$id", "https://www.youtube.com/channel/$id",
+            "https://youtu.be/$id/extra", "https://www.youtube.com/shorts/", "https://youtu.be/AbCdEfGh!1-",
+            '<iframe src="https://www.youtube.com/embed/'.$id.'"></iframe>', 'https://www.youtube.com/watch?v='.$id.str_repeat('&x=1', 600), '',
+        ] as $url) {
+            $this->putJson('/api/v1/staff/site/videos', ['data' => $this->videos($url)])->assertUnprocessable()
+                ->assertJsonValidationErrors('data.profile.url')->assertJsonMissingValidationErrors('data.tutorial');
+        }
+        $this->assertSame('AbCdEfGh_1-', SiteSection::find('videos')->data['profile']['youtubeId']);
+    }
+
+    public function test_videos_reject_shape_unknown_fields_lengths_and_controls(): void
+    {
+        $this->act();
+        $valid = $this->videos();
+        foreach ([
+            [], ['profile' => $valid['profile']], ['tutorial' => null], $valid + ['extra' => null],
+            ['profile' => 'https://youtu.be/AbCdEfGh_1-', 'tutorial' => null],
+            ['profile' => [], 'tutorial' => null],
+            ['profile' => ['url' => 'https://youtu.be/AbCdEfGh_1-'], 'tutorial' => null],
+            ['profile' => $valid['profile'] + ['youtubeId' => 'AbCdEfGh_1-'], 'tutorial' => null],
+            ['profile' => ['youtubeId' => 'AbCdEfGh_1-', 'title' => 'Judul'], 'tutorial' => null],
+            ['profile' => ['url' => 'https://youtu.be/AbCdEfGh_1-', 'title' => ''], 'tutorial' => null],
+            ['profile' => ['url' => 'https://youtu.be/AbCdEfGh_1-', 'title' => str_repeat('x', 161)], 'tutorial' => null],
+            ['profile' => ['url' => 'https://youtu.be/AbCdEfGh_1-', 'title' => "Judul\nbaru"], 'tutorial' => null],
+            ['profile' => ['url' => "https://youtu.be/AbCdEfGh_1-\t", 'title' => 'Judul'], 'tutorial' => null],
+            ['profile' => ['url' => 123, 'title' => 'Judul'], 'tutorial' => null],
+        ] as $data) {
+            $this->putJson('/api/v1/staff/site/videos', ['data' => $data])->assertUnprocessable();
+        }
+        $this->putJson('/api/v1/staff/site/videos', ['data' => $valid, 'extra' => 1])->assertUnprocessable()->assertJsonValidationErrors('data');
+        $this->putJson('/api/v1/staff/site/videos', ['data' => ['profile' => ['url' => 'https://youtu.be/AbCdEfGh_1-', 'title' => str_repeat('x', 160)], 'tutorial' => null]])->assertOk();
+        $this->assertDatabaseCount('audit_logs', 1);
+    }
+
+    public function test_videos_require_token_and_content_role(): void
+    {
+        $this->getJson('/api/v1/staff/site/videos')->assertUnauthorized();
+        $this->putJson('/api/v1/staff/site/videos', ['data' => $this->videos()])->assertUnauthorized();
+        config(['letters.neighborhood_approval' => true]);
+        foreach (['village_head', 'rt_head', 'rw_head', 'resident'] as $role) {
+            $this->act($role);
+            $this->getJson('/api/v1/staff/site/videos')->assertForbidden();
+            $this->putJson('/api/v1/staff/site/videos', ['data' => $this->videos()])->assertForbidden();
+        }
+        $this->act('admin', ['other']);
+        $this->putJson('/api/v1/staff/site/videos', ['data' => $this->videos()])->assertForbidden();
+        $this->assertDatabaseCount('site_sections', 0);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_public_throttle_and_put_cors_preflight(): void

@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { getStaffSiteSection, putStaffSiteSection, siteSchemas, type SiteEnvelope } from "@/services/site";
-import type { EditableSiteSectionKey, SiteSectionData } from "@/types/site";
+import { getStaffSiteSection, putStaffSiteSection, siteInputSchemas, type SiteEnvelope } from "@/services/site";
+import type { EditableSiteSectionKey, SiteSectionData, SiteSectionInput } from "@/types/site";
 import { AdminSiteNotFoundError, AdminUnauthorizedError, AdminValidationError } from "./api";
 import { useAdminSession } from "./session";
 import { useUnsavedChanges } from "./use-unsaved-changes";
@@ -67,14 +67,18 @@ export function Rows<T>({ path, title, items, max, min = 0, empty, onChange, chi
   </fieldset>;
 }
 
-export function SiteForm<K extends EditableSiteSectionKey>({ section, name, publicHref, initial, prepare = (data) => data, onEnvelope, pending = false, labels, intro, children }: {
+// Selain videos, input = data tersimpan, jadi prepare bawaan cukup meneruskan nilai.
+const identity = <T, U>(data: T) => data as unknown as U;
+
+export function SiteForm<K extends EditableSiteSectionKey>({ section, name, publicHref, initial, prepare = identity, onEnvelope, pending = false, labels, intro, children }: {
   section: K;
   /** Nama bagian untuk teks, mis. "kontak kantor". */
   name: string;
   publicHref: string;
   /** Nilai lib/data.ts yang dipakai website saat bagian belum pernah disimpan. */
-  initial: SiteSectionData[K];
-  prepare?: (data: SiteSectionData[K]) => SiteSectionData[K];
+  initial: SiteSectionInput[K];
+  /** Ubah data server menjadi isian formulir (videos: ID → link). */
+  prepare?: (data: SiteSectionData[K]) => SiteSectionInput[K];
   /** Dipanggil setiap envelope server diterima (muat/simpan), mis. untuk document_urls. */
   onEnvelope?: (envelope: SiteEnvelope<K>) => void;
   /** Cegah simpan/keluar saat unggahan anak masih berjalan. */
@@ -82,7 +86,7 @@ export function SiteForm<K extends EditableSiteSectionKey>({ section, name, publ
   /** Nama tiap segmen path untuk ringkasan galat, mis. { blocks: "Blok teks", title: "Judul" }. */
   labels: Record<string, string>;
   intro?: ReactNode;
-  children: (value: SiteSectionData[K], setValue: (value: SiteSectionData[K]) => void) => ReactNode;
+  children: (value: SiteSectionInput[K], setValue: (value: SiteSectionInput[K]) => void) => ReactNode;
 }) {
   const { request, user } = useAdminSession();
   const allowed = !!user && ["admin", "staff"].includes(user.role);
@@ -125,7 +129,7 @@ export function SiteForm<K extends EditableSiteSectionKey>({ section, name, publ
   async function save() {
     if (inFlight.current || pending) return;
     setNotice("");
-    const parsed = siteSchemas[section].safeParse(trimDeep(value));
+    const parsed = siteInputSchemas[section].safeParse(trimDeep(value));
     if (!parsed.success) {
       const next: Errors = {};
       for (const issue of parsed.error.issues) (next[issue.path.join(".") || "data"] ??= []).push(issue.message);
@@ -134,7 +138,7 @@ export function SiteForm<K extends EditableSiteSectionKey>({ section, name, publ
     }
     inFlight.current = true; setBusy(true); setError(""); setErrors({});
     try {
-      const result = await putStaffSiteSection(request, section, parsed.data as SiteSectionData[K]);
+      const result = await putStaffSiteSection(request, section, parsed.data as SiteSectionInput[K]);
       onEnvelope?.(result);
       const next = prepare(result.data);
       setValue(next); setSaved(next); setUpdatedAt(result.updated_at); setNotice(SAVED_MESSAGE);

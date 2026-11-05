@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicShell, PageHeading } from "@/components/site";
 import { ServiceList } from "@/components/service-list";
+import { SiteVideo } from "@/components/site-video";
 export const metadata: Metadata = { title: "Pelayanan Desa" };
 export default function Page() {
   return (
@@ -33,6 +34,7 @@ export default function Page() {
           </ol>
           <p className="service-steps-note"><strong>Alur pemeriksaan:</strong> Semua jenis surat diverifikasi petugas desa, lalu disetujui Kepala Desa. Surat fisik diambil di kantor desa setelah berstatus siap diambil.</p>
         </section>
+        <SiteVideo slot="tutorial" heading="Video tutorial pengajuan surat" />
         <div className="status-strip">
           <div>
             <strong>Sudah punya nomor pengajuan?</strong>

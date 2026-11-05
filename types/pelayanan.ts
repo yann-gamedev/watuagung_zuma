@@ -1,6 +1,6 @@
 /** Kontrak sampul berita tersedia bersama tipe berita; multipart, bukan JSON. */
 export type { StaffPostCoverInput, StaffPostCoverResponse } from "./posts";
-export type { SiteSectionKey, EditableSiteSectionKey, SiteSectionData, SiteSectionResponse, SiteSectionUpdate, SiteSectionImageResponse, SiteSectionDocumentResponse, SiteTransparency, SiteStructure, SiteBudget, SiteBudgetLine } from "./site";
+export type { SiteSectionKey, EditableSiteSectionKey, SiteSectionData, SiteSectionResponse, SiteSectionUpdate, SiteSectionInput, SiteVideo, SiteVideos, SiteVideoInput, SiteVideosInput, SiteSectionImageResponse, SiteSectionDocumentResponse, SiteTransparency, SiteStructure, SiteBudget, SiteBudgetLine } from "./site";
 
 export const statuses = [
   "SUBMITTED",
