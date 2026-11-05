@@ -7,8 +7,38 @@ function compile(path) {
   return ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 }, fileName: path }).outputText;
 }
 const { pages, contact } = await import(dataUrl(compile("lib/data.ts")));
-const service = compile("services/site.ts").replace('from "zod"', `from ${JSON.stringify(import.meta.resolve("zod"))}`).replace('import { apiBase } from "./pelayanan";', 'const apiBase = "http://site.test/api/v1";');
-const { siteSchemas, parseSiteSection, parseSiteEnvelope, getSiteSection, getStaffSiteSection, putStaffSiteSection } = await import(dataUrl(service));
+const transparencyUrl = dataUrl(compile("lib/transparency.ts"));
+const { budgetTotals, formatRupiah, SPENDING_FIELDS } = await import(transparencyUrl);
+const service = compile("services/site.ts").replace('from "zod"', `from ${JSON.stringify(import.meta.resolve("zod"))}`).replace('import { apiBase } from "./pelayanan";', 'const apiBase = "http://site.test/api/v1";')
+  .replace('from "@/lib/transparency"', `from ${JSON.stringify(transparencyUrl)}`);
+const { siteSchemas, parseSiteSection, parseSiteEnvelope, getSiteSection, getSiteEnvelope, getStaffSiteSection, putStaffSiteSection, uploadTransparencyDocument } = await import(dataUrl(service));
+// Transparansi: format, total, skema; total tidak boleh dikirim; bidang belanja sama dengan backend.
+assert.equal(formatRupiah(1234567), "Rp1.234.567");
+assert.equal(formatRupiah(0), "Rp0");
+assert.equal(formatRupiah(100000000000), "Rp100.000.000.000");
+assert.equal(formatRupiah(-5000), "-Rp5.000");
+const php = readFileSync("backend/app/Domain/SiteSectionRules.php", "utf8");
+assert.deepEqual([...SPENDING_FIELDS], [...php.match(/SPENDING_FIELDS = \[([^\]]+)\]/)[1].matchAll(/'([^']+)'/g)].map((m) => m[1]));
+const budget = {
+  year: 2027, status: "Ditetapkan", revenue: [{ label: "Dana Desa fiktif", amount: 1000000 }, { label: "PAD fiktif", amount: 250000 }],
+  spending: SPENDING_FIELDS.map((label, i) => ({ label, amount: (i + 1) * 100000 })), financing: [{ label: "SiLPA fiktif", amount: 7000 }], source: "Sumber fiktif",
+};
+assert.deepEqual(budgetTotals(budget), { revenue: 1250000, spending: 1500000, financing: 7000, surplus: -250000 });
+assert.deepEqual(budgetTotals({ revenue: [], spending: [] }), { revenue: 0, spending: 0, financing: 0, surplus: 0 });
+const transparency = { intro: pages.transparansi.intro, programs: pages.transparansi.blocks, budgets: [budget] };
+assert.ok(siteSchemas.transparency.safeParse(transparency).success);
+assert.ok(siteSchemas.transparency.safeParse({ ...transparency, budgets: [] }).success);
+assert.ok(siteSchemas.transparency.safeParse({ ...transparency, budgets: [{ ...budget, documentPath: "site/documents/0123abcd-0123-4567-89ab-0123456789ab.pdf" }] }).success);
+for (const mutate of [
+  (x) => { x.budgets[0].totalRevenue = 1; }, (x) => { x.total = 1; }, (x) => { x.budgets[0].revenue[0].total = 1; },
+  (x) => { x.budgets[0].revenue[0].amount = -1; }, (x) => { x.budgets[0].revenue[0].amount = 1.5; }, (x) => { x.budgets[0].revenue[0].amount = Number.NaN; },
+  (x) => { x.budgets[0].revenue[0].amount = 100000000001; }, (x) => { x.budgets[0].revenue = []; }, (x) => { x.budgets[0].spending.reverse(); },
+  (x) => { x.budgets[0].spending.pop(); }, (x) => { x.budgets[0].year = 1999; }, (x) => { x.budgets[0].status = "Final"; },
+  (x) => { x.budgets.push(structuredClone(x.budgets[0])); }, (x) => { x.budgets = Array.from({ length: 6 }, (_, i) => ({ ...budget, year: 2020 + i })); },
+  (x) => { x.budgets[0].documentPath = "../.env"; }, (x) => { x.budgets[0].source = ""; }, (x) => { x.programs = []; }, (x) => { x.programs[0].text += "\t"; },
+]) { const input = structuredClone(transparency); mutate(input); assert.equal(siteSchemas.transparency.safeParse(input).success, false, mutate.toString()); }
+const duplicate = siteSchemas.transparency.safeParse({ ...transparency, budgets: [budget, budget] }).error.issues[0];
+assert.deepEqual(duplicate.path, ["budgets", 1, "year"]);
 const profile = { intro: pages.profil.intro, blocks: pages.profil.blocks, profileDetails: pages.profil.profileDetails };
 assert.ok(siteSchemas.profile.safeParse(profile).success);
 assert.ok(siteSchemas.profile.safeParse({ intro: profile.intro, blocks: profile.blocks }).success);
@@ -36,7 +66,7 @@ assert.deepEqual(phoneIssue.path, ["phone"]);
 assert.match(phoneIssue.message, /6281234567890/);
 assert.ok(siteSchemas.contact.safeParse({ ...contact, mapsEmbedUrl: "https://www.google.com/maps/embed?pb=fiktif", mapsLinkUrl: "https://www.google.com/maps/place/fiktif" }).success);
 const contactEnvelope = { key: "contact", data: contact, updated_at: "2026-11-05T01:02:03.000000Z" };
-assert.deepEqual(parseSiteEnvelope("contact", contactEnvelope), { data: contact, updated_at: contactEnvelope.updated_at });
+assert.deepEqual(parseSiteEnvelope("contact", contactEnvelope), { data: contact, updated_at: contactEnvelope.updated_at, documentUrls: {} });
 const original = globalThis.fetch;
 try {
   globalThis.fetch = async (url, options) => {
@@ -58,7 +88,26 @@ try {
   assert.deepEqual(await getSiteSection("contact"), contact);
   globalThis.fetch = async () => Response.json({ ...contactEnvelope, data: { ...contact, phone: "+62" } });
   assert.equal(await getSiteSection("contact"), null);
+  // document_urls hanya sah untuk transparency dan harus http(s).
+  globalThis.fetch = async () => Response.json({ ...contactEnvelope, document_urls: {} });
+  assert.equal(await getSiteSection("contact"), null);
+  const urls = { "site/documents/0123abcd-0123-4567-89ab-0123456789ab.pdf": "http://site.test/storage/site/documents/0123abcd-0123-4567-89ab-0123456789ab.pdf" };
+  const transparencyEnvelope = { key: "transparency", data: transparency, updated_at: contactEnvelope.updated_at, document_urls: urls };
+  globalThis.fetch = async () => Response.json(transparencyEnvelope);
+  assert.deepEqual(await getSiteEnvelope("transparency"), { data: transparency, updated_at: contactEnvelope.updated_at, documentUrls: urls });
+  for (const bad of [{ document_urls: undefined }, { document_urls: { x: "javascript:alert(1)" } }, { data: { ...transparency, budgets: [{ ...budget, totalRevenue: 1 }] } }]) {
+    globalThis.fetch = async () => Response.json({ ...transparencyEnvelope, ...bad });
+    assert.equal(await getSiteEnvelope("transparency"), null, JSON.stringify(bad));
+  }
 } finally { globalThis.fetch = original; }
+const uploads = [];
+const path = "site/documents/0123abcd-0123-4567-89ab-0123456789ab.pdf";
+const uploaded = await uploadTransparencyDocument(async (url, options) => { uploads.push([url, options]); return { path, url: `http://site.test/storage/${path}` }; }, new File(["%PDF-"], "a.pdf"));
+assert.equal(uploaded.path, path);
+assert.equal(uploads[0][0], "/staff/site/transparency/document");
+assert.equal(uploads[0][1].method, "POST");
+assert.ok(uploads[0][1].body instanceof FormData);
+await assert.rejects(uploadTransparencyDocument(async () => ({ path: "../x.pdf", url: "http://x" }), new File([""], "a.pdf")));
 // Panel memakai request sesi (adminRequest), bukan fetch publik.
 const calls = [];
 const request = async (path, options) => { calls.push([path, options]); return contactEnvelope; };
@@ -67,4 +116,4 @@ await putStaffSiteSection(request, "contact", contact);
 assert.deepEqual(calls.map(([path, options]) => [path, options?.method]), [["/staff/site/contact", undefined], ["/staff/site/contact", "PUT"]]);
 assert.deepEqual(JSON.parse(calls[1][1].body), { data: contact });
 await assert.rejects(getStaffSiteSection(async () => ({ ...contactEnvelope, key: "profile" }), "contact"));
-console.log("PASS: kontrak profil/sejarah/kontak, data lama, kontrol, arah, fallback demo/404/galat, transport tanpa token, get/put panel.");
+console.log("PASS: kontrak profil/sejarah/kontak/transparansi, budgetTotals, formatRupiah, unggah PDF, data lama, kontrol, arah, fallback demo/404/galat, transport tanpa token, get/put panel.");

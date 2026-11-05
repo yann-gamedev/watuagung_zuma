@@ -94,6 +94,20 @@ final class SiteSectionDefaults
                     ],
                 ],
             ],
+            'transparency' => [
+                'intro' => 'Program prioritas dan informasi dokumen perencanaan Desa Watuagung.',
+                'programs' => [
+                    [
+                        'title' => 'Program prioritas 2027',
+                        'text' => "Kesehatan: rembuk stunting, PMT balita/ibu hamil/stunting, Posyandu remaja, tes gula darah/kolesterol/asam urat, dan penyuluhan TBC/malaria.\n\nInfrastruktur: TPS3R tahap 1, TPT dan paving Kali Terong, TPT Sentono (Talang), drainase RT 2 RW 9 (Sekar), TPT jalan lingkungan RT 3 RW 4, lanjutan pipanisasi air bersih Dusun Talang, dan rehab pendopo balai desa.\n\nPemberdayaan: festival kesenian, pembentukan Pokdarwis, pelatihan pemasaran digital, penguatan BUMDes, serta pembentukan bank sampah dan Lembaga Adat Desa.\n\nSosial: BLT Dana Desa untuk 42 keluarga penerima manfaat.\n\nSumber: RKP Desa Watuagung 2027, program tahun 2027.",
+                    ],
+                    [
+                        'title' => 'Dokumen publik',
+                        'text' => 'RKP Desa 2027 telah ditetapkan melalui Perdes Nomor 6 Tahun 2026 pada 28 September 2026. APBDes resmi akan ditampilkan setelah diterima. Angka anggaran belum ditampilkan karena masih menunggu data APBDes resmi.',
+                    ],
+                ],
+                'budgets' => [],
+            ],
         ];
     }
 }

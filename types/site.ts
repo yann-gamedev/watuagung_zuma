@@ -21,19 +21,35 @@ export type SiteProfileDetails = {
   source: string;
 };
 export type SiteProfile = SiteTextSection & { profileDetails?: SiteProfileDetails };
+/** Rupiah bulat. Total tidak disimpan; hitung dengan budgetTotals() di lib/transparency.ts. */
+export type SiteBudgetLine = { label: string; amount: number };
+export type SiteBudget = {
+  year: number;
+  status: "Rancangan" | "Ditetapkan" | "Perubahan";
+  revenue: SiteBudgetLine[];
+  /** Tepat 5 bidang, label dan urutan = SPENDING_FIELDS. */
+  spending: SiteBudgetLine[];
+  financing?: SiteBudgetLine[];
+  source: string;
+  /** Dari POST /staff/site/transparency/document; URL publik ada di document_urls. */
+  documentPath?: string;
+};
+export type SiteTransparency = { intro: string; programs: { title: string; text: string }[]; budgets: SiteBudget[] };
 export type SiteSectionData = {
   profile: SiteProfile;
   contact: SiteContact;
   history: SiteTextSection;
   statistics: never;
-  transparency: never;
+  transparency: SiteTransparency;
   structure: never;
   videos: never;
 };
-export type EditableSiteSectionKey = "profile" | "contact" | "history";
+export type EditableSiteSectionKey = "profile" | "contact" | "history" | "transparency";
 export type SiteSectionResponse<K extends SiteSectionKey = EditableSiteSectionKey> = {
-  [P in K]: { key: P; data: SiteSectionData[P]; updated_at: string };
+  [P in K]: { key: P; data: SiteSectionData[P]; updated_at: string } & (P extends "transparency" ? { document_urls: Record<string, string> } : unknown);
 }[K];
 export type SiteSectionUpdate<K extends EditableSiteSectionKey> = { data: SiteSectionData[K] };
 // Scaffold saja: belum ada key yang mengizinkan upload; seluruh permintaan terotorisasi mendapat 422.
 export type SiteSectionImageResponse = { path: string };
+/** Hanya transparency: PDF ≤ 10 MB. Simpan `path` ke budgets[].documentPath lalu PUT. */
+export type SiteSectionDocumentResponse = { path: string; url: string };

@@ -33,6 +33,7 @@ Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/
     Route::get('/site/{key}', [SiteSectionController::class, 'staffShow']);
     Route::put('/site/{key}', [SiteSectionController::class, 'update']);
     Route::post('/site/{key}/image', [SiteSectionController::class, 'image'])->middleware('throttle:10,1,site-image');
+    Route::post('/site/{key}/document', [SiteSectionController::class, 'document'])->middleware('throttle:10,1,site-document');
     Route::get('/posts', [PostController::class, 'staffIndex']);
     Route::post('/posts', [PostController::class, 'store']);
     Route::get('/posts/{id}', [PostController::class, 'staffShow'])->whereNumber('id');

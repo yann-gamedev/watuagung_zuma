@@ -1786,6 +1786,69 @@ p {
   display: grid;
   gap: 24px;
 }
+/* APBDes /transparansi: tabel bergulir di dalam kartu pada layar sempit. */
+.budget-list,
+.budget-card {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.budget-list {
+  margin-top: 24px;
+}
+.budget-table {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.budget-table caption {
+  padding: 16px 20px;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+  text-align: left;
+}
+.budget-table :is(td, th):first-child {
+  min-width: 14rem;
+  white-space: normal;
+}
+.budget-table :is(td, th):last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.budget-table tfoot :is(th, td) {
+  color: var(--ink);
+  font-weight: 700;
+  border-bottom: 0;
+}
+.budget-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.budget-summary div {
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--sage);
+}
+.budget-summary dt {
+  color: var(--muted);
+  font-size: 16px;
+}
+.budget-summary dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.budget-card .source {
+  margin: 0;
+  font-size: 16px;
+}
+.budget-card .btn {
+  justify-self: start;
+}
 .info-complaint h2 {
   display: flex;
   flex-wrap: wrap;

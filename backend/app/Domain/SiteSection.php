@@ -18,4 +18,9 @@ enum SiteSection: string
         // ponytail: belum ada key bergambar; aktifkan bersama skema dan tes R7.
         return false;
     }
+
+    public function allowsDocuments(): bool
+    {
+        return $this === self::Transparency;
+    }
 }

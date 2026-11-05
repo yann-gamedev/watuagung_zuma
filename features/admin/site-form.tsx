@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { getStaffSiteSection, putStaffSiteSection, siteSchemas } from "@/services/site";
+import { getStaffSiteSection, putStaffSiteSection, siteSchemas, type SiteEnvelope } from "@/services/site";
 import type { EditableSiteSectionKey, SiteSectionData } from "@/types/site";
 import { AdminSiteNotFoundError, AdminUnauthorizedError, AdminValidationError } from "./api";
 import { useAdminSession } from "./session";
@@ -20,21 +20,24 @@ const trimDeep = (value: unknown): unknown => typeof value === "string" ? value.
 export const formatUpdatedAt = (value: string) =>
   new Date(value).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Jakarta" });
 
-export function Field({ path, label, value, max, hint, multiline = false, optional = false, inputMode, onChange }: {
+export const useSiteErrors = () => useContext(ErrorsContext);
+
+export function Field({ path, label, value, max, hint, multiline = false, optional = false, inputMode, type, options, onChange }: {
   path: string; label: string; value: string; max: number; hint?: ReactNode; multiline?: boolean; optional?: boolean;
-  inputMode?: "numeric" | "url"; onChange: (value: string) => void;
+  inputMode?: "numeric" | "url"; type?: "number"; options?: readonly string[]; onChange: (value: string) => void;
 }) {
   const id = fieldId(path);
   const error = useContext(ErrorsContext)[path]?.join(" ");
   const describedBy = [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ") || undefined;
   const props = {
     id, value, maxLength: max, required: !optional, inputMode, "aria-invalid": error ? true : undefined, "aria-describedby": describedBy,
-    onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(event.target.value),
+    onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => onChange(event.target.value),
   };
   return <div className={styles.field}>
     <label htmlFor={id}>{label}</label>
     {hint && <p id={`${id}-hint`}>{hint}</p>}
-    {multiline ? <textarea {...props} rows={5} /> : <input {...props} />}
+    {options ? <select {...props}>{options.map((option) => <option key={option}>{option}</option>)}</select>
+      : multiline ? <textarea {...props} rows={5} /> : <input {...props} type={type} step={type === "number" ? 1 : undefined} />}
     {error && <p id={`${id}-error`} className="field-error" role="alert">{error}</p>}
   </div>;
 }
@@ -64,7 +67,7 @@ export function Rows<T>({ path, title, items, max, min = 0, empty, onChange, chi
   </fieldset>;
 }
 
-export function SiteForm<K extends EditableSiteSectionKey>({ section, name, publicHref, initial, prepare = (data) => data, labels, intro, children }: {
+export function SiteForm<K extends EditableSiteSectionKey>({ section, name, publicHref, initial, prepare = (data) => data, onEnvelope, pending = false, labels, intro, children }: {
   section: K;
   /** Nama bagian untuk teks, mis. "kontak kantor". */
   name: string;
@@ -72,6 +75,10 @@ export function SiteForm<K extends EditableSiteSectionKey>({ section, name, publ
   /** Nilai lib/data.ts yang dipakai website saat bagian belum pernah disimpan. */
   initial: SiteSectionData[K];
   prepare?: (data: SiteSectionData[K]) => SiteSectionData[K];
+  /** Dipanggil setiap envelope server diterima (muat/simpan), mis. untuk document_urls. */
+  onEnvelope?: (envelope: SiteEnvelope<K>) => void;
+  /** Cegah simpan/keluar saat unggahan anak masih berjalan. */
+  pending?: boolean;
   /** Nama tiap segmen path untuk ringkasan galat, mis. { blocks: "Blok teks", title: "Judul" }. */
   labels: Record<string, string>;
   intro?: ReactNode;
@@ -92,13 +99,14 @@ export function SiteForm<K extends EditableSiteSectionKey>({ section, name, publ
   const message = useRef<HTMLDivElement>(null);
   const inFlight = useRef(false);
   const dirty = JSON.stringify(value) !== JSON.stringify(saved);
-  useUnsavedChanges(dirty || busy);
+  useUnsavedChanges(dirty || busy || pending);
 
   useEffect(() => {
     if (!allowed) return;
     let cancelled = false;
     void getStaffSiteSection(request, section).then((result) => {
       if (cancelled) return;
+      onEnvelope?.(result);
       const next = prepare(result.data);
       setValue(next); setSaved(next); setUpdatedAt(result.updated_at);
     }).catch((cause: unknown) => {
@@ -115,7 +123,7 @@ export function SiteForm<K extends EditableSiteSectionKey>({ section, name, publ
   useEffect(() => { if (error || notice) message.current?.focus(); }, [error, notice, errors]);
 
   async function save() {
-    if (inFlight.current) return;
+    if (inFlight.current || pending) return;
     setNotice("");
     const parsed = siteSchemas[section].safeParse(trimDeep(value));
     if (!parsed.success) {
@@ -127,6 +135,7 @@ export function SiteForm<K extends EditableSiteSectionKey>({ section, name, publ
     inFlight.current = true; setBusy(true); setError(""); setErrors({});
     try {
       const result = await putStaffSiteSection(request, section, parsed.data as SiteSectionData[K]);
+      onEnvelope?.(result);
       const next = prepare(result.data);
       setValue(next); setSaved(next); setUpdatedAt(result.updated_at); setNotice(SAVED_MESSAGE);
     } catch (cause) {
@@ -154,9 +163,9 @@ export function SiteForm<K extends EditableSiteSectionKey>({ section, name, publ
     {dirty && <p role="status">Perubahan belum disimpan</p>}
     <ErrorsContext.Provider value={errors}>
       <form noValidate onSubmit={(event) => { event.preventDefault(); void save(); }}>
-        <fieldset className={styles.fields} disabled={busy}><legend className="sr-only">Isi {name}</legend>
+        <fieldset className={styles.fields} disabled={busy || pending}><legend className="sr-only">Isi {name}</legend>
           {children(value, setValue)}
-          <button className="btn" type="submit">Simpan</button>
+          <button className="btn" type="submit" disabled={pending}>Simpan</button>
         </fieldset>
       </form>
     </ErrorsContext.Provider>
