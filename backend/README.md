@@ -247,6 +247,10 @@ Konfigurasi `MEDIA_URL` adalah **URL dasar absolut**, tanpa `/posts`: bawaan kos
 
 File baru disimpan sebelum transaksi penggantian dan audit `post.updated`; bila transaksi gagal, file baru dibersihkan dan sampul lama tetap. Baris dikunci saat penggantian; file lama dihapus setelah commit. Gagal hapus file lama → 500 dengan pesan bahwa sampul sudah diperbarui; perlu pembersihan administrator. Soft delete berita **tidak** menghapus file agar bisa dipulihkan. File sampul bersifat publik, termasuk sampul draf/berita terhapus bila URL diketahui; jangan unggah dokumen pribadi. Pembersihan berkala file sisa belum dibuat dan tidak termasuk retensi permohonan F10. Backup harus mencakup folder media.
 
+### UMKM warga
+
+`BusinessController` mengikuti pola berita: publik `GET /v1/businesses?category=&page=` (12 per halaman, urut nama) dan `GET /v1/businesses/{slug}` hanya untuk yang terbit; petugas `GET/POST /v1/staff/businesses`, `GET/PATCH/DELETE /v1/staff/businesses/{id}`, `POST/DELETE /v1/staff/businesses/{id}/photo` (`canManageContent()`, throttle foto 10/menit). Kategori di `App\Domain\BusinessCategory`, dusun di `Business::HAMLETS`. `owner_name` dan `whatsapp` cast `encrypted`, dikirim ke publik **hanya** bila `consent_public_contact` true dan tidak pernah di daftar petugas. Foto memakai `ImageProcessor` (3 MB, lebar 1.600 px) di `storage/app/public/businesses`. Audit `business.*` hanya aksi dan ID. Kontrak lengkap: [docs/integrasi.md § UMKM warga](../docs/integrasi.md). Tes: `tests/Feature/BusinessesApiTest.php`.
+
 ### Bagian situs — API konten R3 (3 November 2026)
 
 Satu tabel `site_sections` (`key` primary unik, `data` JSON, `updated_by` nullable FK users/nullOnDelete, timestamps). Enum `App\Domain\SiteSection` membatasi `profile`, `contact`, `history`, `statistics`, `transparency`, `structure`, `videos`. Visi-misi **tidak** masuk CMS: tetap statis di `lib/data.ts` sampai pergantian Kepala Desa. Sejak R4 (4 November 2026) `profile` menerima `profileDetails` opsional; batas per field ada di [kontrak integrasi](../docs/integrasi.md#bagian-situs-backend-r3-3-november-2026).
