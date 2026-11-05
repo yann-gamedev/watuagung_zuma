@@ -9,9 +9,11 @@ function compile(path) {
 const { pages, contact } = await import(dataUrl(compile("lib/data.ts")));
 const transparencyUrl = dataUrl(compile("lib/transparency.ts"));
 const { budgetTotals, formatRupiah, SPENDING_FIELDS } = await import(transparencyUrl);
+const youtubeUrl = dataUrl(compile("lib/youtube.ts"));
+const { youtubeId, youtubeEmbedUrl, youtubeThumbnailUrl, youtubeWatchUrl } = await import(youtubeUrl);
 const service = compile("services/site.ts").replace('from "zod"', `from ${JSON.stringify(import.meta.resolve("zod"))}`).replace('import { apiBase } from "./pelayanan";', 'const apiBase = "http://site.test/api/v1";')
-  .replace('from "@/lib/transparency"', `from ${JSON.stringify(transparencyUrl)}`);
-const { siteSchemas, parseSiteSection, parseSiteEnvelope, getSiteSection, getSiteEnvelope, getStaffSiteSection, putStaffSiteSection, uploadTransparencyDocument, uploadStructureImage } = await import(dataUrl(service));
+  .replace('from "@/lib/transparency"', `from ${JSON.stringify(transparencyUrl)}`).replace('from "@/lib/youtube"', `from ${JSON.stringify(youtubeUrl)}`);
+const { siteSchemas, siteInputSchemas, parseSiteSection, parseSiteEnvelope, getSiteSection, getSiteEnvelope, getStaffSiteSection, putStaffSiteSection, uploadTransparencyDocument, uploadStructureImage } = await import(dataUrl(service));
 const structure = { blocks: pages["struktur-pemerintahan"].blocks, source: pages["struktur-pemerintahan"].source };
 const chartImagePath = "site/structure/0123abcd-0123-4567-89ab-0123456789ab.webp";
 assert.ok(siteSchemas.structure.safeParse(structure).success);
@@ -152,4 +154,43 @@ await putStaffSiteSection(request, "contact", contact);
 assert.deepEqual(calls.map(([path, options]) => [path, options?.method]), [["/staff/site/contact", undefined], ["/staff/site/contact", "PUT"]]);
 assert.deepEqual(JSON.parse(calls[1][1].body), { data: contact });
 await assert.rejects(getStaffSiteSection(async () => ({ ...contactEnvelope, key: "profile" }), "contact"));
+// Video R8: parser cermin SiteSectionRules::youtubeId; respons hanya ID, PUT mengirim link.
+const id = "AbCdEfGh_1-";
+for (const url of [`https://www.youtube.com/watch?v=${id}`, `https://youtube.com/watch?v=${id}&t=42s`, `https://m.youtube.com/watch?feature=share&v=${id}`,
+  `http://www.youtube.com/watch/?v=${id}`, `HTTPS://WWW.YOUTUBE.COM/watch?v=${id}`, `https://youtu.be/${id}`, `https://youtu.be/${id}/`, ` https://youtu.be/${id}?si=x `,
+  `https://www.youtube.com/shorts/${id}?feature=share`, `https://youtube.com/embed/${id}?start=10`, `https://www.youtube.com/embed/${id}#x`]) assert.equal(youtubeId(url), id, url);
+for (const url of [id, `www.youtube.com/watch?v=${id}`, `ftp://youtu.be/${id}`, `javascript:alert('${id}')`, `https://www.youtube-nocookie.com/embed/${id}`,
+  `https://youtube.com.evil.test/watch?v=${id}`, `https://evil.test/?u=https://youtu.be/${id}`, `https://user@youtu.be/${id}`, `https://youtu.be:8443/${id}`,
+  "https://www.youtube.com/watch?v=AbCdEfGh_1", `https://www.youtube.com/watch?v=${id}x`, `https://www.youtube.com/watch?list=${id}`, `https://www.youtube.com/channel/${id}`,
+  `https://youtu.be/${id}/extra`, "https://www.youtube.com/shorts/", `https://youtu.be/${id}\t?x=1`, `https://you\ntu.be/${id}`,`<iframe src="https://www.youtube.com/embed/${id}"></iframe>`,
+  `https://www.youtube.com/watch?v=${id}${"&x=1".repeat(600)}`, ""]) assert.equal(youtubeId(url), null, url);
+assert.equal(youtubeThumbnailUrl(id), `https://i.ytimg.com/vi/${id}/hqdefault.jpg`);
+assert.ok(youtubeEmbedUrl(id).startsWith(`https://www.youtube-nocookie.com/embed/${id}`));
+assert.equal(youtubeId(youtubeWatchUrl(id)), id);
+const storedVideos = { profile: { youtubeId: id, title: "Profil fiktif" }, tutorial: null };
+assert.ok(siteSchemas.videos.safeParse(storedVideos).success);
+assert.ok(siteSchemas.videos.safeParse({ profile: null, tutorial: null }).success);
+for (const bad of [{ profile: null }, { ...storedVideos, extra: null }, { profile: { url: `https://youtu.be/${id}`, title: "x" }, tutorial: null },
+  { profile: { youtubeId: "bad", title: "x" }, tutorial: null }, { profile: { youtubeId: id, title: "" }, tutorial: null }, { profile: { youtubeId: id, title: "a\nb" }, tutorial: null }])
+  assert.equal(siteSchemas.videos.safeParse(bad).success, false, JSON.stringify(bad));
+const videoInput = siteInputSchemas.videos.safeParse({ profile: { url: `https://youtu.be/${id}`, title: "Profil fiktif" }, tutorial: { url: "", title: "" } });
+assert.deepEqual(videoInput.data, { profile: { url: `https://youtu.be/${id}`, title: "Profil fiktif" }, tutorial: null });
+for (const [bad, path] of [[{ url: "https://vimeo.com/1", title: "x" }, "profile.url"], [{ url: `https://youtu.be/${id}`, title: "" }, "profile.title"], [{ url: "", title: "Judul" }, "profile.url"]]) {
+  const result = siteInputSchemas.videos.safeParse({ profile: bad, tutorial: null });
+  assert.equal(result.success, false); assert.equal(result.error.issues[0].path.join("."), path);
+}
+assert.equal(siteInputSchemas.contact, siteSchemas.contact);
+const videoEnvelope = { key: "videos", data: storedVideos, updated_at: contactEnvelope.updated_at };
+const savedFetch = globalThis.fetch;
+try {
+  globalThis.fetch = async (url, options) => { assert.equal(url, "http://site.test/api/v1/site/videos"); assert.equal(options.headers.Authorization, undefined); return Response.json(videoEnvelope); };
+  assert.deepEqual(await getSiteSection("videos"), storedVideos);
+  for (const status of [404, 500]) { globalThis.fetch = async () => new Response("", { status }); assert.equal(await getSiteSection("videos"), null); }
+  globalThis.fetch = async () => Response.json({ ...videoEnvelope, data: { profile: { url: `https://youtu.be/${id}`, title: "x" }, tutorial: null } });
+  assert.equal(await getSiteSection("videos"), null);
+} finally { globalThis.fetch = savedFetch; }
+const videoCalls = [];
+await putStaffSiteSection(async (path, options) => { videoCalls.push([path, options]); return videoEnvelope; }, "videos", videoInput.data);
+assert.deepEqual(JSON.parse(videoCalls[0][1].body), { data: videoInput.data });
+console.log("PASS: video YouTube (parser, skema simpan/input, fallback, PUT link).");
 console.log("PASS: kontrak profil/sejarah/kontak/transparansi/struktur, bagan+alt, unggah gambar/PDF, budgetTotals, formatRupiah, data lama, kontrol, arah, fallback demo/404/galat, transport tanpa token, get/put panel.");
