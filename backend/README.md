@@ -153,6 +153,43 @@ Saat fitur mati, login RT/RW mendapat 401 generik `Kredensial tidak valid.`; tok
 
 Sejak migration `2026_10_22_000000_add_staff_account_fields_to_users_table`, admin dapat mengelola akun dari panel **Akun**. Email menjadi nullable; akun baru wajib memakai username. Kolom baru: `is_active` (default true), `must_change_password` (default false), dan `last_login_at`. Kata sandi sementara dari panel minimal 10 karakter (CLI tetap 12) dan wajib diganti saat login pertama. Akun nonaktif ditolak dengan pesan yang sama seperti kredensial salah; menonaktifkan akun mencabut semua tokennya. Satu wilayah hanya boleh punya satu `rt_head` aktif (RT+RW) dan satu `rw_head` aktif (RW); nonaktifkan ketua lama sebelum membuat pengganti. Admin tidak dapat menonaktifkan atau menurunkan perannya sendiri, dan sistem selalu menyisakan minimal satu admin aktif. Audit mencatat `user.created`, `user.updated`, dan `user.password_reset` di `audit_logs`.
 
+### Diagnosis login dan pemulihan akun
+
+Akun tersimpan di tabel `users` pada **database aktif Laravel**. Git push/pull tidak memindahkan akun, `.env`, atau file SQLite. Akun yang dibuat pada database uji/sementara tidak muncul pada `database/database.sqlite`. Menghentikan server tidak menghapus akun.
+
+#### Pemeriksaan aman (tanpa mengubah akun)
+
+1. Pastikan backend berjalan dari folder `backend/` yang benar, bukan salinan repo lain: `php artisan serve --host=127.0.0.1 --port=8000`. URL http://127.0.0.1:8000/up harus berhasil. Frontend dan backend perlu dua terminal aktif.
+2. Periksa `.env` backend **secara lokal**, jangan membagikan isinya. Pengembangan bawaan memakai `DB_CONNECTION=sqlite`; jika `DB_DATABASE` tidak diisi, file bawaan `backend/database/database.sqlite`. Override environment proses (`DB_CONNECTION`, `DB_DATABASE`, `DB_URL`, `APP_ENV`) dapat mengalahkan `.env`. Jangan menjalankan server harian dari terminal pengujian yang masih menyimpan override. Setelah memperbaiki konfigurasi lokal, jalankan `php artisan config:clear` lalu restart Laravel; jangan mengganti `APP_KEY`.
+3. Untuk memastikan koneksi dan satu akun, jalankan `php artisan tinker` dari `backend/`, lalu perintah baca-saja berikut. Ganti `username-anda`; jangan mencetak kolom password, token, email, atau data warga:
+
+   ```php
+   DB::connection()->getDriverName();
+   DB::connection()->getDatabaseName();
+   App\Models\User::query()->where('username', 'username-anda')->first(['username', 'role', 'is_active', 'must_change_password']);
+   config('letters.neighborhood_approval');
+   ```
+
+   `null` berarti username tidak ada **pada database tersebut**, bukan bukti seluruh data hilang. Periksa database asli/backup terlebih dahulu. Hasil CLI menunjukkan konfigurasi terminal itu; restart server dari terminal yang sama agar tidak memakai override lama.
+4. Frontend harus memakai `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1`, bukan endpoint tanpa `/api/v1`; `NEXT_PUBLIC_DEMO_MODE` harus false/tidak aktif. Restart Next.js setelah perubahan. Override PowerShell dapat dihapus dengan `Remove-Item Env:NEXT_PUBLIC_DEMO_MODE -ErrorAction SilentlyContinue`. Build demo wajib dibangun ulang untuk mode API; demo Vercel tetap tidak melayani admin.
+
+| Gejala | Makna dan langkah |
+|---|---|
+| Panel petugas tidak aktif pada demo | Mode demo/API URL kosong atau build demo. Bukan kegagalan kata sandi. |
+| Server belum dapat dihubungi / gagal jaringan | Cek `/up`, port/API URL, dan `FRONTEND_ORIGINS`. Origin mencakup protokol, host, port; `http://localhost:3000` berbeda dari `http://127.0.0.1:3000`. |
+| 401 / `Kredensial tidak valid.` saat login | Username/kata sandi salah, akun nonaktif, peran tidak diizinkan, RT/RW nonaktif, atau wilayah RT/RW tidak lengkap. Pesan sengaja generik; cek metadata akun secara lokal. |
+| 422 saat login | Format username/isian salah. Username 1–64 karakter, diawali huruf kecil/angka; sisanya huruf kecil/angka, `_`, `-`. Bukan nama tampilan/email. Akun lama username null perlu ditetapkan oleh admin berwenang; API email lama tidak berarti form username menerima email. |
+| 429 | Batas login 5 percobaan/menit. Hentikan percobaan, tunggu sampai batas pulih; jangan mengakali rate limit. |
+| Sesi berakhir | Token kedaluwarsa/dicabut; masuk ulang. Sesi disimpan per tab/origin, bukan bukti akun terhapus. |
+| Diminta ganti kata sandi | Login berhasil, akun memakai kata sandi sementara. Selesaikan penggantian sebelum memakai fitur lain. |
+| 403 setelah login | Periksa peran/akun aktif/ability dan konfigurasi RT/RW. Admin/staff boleh mengelola konten, Kepala Desa tidak. |
+
+#### Lupa kata sandi atau akun nonaktif
+
+- Bila admin lain masih bisa masuk: buka **Akun** (`/admin/akun`), pilih akun yang benar, lakukan **Reset kata sandi** atau aktivasi sesuai kewenangan. Berikan kata sandi sementara lewat saluran privat; pengguna wajib menggantinya saat login berikutnya. Jangan menaruh kata sandi di chat, argumen shell, README, atau Git.
+- Bila tidak ada admin yang bisa masuk: pemilik sistem perlu memverifikasi identitas/kewenangan lalu melakukan pemulihan terkontrol. Belum ada command reset mandiri/OTP; `staff:create` **membuat akun baru**, bukan memulihkan kata sandi akun lama, dan username yang sudah ada ditolak. Jangan mengedit hash langsung, membuat admin pengganti sembarangan, atau menonaktifkan perlindungan akses.
+- Akun yang benar-benar hilang setelah database diganti/dikosongkan memerlukan database asli atau backup. Jangan menjalankan `migrate:fresh`/`migrate:refresh`, menghapus SQLite, atau mengganti `APP_KEY` untuk memperbaiki login. `php artisan migrate` adalah perintah pembaruan struktur yang sesuai; tes hanya pada database uji terpisah.
+
 ## Integrasi frontend
 
 Di `.env.local` pada direktori induk, isi `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1`. Jalankan frontend dengan `npm run dev` dari direktori induk dan buka http://127.0.0.1:3000. Gunakan dua terminal supaya Laravel dan Next.js berjalan bersamaan.
