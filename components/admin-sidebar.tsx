@@ -30,6 +30,7 @@ export function adminPageTitle(path: string) {
   if (normalizePath(path) === "/admin/konten/kontak") return "Konten kontak kantor";
   if (normalizePath(path) === "/admin/konten/transparansi") return "Konten transparansi";
   if (normalizePath(path) === "/admin/konten/struktur") return "Konten struktur pemerintahan";
+  if (normalizePath(path) === "/admin/konten/video") return "Konten video";
   return adminLinks.find((link) => link.href === normalizePath(path))?.title ?? "Panel Petugas";
 }
 function isActive(path: string, href: string) {

@@ -36,6 +36,12 @@ export type SiteBudget = {
 };
 export type SiteTransparency = { intro: string; programs: { title: string; text: string }[]; budgets: SiteBudget[] };
 export type SiteStructure = { chartImagePath?: string; chartAlt?: string; blocks: SiteTextSection["blocks"]; source: string };
+/** Tersimpan dan dikirim server: ID 11 karakter saja, bukan URL. */
+export type SiteVideo = { youtubeId: string; title: string };
+export type SiteVideos = { profile: SiteVideo | null; tutorial: SiteVideo | null };
+/** Body PUT videos: panel mengirim link YouTube; server mengekstrak ID (link lain 422 errors.data.<slot>.url). */
+export type SiteVideoInput = { url: string; title: string };
+export type SiteVideosInput = { profile: SiteVideoInput | null; tutorial: SiteVideoInput | null };
 export type SiteSectionData = {
   profile: SiteProfile;
   contact: SiteContact;
@@ -43,13 +49,15 @@ export type SiteSectionData = {
   statistics: never;
   transparency: SiteTransparency;
   structure: SiteStructure;
-  videos: never;
+  videos: SiteVideos;
 };
-export type EditableSiteSectionKey = "profile" | "contact" | "history" | "transparency" | "structure";
+/** Bentuk body PUT; sama dengan SiteSectionData kecuali videos. */
+export type SiteSectionInput = Omit<SiteSectionData, "videos"> & { videos: SiteVideosInput };
+export type EditableSiteSectionKey = "profile" | "contact" | "history" | "transparency" | "structure" | "videos";
 export type SiteSectionResponse<K extends SiteSectionKey = EditableSiteSectionKey> = {
   [P in K]: { key: P; data: SiteSectionData[P]; updated_at: string } & (P extends "transparency" ? { document_urls: Record<string, string> } : P extends "structure" ? { image_url: string | null } : unknown);
 }[K];
-export type SiteSectionUpdate<K extends EditableSiteSectionKey> = { data: SiteSectionData[K] };
+export type SiteSectionUpdate<K extends EditableSiteSectionKey> = { data: SiteSectionInput[K] };
 /** Hanya structure: JPG/PNG/WebP ≤ 5 MB. PUT chartImagePath menerbitkan gambar. */
 export type SiteSectionImageResponse = { path: string; url: string };
 /** Hanya transparency: PDF ≤ 10 MB. Simpan `path` ke budgets[].documentPath lalu PUT. */

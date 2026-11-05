@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { apiBase } from "./pelayanan";
 import { SPENDING_FIELDS } from "@/lib/transparency";
-import type { EditableSiteSectionKey, SiteSectionData, SiteSectionDocumentResponse, SiteSectionImageResponse } from "@/types/site";
+import { YOUTUBE_ID, youtubeId } from "@/lib/youtube";
+import type { EditableSiteSectionKey, SiteSectionData, SiteSectionDocumentResponse, SiteSectionImageResponse, SiteSectionInput } from "@/types/site";
 
 // Pesan Indonesia dipakai panel per field; batas sama dengan SiteSectionRules.
 const required = "Wajib diisi.";
@@ -61,13 +62,29 @@ export const structureSchema = z.object({
 }).strict().superRefine((value, context) => {
   if (value.chartImagePath && !value.chartAlt?.trim()) context.addIssue({ code: "custom", path: ["chartAlt"], message: required });
 });
+// Respons server hanya berisi ID; URL tidak pernah disimpan.
+const storedVideo = z.object({ youtubeId: z.string().regex(YOUTUBE_ID), title: text(160) }).strict().nullable();
+export const videosSchema = z.object({ profile: storedVideo, tutorial: storedVideo }).strict();
+export const VIDEO_URL_MESSAGE = "Tempel link video YouTube, contoh https://www.youtube.com/watch?v=… atau https://youtu.be/….";
+// Panel: link + judul kosong keduanya = tanpa video (null). Server tetap mengekstrak ID sendiri.
+const videoInput = z.preprocess(
+  (value) => value && typeof value === "object" && Object.values(value).every((item) => item === "") ? null : value,
+  z.object({
+    url: z.string().min(1, VIDEO_URL_MESSAGE).max(2048, "Maksimal 2048 karakter.").refine((value) => youtubeId(value) !== null, VIDEO_URL_MESSAGE),
+    title: text(160),
+  }).strict().nullable(),
+);
+export const videosInputSchema = z.object({ profile: videoInput, tutorial: videoInput }).strict();
 export const siteSchemas = {
   profile: z.object({ ...fields, profileDetails: profileDetailsSchema.optional() }).strict(),
   history: z.object(fields).strict(),
   contact: contactSchema,
   transparency: transparencySchema,
   structure: structureSchema,
+  videos: videosSchema,
 };
+/** Validasi body PUT di panel; sama dengan siteSchemas kecuali videos (link, bukan ID). */
+export const siteInputSchemas = { ...siteSchemas, videos: videosInputSchema };
 export type TextSiteKey = "profile" | "history";
 /** documentUrls hanya diisi server untuk transparency: { [documentPath]: URL publik }. */
 export type SiteEnvelope<K extends EditableSiteSectionKey> = { data: SiteSectionData[K]; updated_at: string; documentUrls: Record<string, string>; imageUrl?: string | null };
@@ -113,7 +130,7 @@ export type AdminRequest = <T>(path: string, options?: RequestInit) => Promise<T
 export async function getStaffSiteSection<K extends EditableSiteSectionKey>(request: AdminRequest, key: K) {
   return parseSiteEnvelope(key, await request<unknown>(`/staff/site/${key}`));
 }
-export async function putStaffSiteSection<K extends EditableSiteSectionKey>(request: AdminRequest, key: K, data: SiteSectionData[K]) {
+export async function putStaffSiteSection<K extends EditableSiteSectionKey>(request: AdminRequest, key: K, data: SiteSectionInput[K]) {
   return parseSiteEnvelope(key, await request<unknown>(`/staff/site/${key}`, { method: "PUT", body: JSON.stringify({ data }) }));
 }
 /** FormData tidak menetapkan Content-Type: browser menyertakan boundary multipart. */

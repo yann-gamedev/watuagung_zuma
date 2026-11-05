@@ -14,6 +14,10 @@ export const contact = {
   mapsLinkUrl: "[PLACEHOLDER]",
 };
 
+// Video YouTube (R8): diatur di /admin/konten/video/. Cadangan demo/API mati/belum disimpan: tanpa
+// video, jadi bagian video tidak dirender. Isi hanya ID 11 karakter video resmi desa, jangan video rekaan.
+export const videos: import("@/types/site").SiteVideos = { profile: null, tutorial: null };
+
 export function getContactLinks(values = contact) {
   return {
     phone: values.phone.startsWith("62") && values.phone.length > 2 && !/[^0-9]/.test(values.phone) ? values.phone : null,

@@ -22,6 +22,10 @@ final class SiteSectionRules
 
     public const STRUCTURE_IMAGE_PATH = '/\Asite\/structure\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:webp|jpg)\z/';
 
+    public const VIDEO_SLOTS = ['profile', 'tutorial'];
+
+    public const YOUTUBE_ID = '/\A[A-Za-z0-9_-]{11}\z/';
+
     public static function validate(SiteSection $section, array $input): array
     {
         $text = fn (int $max) => ['required', 'string', "max:$max"];
@@ -115,6 +119,21 @@ final class SiteSectionRules
                 'payload.data.blocks.*.text' => $text(10000),
                 'payload.data.source' => $text(1000),
             ];
+        } elseif ($section === SiteSection::Videos) {
+            // Input berisi URL; yang disimpan hanya { youtubeId, title } (lihat akhir validate()).
+            $rules = [
+                'payload' => ['required', 'array:data'],
+                'payload.data' => ['required', 'array:'.implode(',', self::VIDEO_SLOTS)],
+            ];
+            foreach (self::VIDEO_SLOTS as $slot) {
+                $rules["payload.data.$slot"] = ['present', 'nullable', 'array:url,title'];
+                if (is_array($input['data'][$slot] ?? null)) {
+                    $rules["payload.data.$slot.url"] = ['bail', 'required', 'string', 'max:2048', function ($attribute, $value, $fail) {
+                        if (self::youtubeId($value) === null) $fail('Gunakan link video YouTube (youtube.com/watch?v=…, youtu.be/…, youtube.com/shorts/… atau youtube.com/embed/…).');
+                    }];
+                    $rules["payload.data.$slot.title"] = $text(160);
+                }
+            }
         } elseif (! in_array($section, [SiteSection::Profile, SiteSection::History], true)) {
             // ponytail: R5/R8 menentukan skema; bahkan objek kosong belum boleh disimpan.
             throw \Illuminate\Validation\ValidationException::withMessages(['data' => 'Bagian ini belum dapat diisi.']);
@@ -132,7 +151,41 @@ final class SiteSectionRules
             }
             throw \Illuminate\Validation\ValidationException::withMessages($errors);
         }
+        if ($section === SiteSection::Videos) {
+            $videos = [];
+            foreach (self::VIDEO_SLOTS as $slot) {
+                $video = $input['data'][$slot];
+                $videos[$slot] = $video === null ? null : ['youtubeId' => self::youtubeId($video['url']), 'title' => $video['title']];
+            }
+            return $videos;
+        }
         return $input['data'];
+    }
+
+    /**
+     * ID 11 karakter dari youtube.com/watch?v=, youtu.be/, youtube.com/shorts/, youtube.com/embed/; selain itu null.
+     * Cermin: lib/youtube.ts.
+     */
+    public static function youtubeId(string $url): ?string
+    {
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) return null;
+        $parts = parse_url($url);
+        if (! is_array($parts) || ! in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true)
+            || isset($parts['user']) || isset($parts['pass']) || isset($parts['port'])) return null;
+        $host = strtolower($parts['host'] ?? '');
+        $path = $parts['path'] ?? '';
+        $id = null;
+        if ($host === 'youtu.be') {
+            if (preg_match('#\A/([^/]+)/?\z#', $path, $match)) $id = $match[1];
+        } elseif (in_array($host, ['youtube.com', 'www.youtube.com', 'm.youtube.com'], true)) {
+            if (preg_match('#\A/watch/?\z#', $path)) {
+                parse_str($parts['query'] ?? '', $query);
+                $id = $query['v'] ?? null;
+            } elseif (preg_match('#\A/(?:shorts|embed)/([^/]+)/?\z#', $path, $match)) {
+                $id = $match[1];
+            }
+        }
+        return is_string($id) && preg_match(self::YOUTUBE_ID, $id) ? $id : null;
     }
 
     private static function mapUrl(array $prefixes): array

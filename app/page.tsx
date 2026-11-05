@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import { PublicShell } from "@/components/site";
 import { OfficeContact } from "@/components/office-contact";
 import { PublicNews } from "@/features/news/public-news";
+import { SiteVideo } from "@/components/site-video";
 export default function Home() {
   return (
     <PublicShell>
@@ -84,6 +85,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      <SiteVideo slot="profile" heading="Video profil desa" className="container home-bottom-container home-bottom home-video" />
       <PublicNews home />
       <section className="container home-bottom-container home-bottom home-economy" aria-label="BUMDes dan UMKM">
         <article className="home-economy-card home-bumdes">
