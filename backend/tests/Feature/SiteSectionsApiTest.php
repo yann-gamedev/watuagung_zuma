@@ -75,6 +75,211 @@ class SiteSectionsApiTest extends TestCase
             ->assertOk()->assertHeader('Cache-Control', 'no-store, private')->json('path');
     }
 
+    private function structure(): array
+    {
+        return ['blocks' => [['title' => 'Perangkat fiktif', 'text' => "Baris satu\r\nBaris dua\rBaris tiga"]], 'source' => 'Sumber fiktif'];
+    }
+
+    private function image(string $format = 'png', int $width = 600, int $height = 400): UploadedFile
+    {
+        if (! extension_loaded('gd')) $this->markTestSkipped('php-gd diperlukan untuk tes gambar struktur.');
+        if ($format !== 'webp') return UploadedFile::fake()->image('bagan.'.$format, $width, $height);
+        if (! function_exists('imagewebp') || ! (imagetypes() & IMG_WEBP)) $this->markTestSkipped('GD tanpa WebP.');
+        $image = imagecreatetruecolor($width, $height);
+        ob_start();
+        imagewebp($image);
+        $bytes = ob_get_clean();
+        imagedestroy($image);
+        return UploadedFile::fake()->createWithContent('bagan.webp', $bytes);
+    }
+
+    private function uploadImage(?UploadedFile $file = null)
+    {
+        return $this->post('/api/v1/staff/site/structure/image', ['file' => $file ?? $this->image()], ['Accept' => 'application/json']);
+    }
+
+    public static function imageFormats(): array
+    {
+        return [['jpg'], ['jpeg'], ['png'], ['webp']];
+    }
+
+    #[DataProvider('imageFormats')]
+    public function test_structure_upload_reencodes_and_keeps_width_2400(string $format): void
+    {
+        Storage::fake('public', ['url' => 'https://desa.example/media']);
+        $this->act('admin');
+        $response = $this->uploadImage($this->image($format, 3000, 1500))->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+        $path = $response->json('path');
+        $this->assertSame(['path', 'url'], array_keys($response->json()));
+        $this->assertMatchesRegularExpression(SiteSectionRules::STRUCTURE_IMAGE_PATH, $path);
+        $response->assertJsonPath('url', 'https://desa.example/media/'.$path);
+        $webp = function_exists('imagewebp') && (imagetypes() & IMG_WEBP);
+        $this->assertSame([2400, 1200, $webp ? IMAGETYPE_WEBP : IMAGETYPE_JPEG], array_slice(getimagesizefromstring(Storage::disk('public')->get($path)), 0, 3));
+        $this->assertSame([$path], Storage::disk('public')->allFiles());
+        $this->assertDatabaseCount('site_sections', 0);
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_structure_upload_rejects_invalid_files(): void
+    {
+        Storage::fake('public');
+        $this->act();
+        $this->postJson('/api/v1/staff/site/structure/image')->assertUnprocessable()->assertJsonValidationErrors('file');
+        $png = $this->image();
+        foreach ([
+            UploadedFile::fake()->createWithContent('palsu.jpg', 'not an image'),
+            $this->image('gif'), $this->image()->size(5121),
+            $this->image('jpg', 599, 400), $this->image('jpg', 600, 399),
+            $this->image('jpg', 6001, 400), $this->image('jpg', 600, 6001),
+            UploadedFile::fake()->createWithContent('rusak.jpg', "\xff\xd8\xff\xe0".str_repeat("\0", 100)),
+            // PNG header/dimensions survive getimagesize; missing IDAT makes GD decoding fail.
+            UploadedFile::fake()->createWithContent('decode.png', substr(file_get_contents($png->getRealPath()), 0, 33)),
+        ] as $file) {
+            $response = $this->uploadImage($file)->assertUnprocessable()->assertJsonValidationErrors('file');
+            if ($file->getClientOriginalName() === 'decode.png') $response->assertJsonPath('errors.file.0', 'Foto tidak dapat dibaca. Pilih JPG, PNG, atau WebP yang valid.');
+        }
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    public function test_structure_upload_accepts_input_bounds_without_upscaling(): void
+    {
+        Storage::fake('public');
+        $this->act();
+        foreach ([$this->image('png', 6000, 400)->size(5120), $this->image('jpg', 600, 6000)] as $file) $this->uploadImage($file)->assertOk();
+        $path = $this->uploadImage()->assertOk()->json('path');
+        $this->assertSame([600, 400], array_slice(getimagesizefromstring(Storage::disk('public')->get($path)), 0, 2));
+    }
+
+    public function test_structure_round_trip_and_image_lifecycle_leave_other_keys_unchanged(): void
+    {
+        Storage::fake('public');
+        $user = $this->act();
+        $this->putJson('/api/v1/staff/site/profile', ['data' => $this->profile()])->assertOk()->assertJsonMissingPath('image_url');
+        $before = SiteSection::find('profile')->getRawOriginal();
+        $first = $this->uploadImage()->assertOk()->json('path');
+        $data = $this->structure() + ['chartImagePath' => $first, 'chartAlt' => 'Bagan fiktif'];
+        $padded = $data;
+        foreach (['source', 'chartAlt', 'blocks.0.title', 'blocks.0.text'] as $path) data_set($padded, $path, '  '.data_get($data, $path).'  ');
+        $this->putJson('/api/v1/staff/site/structure', ['data' => $padded])->assertOk()->assertJsonPath('data', $data)->assertJsonPath('image_url', Storage::disk('public')->url($first));
+        $public = $this->getJson('/api/v1/site/structure')->assertOk()->assertHeader('Cache-Control', 'max-age=60, public')->assertJsonPath('data', $data);
+        $this->assertSame(['key', 'data', 'updated_at', 'image_url'], array_keys($public->json()));
+        $this->getJson('/api/v1/staff/site/structure')->assertOk()->assertJsonPath('image_url', Storage::disk('public')->url($first));
+        $this->assertSame($user->id, SiteSection::find('structure')->updated_by);
+        $this->putJson('/api/v1/staff/site/structure', ['data' => $data])->assertOk();
+        Storage::disk('public')->assertExists($first);
+        $second = $this->uploadImage()->assertOk()->json('path');
+        $invalid = array_replace($data, ['chartImagePath' => $second, 'source' => '']);
+        $this->putJson('/api/v1/staff/site/structure', ['data' => $invalid])->assertUnprocessable();
+        Storage::disk('public')->assertExists([$first, $second]);
+        $data['chartImagePath'] = $second;
+        $this->putJson('/api/v1/staff/site/structure', ['data' => $data])->assertOk();
+        Storage::disk('public')->assertMissing($first);
+        Storage::disk('public')->assertExists($second);
+        $this->putJson('/api/v1/staff/site/structure', ['data' => array_replace($data, ['chartImagePath' => $first])])->assertUnprocessable()->assertJsonValidationErrors('data.chartImagePath');
+        $this->assertSame($data, SiteSection::find('structure')->data);
+        $this->putJson('/api/v1/staff/site/structure', ['data' => $this->structure()])->assertOk()->assertJsonPath('image_url', null);
+        Storage::disk('public')->assertMissing($second);
+        $this->getJson('/api/v1/site/structure')->assertOk()->assertJsonPath('image_url', null)->assertJsonMissingPath('data.chartImagePath');
+        $this->assertSame($before, SiteSection::find('profile')->getRawOriginal());
+    }
+
+    public function test_structure_validation_bounds_unknown_fields_controls_and_paths(): void
+    {
+        Storage::fake('public');
+        $this->act();
+        $path = $this->uploadImage()->assertOk()->json('path');
+        $ok = $this->structure() + ['chartImagePath' => $path, 'chartAlt' => 'Bagan fiktif'];
+        $bad = [
+            'chartImagePath' => [null, '', 'site/structure/x.webp', 'site/structure/00000000-0000-0000-0000-000000000000.webp', '../.env', 'https://desa.example/'.$path, '/'.$path, str_replace('structure/', 'structure/../structure/', $path), str_replace('structure', 'posts', $path), str_replace('.webp', '.png', str_replace('.jpg', '.png', $path))],
+            'chartAlt' => [null, '', '   ', str_repeat('é', 301), 1, [], "a\nb", "a\rb"],
+            'source' => [null, '', '   ', str_repeat('é', 1001), 1, [], "a\nb"],
+            'blocks' => [null, [], 'x', ['named' => ['title' => 'x', 'text' => 'y']], array_fill(0, 21, ['title' => 'x', 'text' => 'y'])],
+            'blocks.0' => [null, 'x', ['title' => 'x'], ['text' => 'x']],
+            'blocks.0.title' => [null, '', '   ', str_repeat('é', 161), 1, [], "a\nb"],
+            'blocks.0.text' => [null, '', '   ', str_repeat('é', 10001), 1, []],
+        ];
+        foreach ($bad as $field => $values) foreach ($values as $value) {
+            $data = $ok;
+            data_set($data, $field, $value);
+            $response = $this->putJson('/api/v1/staff/site/structure', ['data' => $data])->assertUnprocessable();
+            if ($field !== 'blocks.0') $response->assertJsonValidationErrors('data.'.$field);
+        }
+        foreach (['chartAlt', 'source', 'blocks', 'blocks.0.title', 'blocks.0.text'] as $field) {
+            $data = $ok;
+            data_forget($data, $field);
+            $this->putJson('/api/v1/staff/site/structure', ['data' => $data])->assertUnprocessable()->assertJsonValidationErrors('data.'.$field);
+        }
+        foreach (['chartImagePath', 'chartAlt', 'source', 'blocks.0.title', 'blocks.0.text'] as $field) foreach (["\0", "\t", "\x7f", "\x1b", "\u{0085}"] as $control) {
+            $data = $ok;
+            data_set($data, $field, $control.data_get($data, $field));
+            $this->putJson('/api/v1/staff/site/structure', ['data' => $data])->assertUnprocessable()->assertJsonValidationErrors('data.'.$field);
+        }
+        foreach (['unknown', 'blocks.0.unknown'] as $field) {
+            $data = $ok;
+            data_set($data, $field, true);
+            $this->putJson('/api/v1/staff/site/structure', ['data' => $data])->assertUnprocessable();
+        }
+        $this->putJson('/api/v1/staff/site/structure', ['data' => $ok, 'unknown' => true])->assertUnprocessable();
+        $this->assertDatabaseCount('site_sections', 0);
+        $this->assertDatabaseCount('audit_logs', 0);
+        $max = array_replace($ok, ['chartAlt' => str_repeat('é', 300), 'source' => str_repeat('é', 1000), 'blocks' => array_fill(0, 20, ['title' => str_repeat('é', 160), 'text' => str_repeat('é', 10000)])]);
+        $this->putJson('/api/v1/staff/site/structure', ['data' => $max])->assertOk()->assertJsonPath('data', $max);
+        unset($ok['chartImagePath']);
+        $this->putJson('/api/v1/staff/site/structure', ['data' => $ok])->assertOk();
+    }
+
+    public function test_structure_alt_can_be_empty_without_image_but_not_null_or_controls(): void
+    {
+        $this->act();
+        foreach (['', '   ', str_repeat('é', 300)] as $alt) {
+            $this->putJson('/api/v1/staff/site/structure', ['data' => $this->structure() + ['chartAlt' => $alt]])
+                ->assertOk()->assertJsonPath('data.chartAlt', trim($alt))->assertJsonPath('image_url', null);
+        }
+        foreach ([null, str_repeat('é', 301), "\t", "\n", "\0", "\x7f"] as $alt) {
+            $this->putJson('/api/v1/staff/site/structure', ['data' => $this->structure() + ['chartAlt' => $alt]])
+                ->assertUnprocessable()->assertJsonValidationErrors('data.chartAlt');
+        }
+    }
+
+    public function test_structure_audit_failure_keeps_old_and_uploaded_images_and_data(): void
+    {
+        Storage::fake('public');
+        $this->act();
+        $first = $this->uploadImage()->assertOk()->json('path');
+        $second = $this->uploadImage()->assertOk()->json('path');
+        $data = $this->structure() + ['chartImagePath' => $first, 'chartAlt' => 'Bagan fiktif'];
+        $this->putJson('/api/v1/staff/site/structure', ['data' => $data])->assertOk();
+        DB::statement('DROP TABLE audit_logs');
+        foreach ([$this->structure(), array_replace($data, ['chartImagePath' => $second])] as $replacement) {
+            $this->putJson('/api/v1/staff/site/structure', ['data' => $replacement])->assertStatus(500);
+            Storage::disk('public')->assertExists([$first, $second]);
+            $this->assertSame($data, SiteSection::find('structure')->data);
+        }
+    }
+
+    public function test_structure_waits_for_image_cleanup_before_validating_reference(): void
+    {
+        Storage::fake('public');
+        $this->act();
+        $path = $this->uploadImage()->assertOk()->json('path');
+        $process = proc_open([PHP_BINARY, '-r', '
+            $lock = fopen($argv[1], "c"); flock($lock, LOCK_EX);
+            echo "locked\n"; fflush(STDOUT); usleep(500000);
+            unlink($argv[2]); flock($lock, LOCK_UN); fclose($lock);
+        ', storage_path('framework/cache/site-structure.lock'), Storage::disk('public')->path($path)],
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        $this->assertIsResource($process);
+        try {
+            $this->assertSame("locked\n", fgets($pipes[1]));
+            $this->putJson('/api/v1/staff/site/structure', ['data' => $this->structure() + ['chartImagePath' => $path, 'chartAlt' => 'Bagan fiktif']])
+                ->assertUnprocessable()->assertJsonValidationErrors('data.chartImagePath');
+            $this->assertNull(SiteSection::find('structure'));
+        } finally {
+            foreach ($pipes as $pipe) fclose($pipe);
+            $this->assertSame(0, proc_close($process));
+        }
+    }
+
     public function test_transparency_round_trip_document_urls_and_file_cleanup(): void
     {
         Storage::fake('public');
@@ -237,6 +442,9 @@ class SiteSectionsApiTest extends TestCase
         $this->getJson('/api/v1/staff/site/profile')->assertUnauthorized()->assertHeader('Cache-Control', 'no-store, private');
         $this->putJson('/api/v1/staff/site/profile', ['data' => $this->text()])->assertUnauthorized();
         $this->postJson('/api/v1/staff/site/profile/image')->assertUnauthorized();
+        $this->getJson('/api/v1/staff/site/structure')->assertUnauthorized();
+        $this->putJson('/api/v1/staff/site/structure', ['data' => $this->structure()])->assertUnauthorized();
+        $this->postJson('/api/v1/staff/site/structure/image')->assertUnauthorized()->assertHeader('Cache-Control', 'no-store, private');
         $this->postJson('/api/v1/staff/site/transparency/document')->assertUnauthorized()->assertHeader('Cache-Control', 'no-store, private');
         $this->getJson('/api/v1/staff/site/unknown')->assertUnauthorized();
     }
@@ -252,7 +460,7 @@ class SiteSectionsApiTest extends TestCase
         config(['letters.neighborhood_approval' => true]);
         $this->act($role);
         Storage::fake('public');
-        foreach (['profile', 'transparency', 'unknown'] as $key) {
+        foreach (['profile', 'transparency', 'structure', 'unknown'] as $key) {
             $this->getJson('/api/v1/staff/site/'.$key)->assertForbidden();
             $this->putJson('/api/v1/staff/site/'.$key, ['data' => $this->text()])->assertForbidden();
             $this->postJson('/api/v1/staff/site/'.$key.'/image')->assertForbidden();
@@ -269,11 +477,15 @@ class SiteSectionsApiTest extends TestCase
         $this->getJson('/api/v1/staff/site/profile')->assertForbidden();
         $this->putJson('/api/v1/staff/site/profile', [])->assertForbidden();
         $this->postJson('/api/v1/staff/site/profile/image')->assertForbidden();
+        $this->putJson('/api/v1/staff/site/structure', ['data' => $this->structure()])->assertForbidden();
+        $this->postJson('/api/v1/staff/site/structure/image')->assertForbidden();
         $this->postJson('/api/v1/staff/site/transparency/document')->assertForbidden();
         $this->act('admin', ['other']);
         $this->getJson('/api/v1/staff/site/profile')->assertForbidden();
         $this->putJson('/api/v1/staff/site/profile', [])->assertForbidden();
         $this->postJson('/api/v1/staff/site/profile/image')->assertForbidden();
+        $this->putJson('/api/v1/staff/site/structure', ['data' => $this->structure()])->assertForbidden();
+        $this->postJson('/api/v1/staff/site/structure/image')->assertForbidden();
         $this->postJson('/api/v1/staff/site/transparency/document')->assertForbidden();
     }
 
@@ -507,7 +719,7 @@ class SiteSectionsApiTest extends TestCase
     public function test_reserved_keys_reject_every_payload_and_unknown_keys_are_404(): void
     {
         $this->act();
-        foreach (['statistics', 'structure', 'videos'] as $key) {
+        foreach (['statistics', 'videos'] as $key) {
             foreach ([[], ['data' => []], ['data' => (object) []], ['data' => ['x' => 'y']]] as $payload) {
                 $this->putJson('/api/v1/staff/site/'.$key, $payload)->assertUnprocessable()->assertJsonValidationErrors('data');
             }
@@ -518,11 +730,13 @@ class SiteSectionsApiTest extends TestCase
         $this->assertDatabaseCount('site_sections', 0);
     }
 
-    public function test_images_disabled_for_every_key_without_storing_originals(): void
+    public function test_images_disabled_except_structure_without_storing_originals(): void
     {
         Storage::fake('public');
         $this->act();
         foreach (SectionKey::cases() as $key) {
+            $this->assertSame($key === SectionKey::Structure, $key->allowsImages());
+            if ($key === SectionKey::Structure) continue;
             $this->post('/api/v1/staff/site/'.$key->value.'/image', ['file' => UploadedFile::fake()->create('fiktif.jpg', 10, 'image/jpeg')], ['Accept' => 'application/json'])
                 ->assertUnprocessable()->assertJsonValidationErrors('file')->assertHeader('Cache-Control', 'no-store, private');
         }
@@ -534,18 +748,34 @@ class SiteSectionsApiTest extends TestCase
     {
         foreach (SiteSectionDefaults::data() as $key => $data) $this->assertSame($data, SiteSectionRules::validate(SectionKey::from($key), ['data' => $data]));
         SiteSection::create(['key' => 'profile', 'data' => []]);
-        $this->artisan('site:import-defaults')->expectsOutput('Dibuat: 3. Dipertahankan: 1.')->assertSuccessful();
+        $this->artisan('site:import-defaults')->expectsOutput('Dibuat: 4. Dipertahankan: 1.')->assertSuccessful();
         $this->assertSame([], SiteSection::find('profile')->data);
-        $this->artisan('site:import-defaults')->expectsOutput('Dibuat: 0. Dipertahankan: 4.')->assertSuccessful();
-        $this->assertDatabaseCount('audit_logs', 3);
-        $this->assertDatabaseCount('site_sections', 4);
-        foreach (['contact', 'history', 'transparency'] as $key) $this->assertSame(SiteSectionDefaults::data()[$key], SiteSection::find($key)->data);
+        $this->artisan('site:import-defaults')->expectsOutput('Dibuat: 0. Dipertahankan: 5.')->assertSuccessful();
+        $this->assertDatabaseCount('audit_logs', 4);
+        $this->assertDatabaseCount('site_sections', 5);
+        foreach (['contact', 'history', 'transparency', 'structure'] as $key) $this->assertSame(SiteSectionDefaults::data()[$key], SiteSection::find($key)->data);
         $this->getJson('/api/v1/site/history')->assertOk();
+    }
+
+    public function test_import_structure_public_read_and_repeat_preserves_edits(): void
+    {
+        $this->artisan('site:import-defaults')->expectsOutput('Dibuat: 5. Dipertahankan: 0.')->assertSuccessful();
+        $defaults = SiteSectionDefaults::data()['structure'];
+        $this->assertSame(['blocks', 'source'], array_keys($defaults));
+        $this->assertSame(['Kepala Desa', 'Sekretariat Desa', 'Pelaksana Teknis', 'Pelaksana Kewilayahan', 'Badan Permusyawaratan Desa'], array_column($defaults['blocks'], 'title'));
+        $this->assertSame('Sumber: RKP Desa Watuagung 2027', $defaults['source']);
+        $this->getJson('/api/v1/site/structure')->assertOk()->assertJsonPath('data', $defaults)->assertJsonPath('image_url', null);
+        $this->act();
+        $this->putJson('/api/v1/staff/site/structure', ['data' => $this->structure()])->assertOk();
+        $before = SiteSection::find('structure')->getRawOriginal();
+        $this->artisan('site:import-defaults')->expectsOutput('Dibuat: 0. Dipertahankan: 5.')->assertSuccessful();
+        $this->assertSame($before, SiteSection::find('structure')->getRawOriginal());
+        $this->assertDatabaseCount('audit_logs', 6);
     }
 
     public function test_import_profile_details_public_read_and_repeat_preserves_edited_details(): void
     {
-        $this->artisan('site:import-defaults')->expectsOutput('Dibuat: 4. Dipertahankan: 0.')->assertSuccessful();
+        $this->artisan('site:import-defaults')->expectsOutput('Dibuat: 5. Dipertahankan: 0.')->assertSuccessful();
         $defaults = SiteSectionDefaults::data()['profile'];
         $this->assertSame($defaults, SiteSection::find('profile')->data);
         $this->assertSame(['Utara', 'Timur', 'Selatan', 'Barat'], array_column($defaults['profileDetails']['boundaries'], 'direction'));
@@ -557,10 +787,10 @@ class SiteSectionsApiTest extends TestCase
         $edited = $this->profile();
         $this->putJson('/api/v1/staff/site/profile', ['data' => $edited])->assertOk();
         $before = SiteSection::find('profile')->getRawOriginal();
-        $this->artisan('site:import-defaults')->expectsOutput('Dibuat: 0. Dipertahankan: 4.')->assertSuccessful();
+        $this->artisan('site:import-defaults')->expectsOutput('Dibuat: 0. Dipertahankan: 5.')->assertSuccessful();
         $this->assertSame($before, SiteSection::find('profile')->getRawOriginal());
         $this->getJson('/api/v1/site/profile')->assertOk()->assertJsonPath('data', $edited);
-        $this->assertDatabaseCount('audit_logs', 5);
+        $this->assertDatabaseCount('audit_logs', 6);
     }
 
     public function test_audit_failure_rolls_back_create_and_replace(): void

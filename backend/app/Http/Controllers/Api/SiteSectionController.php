@@ -34,11 +34,11 @@ class SiteSectionController extends Controller
     {
         abort_unless($request->user()->canManageContent(), 403, 'Akses ditolak.');
         $section = $this->key($key);
-        if (! $section->allowsDocuments()) return $this->save($request, $section);
+        if (! $section->allowsDocuments() && ! $section->allowsImages()) return $this->save($request, $section);
 
-        // ponytail: satu host/VPS; multi-host perlu lock bersama sebelum berbagi disk dokumen.
-        // Lock meliputi validasi keberadaan PDF, commit, dan penghapusan agar PUT lain tak merujuk file yang sedang dihapus.
-        $lock = fopen(storage_path('framework/cache/site-transparency.lock'), 'c');
+        // ponytail: satu host/VPS; multi-host perlu lock bersama sebelum berbagi disk media.
+        // Lock meliputi validasi file, commit, dan penghapusan agar PUT lain tak merujuk file yang sedang dihapus.
+        $lock = fopen(storage_path('framework/cache/site-'.$section->value.'.lock'), 'c');
         abort_if($lock === false, 503, 'Penyimpanan sementara tidak tersedia.');
         try {
             abort_unless(flock($lock, LOCK_EX), 503, 'Penyimpanan sementara tidak tersedia.');
@@ -52,7 +52,7 @@ class SiteSectionController extends Controller
     private function save(Request $request, SectionKey $section): JsonResponse
     {
         $data = SiteSectionRules::validate($section, $request->all());
-        $before = $this->documents(SiteSection::find($section->value)?->data);
+        $before = $this->files($section, SiteSection::find($section->value)?->data);
         $row = DB::transaction(function () use ($request, $section, $data) {
             // Native upsert handles concurrent first writes; one entire object wins, never a merge.
             SiteSection::upsert([
@@ -66,7 +66,7 @@ class SiteSectionController extends Controller
             return SiteSection::findOrFail($section->value);
         });
         // Setelah commit: file yang tak lagi dirujuk dihapus; kalau commit gagal, file lama tetap ada.
-        Storage::disk('public')->delete(array_values(array_diff($before, $this->documents($data))));
+        Storage::disk('public')->delete(array_values(array_diff($before, $this->files($section, $data))));
         return response()->json($this->item($row))->header('Cache-Control', 'private, no-store');
     }
 
@@ -84,6 +84,15 @@ class SiteSectionController extends Controller
         return response()->json(['path' => $path, 'url' => Storage::disk('public')->url($path)])->header('Cache-Control', 'private, no-store');
     }
 
+    private function files(SectionKey $section, ?array $data): array
+    {
+        if ($section === SectionKey::Structure) {
+            $path = $data['chartImagePath'] ?? null;
+            return is_string($path) && preg_match(SiteSectionRules::STRUCTURE_IMAGE_PATH, $path) ? [$path] : [];
+        }
+        return $this->documents($data);
+    }
+
     private function documents(?array $data): array
     {
         return array_values(array_filter(array_column($data['budgets'] ?? [], 'documentPath'), 'is_string'));
@@ -95,8 +104,9 @@ class SiteSectionController extends Controller
         $section = $this->key($key);
         if (! $section->allowsImages()) throw ValidationException::withMessages(['file' => 'Bagian ini tidak mengizinkan gambar.']);
         $request->validate(['file' => ['required', 'file']]);
-        $path = ImageProcessor::store($request->file('file'), 'site/'.$section->value, 3072, 1600);
-        return response()->json(['path' => $path])->header('Cache-Control', 'private, no-store');
+        // ponytail: unggahan tanpa PUT tetap di disk; tambah pembersihan berkala bila menumpuk.
+        $path = ImageProcessor::store($request->file('file'), 'site/'.$section->value, 5120, 2400);
+        return response()->json(['path' => $path, 'url' => Storage::disk('public')->url($path)])->header('Cache-Control', 'private, no-store');
     }
 
     private function key(string $key): SectionKey
@@ -110,6 +120,10 @@ class SiteSectionController extends Controller
         if ($row->key === SectionKey::Transparency->value) {
             $paths = $this->documents($row->data);
             $item['document_urls'] = (object) array_combine($paths, array_map(fn ($path) => Storage::disk('public')->url($path), $paths));
+        }
+        if ($row->key === SectionKey::Structure->value) {
+            $path = $row->data['chartImagePath'] ?? null;
+            $item['image_url'] = $path === null ? null : Storage::disk('public')->url($path);
         }
         return $item;
     }

@@ -6,6 +6,7 @@ import { PublicShell, PageHeading } from "@/components/site";
 import { OfficeContact } from "@/components/office-contact";
 import { SiteTextPage } from "@/components/site-text-page";
 import { TransparencyPage } from "@/components/transparency-page";
+import { StructurePage } from "@/components/structure-page";
 
 export function generateStaticParams() {
   return Object.keys(pages).map((slug) => ({ slug }));
@@ -32,6 +33,9 @@ export default async function Page({
         <SiteTextPage key={slug} sectionKey={slug === "profil" ? "profile" : "history"} initialPage={page} />
       </PublicShell>
     );
+  }
+  if (slug === "struktur-pemerintahan") {
+    return <PublicShell><StructurePage initialPage={page} /></PublicShell>;
   }
   if (slug === "transparansi") {
     return <PublicShell><TransparencyPage initialPage={page} /></PublicShell>;

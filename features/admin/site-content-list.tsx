@@ -10,6 +10,7 @@ import { useAdminSession } from "./session";
 import styles from "./applications.module.css";
 
 export const sitePages: { key: EditableSiteSectionKey; title: string; description: string; href: string }[] = [
+  { key: "structure", title: "Struktur pemerintahan", description: "Gambar bagan, nama dan jabatan perangkat desa, sumber.", href: "/admin/konten/struktur" },
   { key: "profile", title: "Profil desa", description: "Ringkasan, angka utama, batas wilayah, lembaga desa.", href: "/admin/konten/profil" },
   { key: "history", title: "Sejarah desa", description: "Asal-usul, dusun, kepala desa dari masa ke masa.", href: "/admin/konten/sejarah" },
   { key: "contact", title: "Kontak kantor", description: "Alamat, jam pelayanan, nomor, peta. Tampil di beranda, /kontak, menu, dan footer.", href: "/admin/konten/kontak" },

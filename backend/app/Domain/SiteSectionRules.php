@@ -20,6 +20,8 @@ final class SiteSectionRules
 
     public const DOCUMENT_PATH = '/\Asite\/documents\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.pdf\z/';
 
+    public const STRUCTURE_IMAGE_PATH = '/\Asite\/structure\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:webp|jpg)\z/';
+
     public static function validate(SiteSection $section, array $input): array
     {
         $text = fn (int $max) => ['required', 'string', "max:$max"];
@@ -99,8 +101,22 @@ final class SiteSectionRules
             foreach (self::SPENDING_FIELDS as $index => $label) {
                 $rules["$budget.spending.$index.label"] = ['required', 'string', Rule::in([$label])];
             }
+        } elseif ($section === SiteSection::Structure) {
+            $rules = [
+                'payload' => ['required', 'array:data'],
+                'payload.data' => ['required', 'array:chartImagePath,chartAlt,blocks,source'],
+                'payload.data.chartImagePath' => ['sometimes', 'bail', 'required', 'string', 'regex:'.self::STRUCTURE_IMAGE_PATH, function ($attribute, $value, $fail) {
+                    if (! Storage::disk('public')->exists($value)) $fail('Gambar belum diunggah.');
+                }],
+                'payload.data.chartAlt' => [Rule::requiredIf(is_array($input['data'] ?? null) && array_key_exists('chartImagePath', $input['data'])), 'string', 'max:300'],
+                'payload.data.blocks' => ['required', 'array', 'list', 'min:1', 'max:20'],
+                'payload.data.blocks.*' => ['required', 'array:title,text'],
+                'payload.data.blocks.*.title' => $text(160),
+                'payload.data.blocks.*.text' => $text(10000),
+                'payload.data.source' => $text(1000),
+            ];
         } elseif (! in_array($section, [SiteSection::Profile, SiteSection::History], true)) {
-            // ponytail: R5–R8 menentukan skema; bahkan objek kosong belum boleh disimpan.
+            // ponytail: R5/R8 menentukan skema; bahkan objek kosong belum boleh disimpan.
             throw \Illuminate\Validation\ValidationException::withMessages(['data' => 'Bagian ini belum dapat diisi.']);
         }
 

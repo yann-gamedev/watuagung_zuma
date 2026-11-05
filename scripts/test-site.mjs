@@ -11,7 +11,34 @@ const transparencyUrl = dataUrl(compile("lib/transparency.ts"));
 const { budgetTotals, formatRupiah, SPENDING_FIELDS } = await import(transparencyUrl);
 const service = compile("services/site.ts").replace('from "zod"', `from ${JSON.stringify(import.meta.resolve("zod"))}`).replace('import { apiBase } from "./pelayanan";', 'const apiBase = "http://site.test/api/v1";')
   .replace('from "@/lib/transparency"', `from ${JSON.stringify(transparencyUrl)}`);
-const { siteSchemas, parseSiteSection, parseSiteEnvelope, getSiteSection, getSiteEnvelope, getStaffSiteSection, putStaffSiteSection, uploadTransparencyDocument } = await import(dataUrl(service));
+const { siteSchemas, parseSiteSection, parseSiteEnvelope, getSiteSection, getSiteEnvelope, getStaffSiteSection, putStaffSiteSection, uploadTransparencyDocument, uploadStructureImage } = await import(dataUrl(service));
+const structure = { blocks: pages["struktur-pemerintahan"].blocks, source: pages["struktur-pemerintahan"].source };
+const chartImagePath = "site/structure/0123abcd-0123-4567-89ab-0123456789ab.webp";
+assert.ok(siteSchemas.structure.safeParse(structure).success);
+assert.ok(siteSchemas.structure.safeParse({ ...structure, chartImagePath, chartAlt: "Bagan fiktif" }).success);
+assert.ok(siteSchemas.structure.safeParse({ ...structure, blocks: [{ title: "Jabatan", text: "Nama\nNama lain\r\nTeks" }] }).success);
+for (const override of [
+  { chartImagePath }, { chartImagePath, chartAlt: " " }, { chartImagePath, chartAlt: "x".repeat(301) },
+  { chartImagePath: "https://evil.test/bagan.jpg", chartAlt: "Bagan" }, { chartImagePath: "site/structure/../x.jpg" },
+  { chartImagePath: "" }, { chartImagePath: null }, { chartAlt: "x\t" }, { chartAlt: "x\n" },
+  { source: "" }, { source: "x".repeat(1001) }, { source: "x\0" }, { blocks: [] },
+  { blocks: Array(21).fill({ title: "x", text: "x" }) }, { blocks: [{ title: "x", text: "x", extra: "x" }] },
+  { blocks: [{ title: "x".repeat(161), text: "x" }] }, { blocks: [{ title: "x", text: "x".repeat(10001) }] },
+  { blocks: [{ title: "x", text: "x\t" }] }, { extra: "x" },
+]) assert.equal(siteSchemas.structure.safeParse({ ...structure, ...override }).success, false, JSON.stringify(override).slice(0, 150));
+const structureEnvelope = { key: "structure", data: { ...structure, chartImagePath, chartAlt: "Bagan" }, updated_at: "2026-11-05T00:00:00Z", image_url: `http://site.test/storage/${chartImagePath}` };
+assert.equal(parseSiteEnvelope("structure", structureEnvelope).imageUrl, structureEnvelope.image_url);
+assert.equal(parseSiteEnvelope("structure", { ...structureEnvelope, data: structure, image_url: null }).imageUrl, null);
+assert.throws(() => parseSiteEnvelope("structure", { ...structureEnvelope, image_url: "javascript:alert(1)" }));
+assert.throws(() => parseSiteEnvelope("structure", { ...structureEnvelope, image_url: undefined }));
+const imageUpload = await uploadStructureImage(async (url, options) => {
+  assert.equal(url, "/staff/site/structure/image"); assert.equal(options.method, "POST");
+  assert.ok(options.body instanceof FormData); assert.equal(options.headers, undefined);
+  assert.equal(options.body.get("file").name, "chart.png");
+  return { path: chartImagePath, url: structureEnvelope.image_url };
+}, new File(["fake"], "chart.png"));
+assert.equal(imageUpload.path, chartImagePath);
+await assert.rejects(uploadStructureImage(async () => ({ path: "../x.jpg", url: "http://x" }), new File([""], "a.png")));
 // Transparansi: format, total, skema; total tidak boleh dikirim; bidang belanja sama dengan backend.
 assert.equal(formatRupiah(1234567), "Rp1.234.567");
 assert.equal(formatRupiah(0), "Rp0");
@@ -84,6 +111,15 @@ try {
   const demo = await import(dataUrl(service.replace('const apiBase = "http://site.test/api/v1";', 'const apiBase = "";')));
   globalThis.fetch = async () => assert.fail("Demo tidak boleh memanggil API");
   assert.equal(await demo.getSiteSection("profile"), null);
+  assert.equal(await demo.getSiteSection("structure"), null);
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, "http://site.test/api/v1/site/structure"); assert.equal(options.cache, "no-store");
+    assert.equal(options.headers.Authorization, undefined); return Response.json(structureEnvelope);
+  };
+  assert.equal((await getSiteEnvelope("structure")).imageUrl, structureEnvelope.image_url);
+  for (const status of [404, 500]) { globalThis.fetch = async () => new Response("", { status }); assert.equal(await getSiteSection("structure"), null); }
+  globalThis.fetch = async () => { throw new Error("offline"); };
+  assert.equal(await getSiteSection("structure"), null);
   globalThis.fetch = async (url) => { assert.equal(url, "http://site.test/api/v1/site/contact"); return Response.json(contactEnvelope); };
   assert.deepEqual(await getSiteSection("contact"), contact);
   globalThis.fetch = async () => Response.json({ ...contactEnvelope, data: { ...contact, phone: "+62" } });
@@ -116,4 +152,4 @@ await putStaffSiteSection(request, "contact", contact);
 assert.deepEqual(calls.map(([path, options]) => [path, options?.method]), [["/staff/site/contact", undefined], ["/staff/site/contact", "PUT"]]);
 assert.deepEqual(JSON.parse(calls[1][1].body), { data: contact });
 await assert.rejects(getStaffSiteSection(async () => ({ ...contactEnvelope, key: "profile" }), "contact"));
-console.log("PASS: kontrak profil/sejarah/kontak/transparansi, budgetTotals, formatRupiah, unggah PDF, data lama, kontrol, arah, fallback demo/404/galat, transport tanpa token, get/put panel.");
+console.log("PASS: kontrak profil/sejarah/kontak/transparansi/struktur, bagan+alt, unggah gambar/PDF, budgetTotals, formatRupiah, data lama, kontrol, arah, fallback demo/404/galat, transport tanpa token, get/put panel.");
