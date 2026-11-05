@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\LetterController;
+use App\Http\Controllers\Api\BusinessController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\SiteSectionController;
 use App\Http\Controllers\Api\StaffController;
@@ -13,6 +14,8 @@ Route::get('/v1/verify/{code}', [LetterController::class, 'verify'])->middleware
 Route::get('/v1/posts', [PostController::class, 'index'])->middleware('throttle:60,1');
 Route::get('/v1/posts/{slug}', [PostController::class, 'show'])->middleware('throttle:60,1');
 Route::get('/v1/site/{key}', [SiteSectionController::class, 'show'])->middleware('throttle:60,1');
+Route::get('/v1/businesses', [BusinessController::class, 'index'])->middleware('throttle:60,1');
+Route::get('/v1/businesses/{slug}', [BusinessController::class, 'show'])->middleware('throttle:60,1');
 Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/staff')->group(function () {
     Route::post('/logout', [StaffController::class, 'logout']);
     Route::get('/me', [StaffController::class, 'me']);
@@ -41,4 +44,11 @@ Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/
     Route::delete('/posts/{id}', [PostController::class, 'destroy'])->whereNumber('id');
     Route::post('/posts/{id}/cover', [PostController::class, 'uploadCover'])->whereNumber('id')->middleware('throttle:10,1,post-cover');
     Route::delete('/posts/{id}/cover', [PostController::class, 'deleteCover'])->whereNumber('id')->middleware('throttle:10,1,post-cover');
+    Route::get('/businesses', [BusinessController::class, 'staffIndex']);
+    Route::post('/businesses', [BusinessController::class, 'store']);
+    Route::get('/businesses/{id}', [BusinessController::class, 'staffShow'])->whereNumber('id');
+    Route::patch('/businesses/{id}', [BusinessController::class, 'update'])->whereNumber('id');
+    Route::delete('/businesses/{id}', [BusinessController::class, 'destroy'])->whereNumber('id');
+    Route::post('/businesses/{id}/photo', [BusinessController::class, 'uploadPhoto'])->whereNumber('id')->middleware('throttle:10,1,business-photo');
+    Route::delete('/businesses/{id}/photo', [BusinessController::class, 'deletePhoto'])->whereNumber('id')->middleware('throttle:10,1,business-photo');
 });
