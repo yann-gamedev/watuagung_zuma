@@ -90,6 +90,8 @@ Tanpa URL API, formulir publik memakai simulasi browser dan panel petugas tidak 
 
 ### 3. Akun dan alur uji
 
+**Sudah pernah membuat akun? Jangan buat ulang dulu.** Akun disimpan di database Laravel, bukan di frontend atau GitHub. Gunakan username (bukan nama tampilan/email) dan database yang sama seperti saat akun dibuat. Akun lokal tidak otomatis ada di komputer lain, database tes, atau demo Vercel.
+
 Tidak ada akun/kata sandi bawaan. Dari `backend/`, buat admin lokal pertama:
 
 ```powershell
@@ -103,6 +105,17 @@ Kata sandi diminta secara tersembunyi. Selanjutnya login di `/admin` dan kelola 
 3. Buka `/pelayanan/status` untuk memeriksa perkembangan. Jika kode hilang, bantuan buat ulang tersedia melalui RT/RW atau kantor desa dengan pemeriksaan KTP/KK; kode lama akan tidak berlaku.
 4. Proses pengajuan dengan akun sesuai peran sampai selesai. Surat yang memerlukan RT/RW harus memakai wilayah yang cocok dengan akun penguji.
 5. Uji PDF/unggah manual/QR dengan Laravel langsung; checklist pengujian yang belum tuntas ada di [roadmap](ROADMAP.md).
+
+### 4. Jika tidak bisa login admin lokal
+
+1. Jalankan Laravel dari `backend/`: `php artisan serve --host=127.0.0.1 --port=8000`. Cek http://127.0.0.1:8000/up. Server yang dihentikan tidak menghapus akun, tetapi login tidak dapat diproses.
+2. Di root, pastikan `.env.local` berisi `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1` dan `NEXT_PUBLIC_DEMO_MODE=false`. Jika pernah memaksa demo lewat PowerShell, jalankan `Remove-Item Env:NEXT_PUBLIC_DEMO_MODE -ErrorAction SilentlyContinue`. Restart `npm run dev`, lalu buka http://127.0.0.1:3000/admin/. Pakai origin yang sama; `localhost` dan `127.0.0.1` punya sesi browser terpisah.
+3. Isi **username** akun lama, huruf kecil sesuai yang dibuat, serta kata sandinya. Form login bukan kolom email. Akun RT/RW ditolak saat fitur persetujuan RT/RW nonaktif; gunakan admin/petugas/kepala desa sesuai tugas.
+4. Jika pesan **“Kredensial tidak valid.”**, periksa akun aktif dan database yang dipakai; pesan ini sengaja sama untuk username tidak ada, kata sandi salah, akun nonaktif, atau RT/RW nonaktif. Jangan langsung menghapus database atau membuat akun pengganti.
+5. Jika **“Panel petugas tidak aktif pada demo”**, itu masalah mode/build, bukan akun. Demo Vercel tidak menyediakan login. Hasil `build:demo` juga tetap demo meski environment runtime diubah; untuk lokal gunakan dev server mode API, untuk build API jalankan `npm run build` ulang.
+6. Jika server tidak terhubung/CORS, atau login terlalu sering (429), ikuti [diagnosis login dan pemulihan akun](backend/README.md#diagnosis-login-dan-pemulihan-akun). Jangan kirim kata sandi, token, `.env`, atau tangkapan layar berisi rahasia saat melaporkan masalah.
+
+**Hindari kehilangan akun:** `php artisan migrate` memperbarui struktur tanpa mengosongkan tabel. Jangan menjalankan `migrate:fresh`, `migrate:refresh`, atau tes pada database pengembangan. Jangan memakai `r6-dev.sqlite`/database tes sementara sebagai database harian. Push/pull kode tidak memindahkan file SQLite atau akun lokal.
 
 ## Verifikasi pengembangan
 
