@@ -109,7 +109,8 @@ Agent membuat folder `deploy/` berisi: `nginx/watuagung.conf`, `deploy.sh`, `bac
 - [ ] Media berita C2/F12b: `/media/posts/` dipetakan langsung ke `backend/storage/app/public/posts/` (bagian `/media/` lain 404). Hanya file UUID `.webp`/`.jpg` hasil encode ulang; tanpa directory listing, tanpa eksekusi PHP atau fallback PHP-FPM, `X-Content-Type-Options: nosniff`, dan `Cache-Control: public, max-age=31536000, immutable`. Isi `MEDIA_URL=https://[DOMAIN]/media` sesuai origin `APP_URL`; tanpa env memakai bawaan Laravel `${APP_URL}/storage` (untuk lokal, bukan konfigurasi Nginx produksi yang menolak `/storage/`). Uji file ada 200, hilang 404, ekstensi lain/PHP ditolak; tidak membuka storage privat.
 - [ ] Redirect HTTP → HTTPS; header: `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `X-Frame-Options: DENY`, `Content-Security-Policy` yang diuji terhadap build.
 - [ ] CSP untuk peta kontak: tambahkan `frame-src https://www.google.com`; uji embed Balai Desa dari objek `contact` di `lib/data.ts` pada beranda dan `/kontak`. Ini mengizinkan iframe Google di situs, bukan mengubah `X-Frame-Options: DENY` untuk situs sendiri. Nomor dan URL peta masih menunggu Tech Lead.
-- [ ] `client_max_body_size 6m` (unggah PDF ≤ 5 MB).
+- [ ] `client_max_body_size 11m` (R6 APBDes PDF ≤ 10 MiB + multipart). PHP-FPM `upload_max_filesize` ≥ 10M dan `post_max_size` > 11M (mis. 12M). Batas aplikasi PDF surat tetap 5 MB; berita tetap 3 MB.
+- [ ] Media APBDes R6: Nginx `/media/site/documents/` memakai alias langsung `backend/storage/app/public/site/documents/`, hanya nama UUID `.pdf`; tanpa listing, eksekusi PHP, atau fallback PHP-FPM. `X-Content-Type-Options: nosniff`, `Content-Type: application/pdf`, idealnya `Content-Disposition: attachment`. Pertahankan `/media/` lain 404 kecuali `/media/posts/` di atas; jangan membuka storage privat. Folder persisten antar-rilis, PHP-FPM menulis/Nginx membaca. Uji 200 PDF ada, 404 hilang, nama/ekstensi lain ditolak; uji unggah tepat 10 MiB dan >10 MiB. `MEDIA_URL` tetap prefix `/media`.
 - [ ] Format access log tanpa query string untuk `/api/` (parameter `q` berisi nama; lihat `backend/README.md`).
 
 ## Fase 4 — Prosedur deploy (`deploy/deploy.sh`)
@@ -128,7 +129,7 @@ Urutan setiap rilis:
 
 ## Fase 5 — Backup dan pemulihan
 
-- [ ] `backup.sh` harian: `pg_dump` terkompresi + arsip `backend/storage/app/private` (PDF surat) **dan `backend/storage/app/public/posts` (sampul berita C2/F12b)**, dienkripsi sebelum dikirim ke penyimpanan di luar VPS. Simpan 14 harian + 8 mingguan. Uji pemulihan juga mencocokkan `posts.cover_path` dengan file dan memastikan URL `/media/posts/…` dapat dibaca. Soft delete berita mempertahankan file; jangan mengecualikannya dari backup.
+- [ ] `backup.sh` harian: `pg_dump` terkompresi + arsip `backend/storage/app/private` (PDF surat) **serta `backend/storage/app/public/posts` (sampul berita C2/F12b) dan `backend/storage/app/public/site/documents` (PDF APBDes R6)**, dienkripsi sebelum dikirim ke penyimpanan di luar VPS. Simpan 14 harian + 8 mingguan. Uji pemulihan juga mencocokkan `posts.cover_path` dengan file dan memastikan URL `/media/posts/…` dapat dibaca. Soft delete berita mempertahankan file; jangan mengecualikannya dari backup. Cocokkan juga `site_sections.transparency.data.budgets[].documentPath` dengan PDF dan uji URL `/media/site/documents/…`; PUT yang mengganti/melepas dokumen menghapus file lama setelah commit.
 - [ ] `APP_KEY` **tidak** ikut dalam arsip backup yang sama.
 - [ ] **(BLOKIR)** Uji pemulihan ke server/VM kosong: restore database + file + `APP_KEY`, lalu pastikan NIK pada satu permohonan uji dapat didekripsi dan PDF dapat diunduh. Catat langkahnya di `deploy/restore.md`.
 

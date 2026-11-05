@@ -161,7 +161,9 @@ Bergantung pada K2 dan K4. **Pengecualian R3 disetujui 3 November 2026:** backen
 - [x] R4 — Panel/pembaca API profil, kontak, sejarah (selesai 5 November 2026).
   - [x] Profil dan sejarah (4 November 2026): `profileDetails` opsional diterima backend (batas di `docs/integrasi.md`), panel `/admin/konten/profil/` dan `/admin/konten/sejarah/` (admin/staff), halaman publik membaca `GET /v1/site/<key>` dengan cadangan `lib/data.ts`; peta dan tata letak tetap. Lihat `docs/progres-2026-11-04.md`.
   - [x] Kontak kantor (5 November 2026): menu "Konten desa" `/admin/konten/`, panel `/admin/konten/kontak/` dengan pratinjau peta dan galat per field; `ContactProvider`/`useContact()` satu permintaan per halaman untuk beranda, `/kontak/`, menu, footer, kebijakan privasi, cadangan `lib/data.ts`. Lihat `docs/progres-2026-11-05.md`.
-- [ ] R5–R8 — Skema dan pengelolaan statistik, transparansi, struktur, video; key sudah terdaftar tetapi seluruh isi ditolak sampai skema tersedia. Izin gambar belum aktif untuk key mana pun.
+- [ ] R5–R8 — Skema dan pengelolaan statistik, transparansi, struktur, video; izin gambar belum aktif untuk key mana pun.
+  - [x] R6 — Transparansi/APBDes: panel `/admin/konten/transparansi/`, maksimal 5 tahun, rincian rupiah dan total frontend bersama, 5 bidang belanja tetap, PDF publik ≤10 MiB, pembersihan dokumen setelah PUT, halaman publik membaca API tanpa build ulang. SQLite 303 tes / 4.356 assertion; PostgreSQL 303 tes / 4.358 assertion; lint, tsc, build, build:demo, test:demo dan cek panel/publik 390px/1440px lulus (5 November 2026, `docs/progres-2026-11-05-r6.md`). Data APBDes resmi belum diterima; bukan deploy.
+  - [ ] R5/R7/R8 — Statistik, struktur, video; key dikenal tetapi seluruh PUT masih ditolak sampai skema tersedia.
 
 - [ ] Tabel CMS lain: `posts` (berita/pengumuman, sudah ada), `agendas`, `bumdes_units`, `umkm`; profil/kontak/sejarah dan kerangka statistik/transparansi/struktur/video memakai `site_sections` R3, tanpa visi-misi. Struktur terperinci menunggu R5–R8.
 - [ ] Endpoint publik `GET` per jenis konten

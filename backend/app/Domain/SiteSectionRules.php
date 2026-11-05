@@ -2,11 +2,24 @@
 
 namespace App\Domain;
 
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 /** Satu kontrak untuk PUT dan impor. Unknown field ditolak, bukan dibuang diam-diam. */
 final class SiteSectionRules
 {
+    /** Lima bidang belanja APBDes; urutan sama dengan SPENDING_FIELDS di lib/transparency.ts. */
+    public const SPENDING_FIELDS = [
+        'Penyelenggaraan Pemerintahan Desa',
+        'Pelaksanaan Pembangunan',
+        'Pembinaan Kemasyarakatan',
+        'Pemberdayaan Masyarakat',
+        'Penanggulangan Bencana, Keadaan Darurat, dan Mendesak',
+    ];
+
+    public const DOCUMENT_PATH = '/\Asite\/documents\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.pdf\z/';
+
     public static function validate(SiteSection $section, array $input): array
     {
         $text = fn (int $max) => ['required', 'string', "max:$max"];
@@ -54,6 +67,38 @@ final class SiteSectionRules
                 'payload.data.mapsEmbedUrl' => self::mapUrl(['https://www.google.com/maps/embed?']),
                 'payload.data.mapsLinkUrl' => self::mapUrl(['https://maps.app.goo.gl/', 'https://www.google.com/maps/']),
             ];
+        } elseif ($section === SiteSection::Transparency) {
+            $budget = 'payload.data.budgets.*';
+            $amount = ['required', 'integer:strict', 'between:0,100000000000'];
+            // Total sengaja tidak ada di skema: dihitung frontend (lib/transparency.ts) dari rincian.
+            $rules = [
+                'payload' => ['required', 'array:data'],
+                'payload.data' => ['required', 'array:intro,programs,budgets'],
+                'payload.data.intro' => $text(2000),
+                'payload.data.programs' => ['required', 'array', 'list', 'min:1', 'max:20'],
+                'payload.data.programs.*' => ['required', 'array:title,text'],
+                'payload.data.programs.*.title' => $text(160),
+                'payload.data.programs.*.text' => $text(10000),
+                'payload.data.budgets' => ['present', 'array', 'list', 'max:5'],
+                $budget => ['required', 'array:year,status,revenue,spending,financing,source,documentPath'],
+                "$budget.year" => ['required', 'integer:strict', 'between:2000,2099', 'distinct:strict'],
+                "$budget.status" => ['required', 'string', 'in:Rancangan,Ditetapkan,Perubahan'],
+                "$budget.revenue" => ['required', 'array', 'list', 'min:1', 'max:20'],
+                "$budget.spending" => ['required', 'array', 'list', 'size:5'],
+                "$budget.financing" => ['sometimes', 'array', 'list', 'max:10'],
+                "$budget.source" => $text(1000),
+                "$budget.documentPath" => ['sometimes', 'bail', 'required', 'string', 'regex:'.self::DOCUMENT_PATH, function ($attribute, $value, $fail) {
+                    if (! Storage::disk('public')->exists($value)) $fail('Dokumen belum diunggah.');
+                }],
+            ];
+            foreach (['revenue', 'spending', 'financing'] as $list) {
+                $rules["$budget.$list.*"] = ['required', 'array:label,amount'];
+                $rules["$budget.$list.*.label"] = $text(160);
+                $rules["$budget.$list.*.amount"] = $amount;
+            }
+            foreach (self::SPENDING_FIELDS as $index => $label) {
+                $rules["$budget.spending.$index.label"] = ['required', 'string', Rule::in([$label])];
+            }
         } elseif (! in_array($section, [SiteSection::Profile, SiteSection::History], true)) {
             // ponytail: R5–R8 menentukan skema; bahkan objek kosong belum boleh disimpan.
             throw \Illuminate\Validation\ValidationException::withMessages(['data' => 'Bagian ini belum dapat diisi.']);
@@ -91,7 +136,7 @@ final class SiteSectionRules
         foreach ($data as $key => $value) {
             $field = $path === '' ? (string) $key : "$path.$key";
             if (is_array($value)) self::rejectControls($value, $field);
-            if (is_string($value) && preg_match(preg_match('/^data\.blocks\.\d+\.text$/', $field) ? '/(?![\n\r])\p{Cc}/u' : '/\p{Cc}/u', $value)) {
+            if (is_string($value) && preg_match(preg_match('/^data\.(?:blocks|programs)\.\d+\.text$/', $field) ? '/(?![\n\r])\p{Cc}/u' : '/\p{Cc}/u', $value)) {
                 throw \Illuminate\Validation\ValidationException::withMessages([$field => 'Karakter kontrol tidak diizinkan.']);
             }
         }

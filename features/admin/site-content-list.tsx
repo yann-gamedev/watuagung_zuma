@@ -13,6 +13,7 @@ export const sitePages: { key: EditableSiteSectionKey; title: string; descriptio
   { key: "profile", title: "Profil desa", description: "Ringkasan, angka utama, batas wilayah, lembaga desa.", href: "/admin/konten/profil" },
   { key: "history", title: "Sejarah desa", description: "Asal-usul, dusun, kepala desa dari masa ke masa.", href: "/admin/konten/sejarah" },
   { key: "contact", title: "Kontak kantor", description: "Alamat, jam pelayanan, nomor, peta. Tampil di beranda, /kontak, menu, dan footer.", href: "/admin/konten/kontak" },
+  { key: "transparency", title: "Transparansi dan APBDes", description: "Program prioritas, APBDes per tahun (total dihitung otomatis), dokumen PDF.", href: "/admin/konten/transparansi" },
 ];
 
 type State = Record<EditableSiteSectionKey, string | null | "error" | undefined>;
