@@ -15,8 +15,7 @@ enum SiteSection: string
 
     public function allowsImages(): bool
     {
-        // ponytail: belum ada key bergambar; aktifkan bersama skema dan tes R7.
-        return false;
+        return $this === self::Structure;
     }
 
     public function allowsDocuments(): bool

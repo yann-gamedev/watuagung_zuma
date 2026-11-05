@@ -35,21 +35,22 @@ export type SiteBudget = {
   documentPath?: string;
 };
 export type SiteTransparency = { intro: string; programs: { title: string; text: string }[]; budgets: SiteBudget[] };
+export type SiteStructure = { chartImagePath?: string; chartAlt?: string; blocks: SiteTextSection["blocks"]; source: string };
 export type SiteSectionData = {
   profile: SiteProfile;
   contact: SiteContact;
   history: SiteTextSection;
   statistics: never;
   transparency: SiteTransparency;
-  structure: never;
+  structure: SiteStructure;
   videos: never;
 };
-export type EditableSiteSectionKey = "profile" | "contact" | "history" | "transparency";
+export type EditableSiteSectionKey = "profile" | "contact" | "history" | "transparency" | "structure";
 export type SiteSectionResponse<K extends SiteSectionKey = EditableSiteSectionKey> = {
-  [P in K]: { key: P; data: SiteSectionData[P]; updated_at: string } & (P extends "transparency" ? { document_urls: Record<string, string> } : unknown);
+  [P in K]: { key: P; data: SiteSectionData[P]; updated_at: string } & (P extends "transparency" ? { document_urls: Record<string, string> } : P extends "structure" ? { image_url: string | null } : unknown);
 }[K];
 export type SiteSectionUpdate<K extends EditableSiteSectionKey> = { data: SiteSectionData[K] };
-// Scaffold saja: belum ada key yang mengizinkan upload; seluruh permintaan terotorisasi mendapat 422.
-export type SiteSectionImageResponse = { path: string };
+/** Hanya structure: JPG/PNG/WebP ≤ 5 MB. PUT chartImagePath menerbitkan gambar. */
+export type SiteSectionImageResponse = { path: string; url: string };
 /** Hanya transparency: PDF ≤ 10 MB. Simpan `path` ke budgets[].documentPath lalu PUT. */
 export type SiteSectionDocumentResponse = { path: string; url: string };

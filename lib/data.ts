@@ -146,6 +146,7 @@ export const pages: Record<
     eyebrow: string;
     intro: string;
     blocks: { title: string; text: string }[];
+    source?: string;
     visionMission?: {
       vision: { text: string; source: string };
       missions: string[];
@@ -270,6 +271,7 @@ export const pages: Record<
   },
   "struktur-pemerintahan": {
     title: "Perangkat Desa",
+    source: "Sumber: RKP Desa Watuagung 2027",
     eyebrow: "PEMERINTAH DESA",
     intro: "Bekerja bersama untuk pelayanan yang lebih dekat dengan warga.",
     blocks: [

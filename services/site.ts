@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { apiBase } from "./pelayanan";
 import { SPENDING_FIELDS } from "@/lib/transparency";
-import type { EditableSiteSectionKey, SiteSectionData, SiteSectionDocumentResponse } from "@/types/site";
+import type { EditableSiteSectionKey, SiteSectionData, SiteSectionDocumentResponse, SiteSectionImageResponse } from "@/types/site";
 
 // Pesan Indonesia dipakai panel per field; batas sama dengan SiteSectionRules.
 const required = "Wajib diisi.";
@@ -52,25 +52,36 @@ export const transparencySchema = z.object({
     if (budgets.findIndex((other) => other.year === budget.year) !== i) context.addIssue({ code: "custom", path: [i, "year"], message: "Tahun sudah ada." });
   })),
 }).strict();
+const chartPath = z.string().regex(/^site\/structure\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:webp|jpg)$/, "Unggah ulang gambar bagan.");
+export const structureSchema = z.object({
+  chartImagePath: chartPath.optional(),
+  chartAlt: optional(300).optional(),
+  blocks: fields.blocks,
+  source: text(1000),
+}).strict().superRefine((value, context) => {
+  if (value.chartImagePath && !value.chartAlt?.trim()) context.addIssue({ code: "custom", path: ["chartAlt"], message: required });
+});
 export const siteSchemas = {
   profile: z.object({ ...fields, profileDetails: profileDetailsSchema.optional() }).strict(),
   history: z.object(fields).strict(),
   contact: contactSchema,
   transparency: transparencySchema,
+  structure: structureSchema,
 };
 export type TextSiteKey = "profile" | "history";
 /** documentUrls hanya diisi server untuk transparency: { [documentPath]: URL publik }. */
-export type SiteEnvelope<K extends EditableSiteSectionKey> = { data: SiteSectionData[K]; updated_at: string; documentUrls: Record<string, string> };
+export type SiteEnvelope<K extends EditableSiteSectionKey> = { data: SiteSectionData[K]; updated_at: string; documentUrls: Record<string, string>; imageUrl?: string | null };
 const httpUrl = z.string().refine((value) => /^https?:\/\//.test(value) && URL.canParse(value));
 
 export function parseSiteEnvelope<K extends EditableSiteSectionKey>(key: K, value: unknown): SiteEnvelope<K> {
   const result = z.object({
     key: z.literal(key), data: siteSchemas[key], updated_at: z.string().datetime({ offset: true }),
     ...(key === "transparency" ? { document_urls: z.record(httpUrl) } : {}),
+    ...(key === "structure" ? { image_url: httpUrl.nullable() } : {}),
   }).strict().safeParse(value);
   if (!result.success) throw new Error("Format bagian situs tidak valid. Data belum diubah.");
-  const { data, updated_at, document_urls } = result.data as { data: SiteSectionData[K]; updated_at: string; document_urls?: Record<string, string> };
-  return { data, updated_at, documentUrls: document_urls ?? {} };
+  const { data, updated_at, document_urls, image_url } = result.data as { data: SiteSectionData[K]; updated_at: string; document_urls?: Record<string, string>; image_url?: string | null };
+  return { data, updated_at, documentUrls: document_urls ?? {}, ...(key === "structure" ? { imageUrl: image_url } : {}) };
 }
 export function parseSiteSection<K extends EditableSiteSectionKey>(key: K, value: unknown): SiteSectionData[K] {
   return parseSiteEnvelope(key, value).data;
@@ -104,6 +115,15 @@ export async function getStaffSiteSection<K extends EditableSiteSectionKey>(requ
 }
 export async function putStaffSiteSection<K extends EditableSiteSectionKey>(request: AdminRequest, key: K, data: SiteSectionData[K]) {
   return parseSiteEnvelope(key, await request<unknown>(`/staff/site/${key}`, { method: "PUT", body: JSON.stringify({ data }) }));
+}
+/** FormData tidak menetapkan Content-Type: browser menyertakan boundary multipart. */
+export async function uploadStructureImage(request: AdminRequest, file: File): Promise<SiteSectionImageResponse> {
+  const body = new FormData();
+  body.append("file", file);
+  const result = z.object({ path: chartPath, url: httpUrl }).strict()
+    .safeParse(await request<unknown>("/staff/site/structure/image", { method: "POST", body }));
+  if (!result.success) throw new Error("Respons unggah tidak valid. Coba lagi.");
+  return result.data;
 }
 /** 422 (bukan PDF / > 10 MB) dilempar sebagai AdminValidationError dengan field `file`. */
 export async function uploadTransparencyDocument(request: AdminRequest, file: File): Promise<SiteSectionDocumentResponse> {
