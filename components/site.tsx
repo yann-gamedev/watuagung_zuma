@@ -59,6 +59,7 @@ export function Footer() {
         <nav className="footer-links" aria-label="Info di footer">
           <h3>Info</h3>
           <Link href="/bumdes">BUMDes</Link>
+          <Link href="/umkm">UMKM</Link>
           <Link href="/berita">Berita</Link>
           <Link href="/agenda">Agenda</Link>
           <Link href="/pengumuman">Pengumuman</Link>

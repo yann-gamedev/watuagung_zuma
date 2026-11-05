@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { forwardRef } from "react";
-import { ClipboardList, FileCheck2, FileText, LayoutDashboard, Newspaper, Users, X } from "lucide-react";
+import { ClipboardList, FileCheck2, FileText, LayoutDashboard, Newspaper, Store, Users, X } from "lucide-react";
 import { normalizePath } from "@/components/site-header";
 import { useAdminSession } from "@/features/admin/session";
 
@@ -17,6 +17,7 @@ export const adminLinks = [
   { title: "Siap diambil", href: "/admin/surat", Icon: FileCheck2 },
   { title: "Buku registrasi", href: "/admin/register", Icon: ClipboardList },
   { title: "Berita", href: "/admin/berita", Icon: Newspaper },
+  { title: "UMKM", href: "/admin/umkm", Icon: Store },
   { title: "Konten desa", href: "/admin/konten", Icon: FileText },
   { title: "Konten profil", href: "/admin/konten/profil", Icon: ClipboardList },
   { title: "Konten sejarah", href: "/admin/konten/sejarah", Icon: ClipboardList },
@@ -27,6 +28,8 @@ export function adminPageTitle(path: string) {
   if (normalizePath(path) === "/admin/permohonan/detail") return "Detail permohonan";
   if (normalizePath(path) === "/admin/berita/tulis") return "Tulis berita";
   if (normalizePath(path) === "/admin/berita/ubah") return "Sunting berita";
+  if (normalizePath(path) === "/admin/umkm/tambah") return "Tambah UMKM";
+  if (normalizePath(path) === "/admin/umkm/ubah") return "Sunting UMKM";
   if (normalizePath(path) === "/admin/konten/kontak") return "Konten kontak kantor";
   if (normalizePath(path) === "/admin/konten/transparansi") return "Konten transparansi";
   if (normalizePath(path) === "/admin/konten/struktur") return "Konten struktur pemerintahan";
@@ -36,7 +39,7 @@ export function adminPageTitle(path: string) {
 function isActive(path: string, href: string) {
   // Subhalaman konten tanpa item sendiri (mis. kontak) menandai "Konten desa".
   if (href === "/admin/konten") return path === href || (path.startsWith(`${href}/`) && !adminLinks.some((link) => link.href === path));
-  return path === href || (["/admin/permohonan", "/admin/berita"].includes(href) && path.startsWith(`${href}/`));
+  return path === href || (["/admin/permohonan", "/admin/berita", "/admin/umkm"].includes(href) && path.startsWith(`${href}/`));
 }
 
 type Props = { open: boolean; onClose: () => void };
@@ -49,7 +52,7 @@ export const AdminSidebar = forwardRef<HTMLElement, Props>(function AdminSidebar
     if (queue) return link.href === "/admin" || (user?.features.neighborhood_approval && link.href === queue);
     if (link.href === "/admin/antrean-rt" || link.href === "/admin/antrean-rw") return false;
     if (link.href === "/admin/akun") return user?.role === "admin";
-    if (link.href === "/admin/berita" || link.href.startsWith("/admin/konten")) return user?.role === "admin" || user?.role === "staff";
+    if (link.href === "/admin/berita" || link.href === "/admin/umkm" || link.href.startsWith("/admin/konten")) return user?.role === "admin" || user?.role === "staff";
     return link.href !== "/admin/persetujuan" || user?.role === "village_head";
   });
   return (

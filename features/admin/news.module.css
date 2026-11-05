@@ -24,3 +24,5 @@
   .field :is(input, select, textarea) { min-height: 48px; }
   .actions > button, .actions > a { width: 100%; }
 }
+.check { display: flex; gap: 12px; align-items: flex-start; min-height: 48px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; font-weight: 700; cursor: pointer; }
+.check input { flex: none; width: 24px; height: 24px; margin-top: 2px; accent-color: var(--leaf); }

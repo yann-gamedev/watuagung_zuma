@@ -4451,3 +4451,107 @@ td {
     min-height: 48px;
   }
 }
+
+/* UMKM: kartu memakai pola berita (.news-card); hanya filter, ringkasan, dan detail yang baru. */
+.umkm-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.umkm-filters .btn {
+  min-height: 48px;
+}
+.umkm-page .news-count {
+  display: block;
+  margin-bottom: 24px;
+  font-size: 16px;
+}
+.umkm-page .news-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+.umkm-detail {
+  display: grid;
+  gap: 32px;
+  max-width: 960px;
+}
+.umkm-detail-photo {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 14px;
+}
+.umkm-detail-body {
+  display: grid;
+  gap: 16px;
+  font-size: 18px;
+  line-height: 1.7;
+}
+.umkm-detail-body p {
+  overflow-wrap: anywhere;
+}
+.umkm-detail-facts {
+  display: grid;
+  gap: 12px;
+  margin: 8px 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--white);
+}
+.umkm-detail-facts div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.umkm-detail-facts dt {
+  min-width: 96px;
+  color: var(--muted);
+}
+.umkm-detail-facts dd {
+  font-weight: 700;
+}
+.umkm-detail-body .btn {
+  justify-self: start;
+  gap: 8px;
+}
+.home-umkm-list {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 16px;
+}
+.home-umkm-list a {
+  display: grid;
+  gap: 2px;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--ink);
+}
+.home-umkm-list a:hover strong {
+  text-decoration: underline;
+}
+.home-umkm-list span {
+  color: var(--muted);
+  font-size: 16px;
+}
+.umkm-back-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  font-size: 16px;
+}
+.umkm-no-photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sage);
+  color: var(--olive);
+}

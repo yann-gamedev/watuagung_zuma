@@ -97,4 +97,5 @@ delete apiReceipt.requires_neighborhood_approval;
 await assert.rejects(apiService.submit(valid), /requires_neighborhood_approval/);
 await assert.rejects(apiService.getStatus(apiReceipt.request_id, "test-only"), /requires_neighborhood_approval/);
 execFileSync(process.execPath, ["scripts/test-public-news.mjs"], { stdio: "inherit" });
-console.log("PASS: demo isolation, four services without RT/RW, optional server workflow metadata, removed autofill, calendar validation, storage privacy, complaint form URL, public news.");
+execFileSync(process.execPath, ["scripts/test-public-businesses.mjs"], { stdio: "inherit" });
+console.log("PASS: demo isolation, four services without RT/RW, optional server workflow metadata, removed autofill, calendar validation, storage privacy, complaint form URL, public news, public UMKM.");

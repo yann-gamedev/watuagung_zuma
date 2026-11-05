@@ -114,6 +114,10 @@ class BusinessesApiTest extends TestCase
         $this->getJson('/api/v1/businesses?category=jasa')->assertOk()->assertJsonPath('total', 13)->assertJsonCount(12, 'data')->assertJsonPath('data.0.name', 'Jasa 00');
         $this->getJson('/api/v1/businesses?category=jasa&page=2')->assertOk()->assertJsonCount(1, 'data');
         $this->getJson('/api/v1/businesses?category=pertanian_peternakan')->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.category_label', 'Pertanian & Peternakan');
+        $this->make(['name' => 'Zebra Terbaru', 'category' => 'jasa', 'published_at' => now()->subMinute()]);
+        $this->getJson('/api/v1/businesses?category=jasa&sort=latest')->assertOk()->assertJsonPath('data.0.name', 'Zebra Terbaru');
+        $this->getJson('/api/v1/businesses?category=jasa&sort=name')->assertOk()->assertJsonPath('data.0.name', 'Jasa 00');
+        $this->getJson('/api/v1/businesses?sort=acak')->assertUnprocessable()->assertJsonValidationErrors('sort');
         $this->getJson('/api/v1/businesses?category=salah')->assertUnprocessable()->assertJsonValidationErrors('category');
         $this->getJson('/api/v1/businesses?page=0')->assertUnprocessable()->assertJsonValidationErrors('page');
     }

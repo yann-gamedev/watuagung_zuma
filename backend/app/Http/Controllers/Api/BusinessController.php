@@ -55,11 +55,15 @@ class BusinessController extends Controller {
     public function index(Request $request): JsonResponse {
         $data = $request->validate([
             'category'=>['sometimes', Rule::enum(BusinessCategory::class)],
+            'sort'=>['sometimes', Rule::in(['name', 'latest'])],
             'page'=>['sometimes', 'integer', 'min:1'],
         ]);
         $query = Business::published();
         if (isset($data['category'])) $query->where('category', $data['category']);
-        $page = $query->orderBy('name')->orderBy('id')->paginate(12)->through(fn (Business $business) => $this->publicItem($business));
+        // Bawaan urut nama (direktori); `latest` untuk kartu beranda (terbit terbaru).
+        if (($data['sort'] ?? 'name') === 'latest') $query->orderByDesc('published_at')->orderByDesc('id');
+        else $query->orderBy('name')->orderBy('id');
+        $page = $query->paginate(12)->through(fn (Business $business) => $this->publicItem($business));
         return response()->json($page)->header('Cache-Control', self::PUBLIC_CACHE);
     }
 
