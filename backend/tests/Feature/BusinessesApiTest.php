@@ -327,6 +327,20 @@ class BusinessesApiTest extends TestCase
         $this->postJson("/api/v1/staff/businesses/{$business->id}/photo", [])->assertStatus(429);
     }
 
+    public function test_delete_preflight_allows_panel_origin_only(): void
+    {
+        $headers = ['Origin' => 'http://127.0.0.1:3000', 'Access-Control-Request-Method' => 'DELETE', 'Access-Control-Request-Headers' => 'authorization'];
+        foreach (['/api/v1/staff/businesses/1', '/api/v1/staff/businesses/1/photo', '/api/v1/staff/posts/1', '/api/v1/staff/posts/1/cover'] as $path) {
+            $this->options($path, [], $headers)->assertNoContent()
+                ->assertHeader('Access-Control-Allow-Origin', 'http://127.0.0.1:3000')
+                ->assertHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+        }
+        // Origin lain tidak mendapat izin CORS walau DELETE diizinkan.
+        $this->options('/api/v1/staff/businesses/1', [], ['Origin' => 'https://evil.example'] + $headers)->assertHeaderMissing('Access-Control-Allow-Origin');
+        // Preflight bukan otorisasi: DELETE tanpa token tetap 401.
+        $this->deleteJson('/api/v1/staff/businesses/1', [], ['Origin' => 'http://127.0.0.1:3000'])->assertUnauthorized();
+    }
+
     public function test_public_throttle(): void
     {
         $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.150']);

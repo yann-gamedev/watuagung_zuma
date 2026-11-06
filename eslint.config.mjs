@@ -19,6 +19,8 @@ const eslintConfig = defineConfig([
     "backend/bootstrap/cache/**",
     "backend/storage/framework/**",
     "backend/public/build/**",
+    // Skill/alat agent lokal (di-ignore Git), bukan kode aplikasi.
+    ".agents/**",
   ]),
   {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],

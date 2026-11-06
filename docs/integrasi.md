@@ -78,7 +78,7 @@ Detail `/berita/baca/?slug=...` membaca query dalam `Suspense`, memperbarui `doc
 
 **Kompatibilitas static export:** `generateStaticParams` tetap hanya slug demo (atau `belum-ada` bila contoh dimatikan), tanpa fetch API saat build. Route lama yang diekspor melakukan `location.replace` ke detail query dalam mode API. Slug lama lain ditangani komponen redirect di `app/not-found.tsx`; hosting wajib menyajikan `out/404.html` untuk path tidak dikenal, bukan halaman 404 bawaan hosting. Respons awal tetap HTTP 404 sebelum redirect browser; tanpa JavaScript tidak ada redirect. Tautan baru selalu detail query sehingga berita baru tidak membutuhkan HTML per slug atau build ulang. Env URL API tetap ditentukan saat build, bukan konfigurasi runtime.
 
-**Temuan lokal C4:** konfigurasi CORS lama hanya mengizinkan GET/POST/PATCH/OPTIONS, belum DELETE. Hapus berita/sampul lewat panel lintas-origin gagal preflight; penghapusan C4 diuji lewat HTTP langsung, bukan klaim lulus alur hapus panel. Perbaikan `backend/config/cors.php` di luar sesi frontend ini.
+**CORS (diperbaiki 6 November 2026):** `backend/config/cors.php` kini mengizinkan `GET, POST, PUT, PATCH, DELETE, OPTIONS` untuk origin `FRONTEND_ORIGINS` saja. Hapus berita/sampul dan UMKM/foto lewat panel lintas-origin (lokal `:3000` → `:8000`) berhasil; diuji E2E. Preflight bukan otorisasi: DELETE tetap butuh token dan peran yang benar. Produksi satu domain tidak memerlukan preflight.
 
 - **Publik** (`/posts`, `/posts/{slug}`): tanpa token, `Cache-Control: public, max-age=60`. Hanya `status=published` dengan `published_at` ≤ sekarang, urut `published_at` menurun. Item: `slug`, `title`, `category`, `category_label`, `summary`, `published_at`, `cover_url` (URL publik absolut atau `null` bila tanpa sampul); detail menambah `body`. ID internal tidak dikirim.
 - **Petugas** (`/staff/posts…`): token `applications:manage` + peran `admin`/`staff` aktif (`User::canManageContent()`); tanpa token 401, peran lain 403. Respons `private, no-store`. Daftar 20 per halaman urut `updated_at` menurun, filter `status` = `draft`/`published`, `q` (maks. 100, potongan judul literal, tidak peka huruf besar/kecil); item = [StaffPost](../types/posts.ts) tanpa `body`. Berita terhapus 404 di semua endpoint.
@@ -104,7 +104,7 @@ Tipe: `types/business.ts`, diekspor ulang lewat `types/pelayanan.ts`. Pola sama 
 - **Terbit/slug**: sama dengan berita: terbit pertama mengisi `published_at`, draf ulang mempertahankannya; slug `Str::slug(name)` (kosong → `umkm`), unik termasuk terhapus (`-2`, `-3`), mengikuti nama hanya sebelum pernah terbit.
 - **Foto** POST/DELETE `/staff/businesses/{id}/photo`: multipart `file`, 10/menit per akun bersama. `ImageProcessor` JPG/JPEG/PNG/WebP ≤3.072 KiB, dimensi 600×400–6.000×6.000, lebar maksimal 1.600 px tanpa memperbesar, EXIF/GPS dibuang, `businesses/<uuid>.webp|.jpg` di disk public. Respons detail terbaru; ganti/hapus menghapus file lama setelah commit; soft delete tidak menghapus file. Foto publik bila URL diketahui; jangan unggah dokumen/identitas.
 - **Audit**: `business.created`, `business.updated` (termasuk foto), `business.published`, `business.deleted`, `subject_type=business`, hanya aksi dan ID.
-- **CORS**: `DELETE` belum ada di `allowed_methods` (temuan berita C4); hapus usaha/foto lewat panel lintas-origin memerlukan perbaikan itu lebih dulu.
+- **CORS**: `DELETE` diizinkan sejak 6 November 2026 (lihat catatan CORS di bagian Berita); hapus usaha/foto lewat panel lintas-origin berhasil.
 
 ### Bagian situs (backend R3, 3 November 2026)
 
@@ -135,7 +135,7 @@ Field asing ditolak di tiap tingkat; karakter kontrol ditolak (CR/LF hanya di `b
 | PUT | `/staff/site/{key}` | Body `{ "data": { ... } }`; ganti seluruh objek (bukan merge), buat bila belum ada; 200 objek terbaru |
 | POST | `/staff/site/{key}/image` | Multipart `file`, 10/menit per akun; hanya `structure` aktif, respons `{ path, url }`; key lain 422 `errors.file` |
 
-Semua endpoint petugas memeriksa `User::canManageContent()` di server. Tanpa token 401; peran lain (termasuk Kepala Desa/RT/RW), akun nonaktif, atau ability salah 403 **sebelum** pencarian key. Key tidak dikenal 404 setelah otorisasi. Respons petugas, termasuk kegagalan, `private, no-store`. CORS menambah PUT; temuan DELETE berita lama tetap belum diperbaiki.
+Semua endpoint petugas memeriksa `User::canManageContent()` di server. Tanpa token 401; peran lain (termasuk Kepala Desa/RT/RW), akun nonaktif, atau ability salah 403 **sebelum** pencarian key. Key tidak dikenal 404 setelah otorisasi. Respons petugas, termasuk kegagalan, `private, no-store`. CORS mengizinkan PUT dan (sejak 6 November 2026) DELETE.
 
 Validasi terpusat di `App\\Domain\\SiteSectionRules`, key di enum `App\\Domain\\SiteSection`:
 
