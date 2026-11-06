@@ -26,16 +26,17 @@ function Detail({ slug }: { slug: string }) {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [slug, attempt]);
+  const back = <Link href="/berita" className="text-link article-back-link">← Kembali ke berita desa</Link>;
   return <>
-    <PageHeading eyebrow={post?.category ?? "KABAR WATUAGUNG"} title={post?.title ?? "Berita Desa"}
+    <PageHeading editorial eyebrow={post?.category ?? "KABAR WATUAGUNG"} title={post?.title ?? "Berita Desa"}
       intro={post?.date ?? "Cerita kegiatan, pembangunan, dan kebersamaan warga."}
       parent={{ label: "Berita Desa", href: "/berita" }} />
     <section className="section container" aria-busy={loading}>
       {loading ? <p role="status">Memuat berita…</p> : error ? <div role="alert">
         <p>Berita belum dapat dimuat</p>
         <button className="btn" onClick={() => { setError(false); setLoading(true); setAttempt(attempt + 1); }}>Coba lagi</button>
-      </div> : post ? <NewsArticle {...post} /> : <h2>Berita tidak ditemukan</h2>}
-      <Link href="/berita" className="text-link article-back-link">← Kembali ke berita desa</Link>
+      </div> : post ? <NewsArticle {...post}>{back}</NewsArticle> : <h2>Berita tidak ditemukan</h2>}
+      {!post && back}
     </section>
   </>;
 }
