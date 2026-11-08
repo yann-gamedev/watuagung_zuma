@@ -4,10 +4,12 @@ import Link from "next/link";
 import { CheckCircle2, Copy, CircleAlert, Search, House } from "lucide-react";
 import { useEffect, useState } from "react";
 import { isDemo } from "@/services/pelayanan";
+import { services } from "@/lib/data";
 export function Success() {
   const id = useSearchParams().get("id");
   const [message, setMessage] = useState("");
   const [secret, setSecret] = useState("");
+  const [letterType, setLetterType] = useState("");
   const [copied, setCopied] = useState({ number: false, secret: false });
   async function copyReceipt(value: string, field: "number" | "secret") {
     try {
@@ -20,9 +22,12 @@ export function Success() {
     }
   }
   useEffect(() => {
-    if (!id || isDemo) return;
-    const value = sessionStorage.getItem(`watuagung-receipt-${id}`) || "";
-    queueMicrotask(() => setSecret(value));
+    if (!id) return;
+    try {
+      const type = sessionStorage.getItem(`watuagung-receipt-type-${id}`) || "";
+      const value = isDemo ? "" : sessionStorage.getItem(`watuagung-receipt-${id}`) || "";
+      queueMicrotask(() => { setLetterType(type); setSecret(value); });
+    } catch { /* Peringatan kode akses tetap ditampilkan bila storage tidak tersedia. */ }
   }, [id]);
   if (!id || !/^REQ-\d{4}-[A-Z0-9]{6,36}$/.test(id))
     return (
@@ -47,6 +52,7 @@ export function Success() {
           ? "Pengajuan simulasi Anda telah diterima. Ini bukan pengajuan resmi ke kantor desa."
           : "Terima kasih. Pengajuan Anda akan diverifikasi oleh petugas desa."}
       </p>
+      {letterType && <p>Jenis surat: <strong>{services.find((service) => service.code === letterType)?.title || letterType}</strong></p>}
       <div className="receipt-item">
         <div>
           <p id="receipt-number-label">Nomor pengajuan</p>

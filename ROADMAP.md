@@ -210,7 +210,7 @@ Enam jenis surat tetap: DOMISILI, SKTM, BELUM_MENIKAH, KERAMAIAN, KEHILANGAN, UM
 
 - [x] **S1 — Backend jenis surat final** (`feat/letters-final-types`): `LetterType` delapan case dengan `isOffered()`/`title()`, validasi per jenis di `LetterSubmission` (pesan bahasa Indonesia, isian jenis lain ditolak), 14 kolom nullable baru (agama/status perkawinan terenkripsi dan tersembunyi), nomor format desa, detail petugas memuat field baru, `PATCH /staff/applications/{id}/isi-keterangan` untuk UMUM, retensi mengosongkan kolom baru, PDF jenis baru memakai template generik sementara, kontrak frontend/demo. SQLite 378 tes / 6.306 assertion (PHP WinGet), lint, tsc, build, build:demo, test:demo lulus; PostgreSQL belum dijalankan sesi ini (`docs/progres-2026-11-08.md`).
 - [ ] **S2 — Template PDF enam jenis + kop resmi** (`feat/letters-final-templates`)
-- [ ] **S3 — Formulir warga dan halaman layanan** (`feat/letters-final-form`); sampai selesai, formulir lama gagal (422) pada mode API karena data diri baru wajib
+- [x] **S3 — Formulir warga dan halaman layanan** (`feat/letters-final-form`, 8 Nov 2026): katalog enam jenis, data diri tambahan/pilihan baku, isian khusus per jenis, ringkasan sebelum kirim, Zod selaras backend, label sukses/status/verifikasi, privasi dan demo. Lint, tsc, build, build:demo, test:demo dan regresi filter admin lulus; enam pengajuan fiktif melalui browser ke Laravel lokal tersimpan, agama/status perkawinan terenkripsi; formulir SKTM/KERAMAIAN/UMUM 390px/1440px diperiksa. Lihat `docs/progres-2026-11-08-s3.md`.
 - [ ] **S4 — Panel petugas untuk jenis baru** (`feat/letters-final-admin`); label jenis baru dan riwayat `STATEMENT_EDITED` belum ditampilkan khusus
 - [ ] TTE tersertifikasi (BSrE) — di luar lingkup sampai ada kerja sama resmi
 

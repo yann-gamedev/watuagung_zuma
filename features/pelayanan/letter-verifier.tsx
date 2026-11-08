@@ -6,10 +6,11 @@ import { CircleAlert, CircleCheck, CircleX } from "lucide-react";
 import { z } from "zod";
 import { apiRequest, isDemo } from "@/services/pelayanan";
 import { services } from "@/lib/data";
+import { serviceCodes } from "@/types/pelayanan";
 import type { LetterVerification } from "@/types/pelayanan";
 
 const schema = z.object({
-  number: z.string().nullable(), jenis_surat: z.enum(["SKU", "DOMISILI", "SKTM", "KTP_KK"]),
+  number: z.string().nullable(), jenis_surat: z.enum(serviceCodes),
   issued_at: z.string(), nama: z.string(), status: z.enum(["valid", "revoked"]),
 });
 

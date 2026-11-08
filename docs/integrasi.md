@@ -208,7 +208,7 @@ Rancangan dan sumber pilihan: `docs/PROMPTS-SURAT.md`. Aturan ada di `backend/ap
 - **RT/RW:** bila `letters.neighborhood_approval` dinyalakan, semua jenis kecuali SKU melalui RT/RW.
 - **PDF:** jenis tanpa template sendiri (BELUM_MENIKAH, KERAMAIAN, KEHILANGAN, UMUM) sementara memakai `resources/views/letters/umum.blade.php` (generik, judul dari `LetterType::title()`); template resmi menyusul di S2.
 - **Retensi:** `applications:purge` mengosongkan semua kolom baru.
-- **Formulir warga belum diubah (S3):** sampai S3, formulir lama tidak mengirim `dusun`/data diri baru, sehingga pengajuan lewat API mode akan 422. Mode demo mengikuti kontrak (SKU/KTP_KK ditolak).
+- **Formulir warga S3 (8 November 2026):** katalog hanya enam jenis final. Kelompok data diri tambahan memakai pilihan baku dan datalist pekerjaan; KERAMAIAN tidak meminta agama/status perkawinan/pendidikan/pekerjaan. Zod memeriksa field per jenis, kalender dan batas tujuh hari inklusif dengan hari ini Asia/Jakarta sebelum ringkasan dan kirim; demo memakai skema sama, SKU/KTP_KK ditolak. Ringkasan memuat semua isian dan dapat dikoreksi tanpa kehilangan nilai. Jenis surat pada bukti sukses disimpan per nomor di sessionStorage tanpa identitas; kode akses tetap terpisah per tab, tidak di URL. Enam pengajuan fiktif ke Laravel lokal tersimpan; bukti dan batas verifikasi di `docs/progres-2026-11-08-s3.md`.
 
 ### Sunting isi keterangan (UMUM)
 

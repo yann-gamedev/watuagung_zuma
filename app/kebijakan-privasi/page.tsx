@@ -14,7 +14,7 @@ const blocks = [
   },
   {
     title: "Data yang dikumpulkan",
-    text: "Jenis surat dan keperluan surat.\nNama lengkap, NIK, nomor KK, tempat lahir, tanggal lahir, dan jenis kelamin.\nAlamat lengkap, RT, RW, dan nomor telepon.\nKhusus surat keterangan usaha: nama usaha, jenis usaha, dan alamat usaha.",
+    text: "Jenis surat dan keperluan surat.\nNama lengkap, NIK, nomor KK, tempat lahir, tanggal lahir, jenis kelamin, dan kewarganegaraan.\nAlamat lengkap, dusun, RT, RW, dan nomor telepon.\nAgama, status perkawinan, pendidikan, dan pekerjaan untuk surat selain Izin Keramaian.\nSesuai jenis surat: barang atau dokumen yang hilang; rincian acara (acara, tempat, tanggal mulai dan selesai, jenis hiburan); atau isi keterangan tentang diri pemohon.\nData pengajuan Surat Keterangan Usaha lama tetap dapat memuat nama usaha, jenis usaha, dan alamat usaha; layanan ini tidak menerima pengajuan online baru.",
   },
   {
     title: "Tujuan pengolahan",
@@ -26,7 +26,7 @@ const blocks = [
   },
   {
     title: "Keamanan data",
-    text: "NIK, nomor KK, nomor telepon, alamat, tempat lahir, dan tanggal lahir disimpan terenkripsi. Kode akses hanya disimpan dalam bentuk hash, bukan sebagai kode asli. Jangan bagikan kode akses Anda kepada orang lain.",
+    text: "NIK, nomor KK, nomor telepon, alamat, tempat lahir, tanggal lahir, agama, dan status perkawinan disimpan terenkripsi. Kode akses hanya disimpan dalam bentuk hash, bukan sebagai kode asli. Jangan bagikan kode akses Anda kepada orang lain.",
   },
   {
     title: "Masa simpan",

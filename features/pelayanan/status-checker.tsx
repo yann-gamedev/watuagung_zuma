@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, Search, LoaderCircle, CircleAlert, CircleX } from "lucide-react";
 import { pelayananService, isDemo } from "@/services/pelayanan";
+import { services } from "@/lib/data";
 import type { StatusReceipt } from "@/types/pelayanan";
 import { letterSteps } from "@/lib/letter-workflow";
 import { StatusBadge, statusDescriptions } from "@/components/site";
@@ -114,6 +115,7 @@ export function StatusChecker() {
       {result && (
         <section aria-live="polite" className="lookup-result" aria-labelledby="lookup-result-heading">
           <h2 id="lookup-result-heading">Status pengajuan Anda</h2>
+          {result.jenis_surat && <p>Jenis surat: <strong>{services.find((service) => service.code === result.jenis_surat)?.title || result.jenis_surat}</strong></p>}
           <div className="lookup-result-header">
             <strong className="receipt-value">{result.request_id}</strong>
             <StatusBadge status={result.status} neighborhoodApproval={result.requires_neighborhood_approval} />

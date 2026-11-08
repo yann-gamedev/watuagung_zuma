@@ -3229,6 +3229,22 @@ p {
   font-size: 16px;
   line-height: 1.55;
 }
+.application-summary {
+  margin-block: 24px;
+}
+.application-summary > div {
+  padding-block: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.application-summary dt {
+  color: var(--muted);
+  font-size: 16px;
+}
+.application-summary dd {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .application-form .form-footer {
   flex-direction: column;
   align-items: stretch;

@@ -2,7 +2,7 @@
 
 <!-- impeccable:product-schema 1 -->
 
-> Revisi keputusan pelayanan 2 November 2026. Persetujuan RT/RW dinonaktifkan secara bawaan atas keputusan klien, menggantikan alur aktif 20 Oktober 2026; kode tetap dipertahankan. Keputusan baru ditandai **[BARU]**. Keputusan yang masih menunggu konfirmasi ditandai **[SEMENTARA]**. Verifikasi perubahan 2 November lulus pada SQLite/PostgreSQL dan frontend; hasil serta batas pengujian ada di `docs/progres-2026-11-02.md`.
+> Revisi jenis layanan 8 November 2026: enam jenis sesuai contoh surat desa, menggantikan empat layanan lama; SKU dan pengantar KTP/KK tidak menerima pengajuan online baru, kode tetap untuk data lama. Rancangan dan pertanyaan terbuka ada di `docs/PROMPTS-SURAT.md`. Keputusan 2 November 2026 tetap berlaku: persetujuan RT/RW nonaktif secara bawaan, menggantikan alur aktif 20 Oktober; kode dipertahankan. Keputusan baru ditandai **[BARU]**. Keputusan yang masih menunggu konfirmasi ditandai **[SEMENTARA]**. Verifikasi perubahan 2 November lulus pada SQLite/PostgreSQL dan frontend; hasil serta batas pengujian ada di `docs/progres-2026-11-02.md` (bukan bukti verifikasi perubahan 8 November).
 
 ## Platform
 
@@ -39,11 +39,13 @@ Tujuan pelayanan harus dibedakan dari kemampuan yang sudah tersedia. Tidak ada t
 
 - Informasi publik: profil desa, sejarah, visi-misi, perangkat desa, berita, agenda, potensi, transparansi, kontak, BUMDes, UMKM, dan statistik.
 - Alur pelayanan: pilih jenis surat → baca persyaratan → isi formulir → terima nomor pengajuan (dan kode akses pada mode API) → cek status → ambil surat di kantor desa.
-- **[BARU] Alur bawaan (keputusan klien 2 November 2026):** semua jenis surat (SKU, DOMISILI, SKTM, KTP_KK) langsung ke petugas desa → Kepala Desa → siap diambil → selesai. Status: `SUBMITTED → VERIFIED → PROCESSING → WAITING_APPROVAL → APPROVED → READY_FOR_PICKUP → COMPLETED`.
-- Kode persetujuan RT/RW dipertahankan, tetapi hanya dikendalikan konfigurasi backend `letters.neighborhood_approval`, env `LETTER_NEIGHBORHOOD_APPROVAL=false` secara bawaan. Tidak ada sakelar frontend atau tabel jenis surat duplikat. Saat true, DOMISILI/SKTM/KTP_KK kembali melalui RT lalu RW; SKU tetap langsung ke kantor. `LetterType` menentukan kebutuhan ini dan `ApplicationStatus` menggunakannya.
+- **[BARU] Alur bawaan (keputusan klien 2 November 2026, jenis layanan diperbarui 8 November):** semua jenis surat langsung ke petugas desa → Kepala Desa → siap diambil → selesai. Status: `SUBMITTED → VERIFIED → PROCESSING → WAITING_APPROVAL → APPROVED → READY_FOR_PICKUP → COMPLETED`. Keputusan 2 November berlaku untuk empat jenis lama; alur yang sama dipertahankan untuk enam layanan terkini.
+- Kode persetujuan RT/RW dipertahankan, tetapi hanya dikendalikan konfigurasi backend `letters.neighborhood_approval`, env `LETTER_NEIGHBORHOOD_APPROVAL=false` secara bawaan. Tidak ada sakelar frontend atau tabel jenis surat duplikat. Saat true, semua jenis selain SKU melalui RT lalu RW (termasuk KTP_KK pada data lama); SKU lama tetap langsung ke kantor. `LetterType` menentukan kebutuhan ini dan `ApplicationStatus` menggunakannya.
 - Persetujuan RT/RW bila diaktifkan tetap hanya dicatat di sistem; tidak ada surat pengantar PDF, tanda tangan elektronik (TTE), stempel digital, atau notifikasi. Mengganti konfigurasi pada database berisi pengajuan wajib mengikuti prosedur di `backend/README.md`; bukan migrasi otomatis status.
-- **[BARU] Penerbitan surat (21 Oktober 2026):** surat sah setelah Kepala Desa menyetujui (`APPROVED`). Sistem mencatat siapa dan kapan, lalu membuat PDF final dari template sementara dengan QR verifikasi. Karena template resmi desa belum diterima, petugas juga dapat mengunggah surat yang disusun manual (QR ditempel, ditandatangani basah, distempel, lalu dipindai) untuk menggantikan PDF otomatis. PDF hanya untuk kantor desa dan Kepala Desa; warga tetap mengambil surat fisik di kantor desa.
-- Empat formulir: SKU, domisili, SKTM, dan pengantar KTP/KK.
+- **[BARU] Penerbitan surat (21 Oktober 2026):** surat sah setelah Kepala Desa menyetujui (`APPROVED`). Sistem mencatat siapa dan kapan, lalu membuat PDF final dari template sementara dengan QR verifikasi. Contoh surat resmi desa telah diterima 8 November dan disarikan di `docs/PROMPTS-SURAT.md`; penerapan template resmi dilacak terpisah di S2. Selama template sementara masih dipakai, petugas juga dapat mengunggah surat yang disusun manual (QR ditempel, ditandatangani basah, distempel, lalu dipindai) untuk menggantikan PDF otomatis. PDF hanya untuk kantor desa dan Kepala Desa; warga tetap mengambil surat fisik di kantor desa.
+- **[BARU] Enam layanan online (keputusan 8 November 2026):** `DOMISILI` — Surat Keterangan Domisili; `SKTM` — Surat Keterangan Tidak Mampu; `BELUM_MENIKAH` — Surat Keterangan Belum Menikah; `KERAMAIAN` — Surat Keterangan Izin Keramaian; `KEHILANGAN` — Surat Keterangan Kehilangan; `UMUM` — Surat Keterangan. SKU dan pengantar KTP/KK tidak ditawarkan lagi; enum, data lama, dan template lama dipertahankan, bukan dihapus. Ini menggantikan daftar empat formulir sebelumnya.
+- **[SEMENTARA] Persyaratan enam layanan:** "Bawa KTP dan KK asli saat mengambil surat." dengan label "menunggu konfirmasi desa". Waktu pelayanan juga menunggu konfirmasi desa; tidak ada janji jumlah hari. Deskripsi dan contoh keperluan membantu memilih layanan, bukan ketentuan resmi.
+- Surat Keterangan (`UMUM`) online ditujukan untuk keterangan tentang diri pemohon. Petugas dapat menyesuaikan isi keterangan sebelum surat dibuat; cakupan keterangan tanah, riwayat tanah, nikah siri, kematian, atau kebutuhan saksi/dokumen lain masih perlu keputusan desa (lihat pertanyaan terbuka di `docs/PROMPTS-SURAT.md`).
 - Prototipe Vercel berjalan sebagai demo statis dengan data fiktif, bukan layanan resmi. Status pengajuan demo tidak bergerak otomatis.
 - Bukti simulasi hanya tersedia di browser/origin yang sama; menghapus penyimpanan browser menghapus riwayat. Demo memakai alur bawaan tanpa persetujuan RT/RW dan tidak menyimpan identitas pemohon; bukti demo lama tanpa jenis surat tidak menampilkan linimasa.
 - Mode API Laravel (pengembangan lokal) adalah alur terpisah. Di mode ini cek status membutuhkan nomor pengajuan **dan** kode akses rahasia; jangan samakan dengan demo tanpa API.
@@ -59,7 +61,8 @@ Tujuan pelayanan harus dibedakan dari kemampuan yang sudah tersedia. Tidak ada t
 - Status "Siap diambil" (`READY_FOR_PICKUP`) dan "Selesai" (`COMPLETED`), serta lima peran panel: `rt_head` (ketua RT), `rw_head` (ketua RW), `staff` (petugas), `village_head` (kepala desa), `admin`. Hanya kepala desa yang memutuskan pengajuan yang menunggu persetujuan; wewenang dijaga di server (lihat `backend/README.md`).
 - **[BARU] Persetujuan RT/RW nonaktif secara bawaan:** status `RT_APPROVED` dan `RW_APPROVED` serta pembatasan wilayah tetap disimpan dalam kode. Saat fitur mati, login RT/RW mendapat 401 generik; token lama mendapat 403. Pembuatan, penetapan peran/wilayah, atau aktivasi akun RT/RW ditolak 422 dengan pesan jelas; akun RT/RW lama tetap boleh dinonaktifkan.
 - `GET /staff/me` menyertakan `features: { neighborhood_approval: boolean }`. Respons pengajuan dan cek status publik menyertakan `requires_neighborhood_approval` dari `LetterType`; frontend memakai boolean ini untuk linimasa, bukan menebak kebutuhan dari jenis surat.
-- Field sensitif pemohon (NIK, KK, telepon, alamat) dienkripsi di database.
+- Field sensitif pemohon (NIK, KK, telepon, alamat, tempat/tanggal lahir, agama, dan status perkawinan) dienkripsi di database. Agama dan status perkawinan tidak tampil pada respons daftar atau cek status publik.
+- **[BARU] Data diri surat:** dusun (Watuagung, Talang, Sekar), agama, kewarganegaraan, status perkawinan, pendidikan, dan pekerjaan mengikuti format desa; suku tidak dikumpulkan. Izin Keramaian tidak meminta agama, status perkawinan, pendidikan, atau pekerjaan; NIK/KK tetap untuk verifikasi petugas, tidak dicetak pada surat tersebut. Isian khusus per jenis mengikuti `docs/PROMPTS-SURAT.md`; status verifikasi S1–S4 dicatat di `ROADMAP.md`.
 - Model, tabel, dan migration `residents` terenkripsi dipertahankan hanya sebagai fondasi seeder/tes; tidak dihubungkan ke route atau fitur produksi.
 - Autofill identitas dummy dihapus dari impor dan UI formulir publik. Warga mengisi data sendiri; kolom alamat RT/RW tetap ada. `lib/dummy-residents.ts` dan tes fixture dipertahankan, bukan akses Dukcapil atau verifikasi identitas.
 
@@ -77,7 +80,7 @@ QR verifikasi **bukan** Tanda Tangan Elektronik tersertifikasi. TTE yang sah set
 ### Belum tersedia
 
 - Unggah dokumen persyaratan.
-- Template surat resmi desa dan Tanda Tangan Elektronik tersertifikasi (BSrE).
+- Penerapan template surat resmi enam jenis (S2; contoh sudah diterima) dan Tanda Tangan Elektronik tersertifikasi (BSrE).
 - Pengelolaan konten BUMDes melalui backend. Berita memiliki API CMS; halaman publik membaca berita terbit di browser tanpa build ulang (C4, 2 November 2026). Mode tanpa API tetap memakai contoh `lib/data.ts` sesuai `NEXT_PUBLIC_SHOW_SAMPLE_CONTENT`. Panel C3 sudah di-commit pada `1b2e6dd`; lihat `docs/progres-2026-11-02-c3.md` untuk verifikasi dan batasnya.
 - Pemulihan kode akses / OTP.
 
@@ -122,7 +125,7 @@ Arahan berikut sudah dikonfirmasi pengguna:
 
 - Foto: `public/village.jpg`. Atribusi: Thomas Fuhrmann, CC BY-SA 4.0, dipotong, dengan tautan sumber di footer.
 - Logo: file PNG dari tim (4540×4540px). Simpan di `public/brand/logo-watuagung.png` beserta versi kecil yang sudah dioptimasi.
-- Konten publik, statistik, berita, persyaratan, dan estimasi waktu yang tampil masih contoh. Jangan jadikan klaim resmi tanpa sumber yang disetujui. Data yang belum ada ditulis sebagai placeholder `[NAMA DATA]`.
+- Konten publik, statistik, dan berita yang belum bersumber resmi tetap berlabel contoh atau placeholder `[NAMA DATA]`. Enam jenis surat mengikuti contoh desa yang disarikan di `docs/PROMPTS-SURAT.md`, tetapi persyaratan sementara dan waktu pelayanan masih menunggu konfirmasi desa; jangan menjadikannya klaim resmi atau janji waktu.
 - Fixture fiktif tersimpan di `lib/dummy-residents.ts` beserta tesnya; tidak lagi menjadi autofill formulir publik (keputusan 2 November 2026).
 - Panduan menjalankan aplikasi: `README.md`, `backend/README.md`, dan `docs/integrasi.md`.
 - Belum ada bukti persetujuan konten resmi desa, integrasi Dukcapil, atau layanan operasional yang boleh diklaim.

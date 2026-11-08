@@ -1,6 +1,6 @@
 import { CircleAlert } from "lucide-react";
 import type { UseFormRegister, FieldErrors } from "react-hook-form";
-import type { SubmissionValues } from "@/lib/validation";
+import { todayInJakarta, type SubmissionValues } from "@/lib/validation";
 export function FormField({
   name,
   label,
@@ -12,6 +12,7 @@ export function FormField({
   placeholder,
   onValueChange,
   hint,
+  suggestions,
 }: {
   name: keyof SubmissionValues;
   label: string;
@@ -19,7 +20,8 @@ export function FormField({
   errors: FieldErrors<SubmissionValues>;
   type?: string;
   wide?: boolean;
-  options?: string[];
+  options?: readonly string[];
+  suggestions?: readonly string[];
   placeholder?: string;
   onValueChange?: (value: string) => void;
   hint?: string;
@@ -45,21 +47,22 @@ export function FormField({
           ))}
         </select>
       ) : type === "textarea" ? (
-        <textarea {...props} placeholder={placeholder} />
+        <textarea {...props} placeholder={placeholder} maxLength={name === "isi_keterangan" ? 500 : 200} />
       ) : (
         <input
           {...props}
           type={type}
           placeholder={placeholder}
-          maxLength={name === "nik" || name === "no_kk" ? 16 : 200}
+          list={suggestions ? `${name}-suggestions` : undefined}
+          maxLength={name === "nik" || name === "no_kk" ? 16 : name === "pekerjaan" ? 60 : ["acara", "tempat_acara", "jenis_hiburan"].includes(name) ? 120 : 200}
           inputMode={
             ["nik", "no_kk", "rt", "rw"].includes(name) ? "numeric" : undefined
           }
-          max={
-            type === "date" ? new Date().toISOString().slice(0, 10) : undefined
-          }
+          min={name === "tanggal_lahir" ? "1900-01-01" : undefined}
+          max={name === "tanggal_lahir" ? todayInJakarta() : undefined}
         />
       )}{" "}
+      {suggestions && <datalist id={`${name}-suggestions`}>{suggestions.map((value) => <option key={value} value={value} />)}</datalist>}
       {hint && <p id={`${name}-hint`} className="mt-2">{hint}</p>}
       {error && (
         <p id={`${name}-error`} className="field-error">

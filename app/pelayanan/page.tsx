@@ -14,7 +14,7 @@ export default function Page() {
       />
       <section className="section container service-page">
         <div className="notice">
-          Prototipe layanan. Persyaratan dan waktu proses merupakan contoh.
+          Prototipe layanan. Persyaratan sementara dan waktu pelayanan menunggu konfirmasi desa.
           Gunakan data fiktif.
         </div>
         <ServiceList fullRequirements />

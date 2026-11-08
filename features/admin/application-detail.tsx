@@ -7,11 +7,10 @@ import { ArrowLeft } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { z } from "zod";
 import { StatusBadge, statusLabels } from "@/components/site";
-import { services } from "@/lib/data";
 import { agamaOptions, dusunOptions, kewarganegaraanOptions, pendidikanOptions, serviceCodes, statusPerkawinanOptions, statuses, type LetterFile, type StaffAccessCodeResponse, type StaffApplicationDetail, type StaffStatusResponse, type Status } from "@/types/pelayanan";
 import { AdminUnauthorizedError } from "./api";
 import { useAdminSession } from "./session";
-import { buildApplicationsHref, parseApplicationFilters, parseApplicationSection } from "./application-filters";
+import { applicationServiceLabels, buildApplicationsHref, parseApplicationFilters, parseApplicationSection } from "./application-filters";
 import styles from "./application-detail.module.css";
 import neighborhoodStyles from "./neighborhood.module.css";
 
@@ -235,7 +234,7 @@ function DetailContent({ id }: { id: string }) {
       {detail && <>
         <section className={styles.card} aria-label="Ringkasan permohonan">
           <h2 className={styles.number}>{detail.request_id}</h2>
-          <p>{services.find((service) => service.code === detail.jenis_surat)?.title}</p>
+          <p>{applicationServiceLabels[detail.jenis_surat]}</p>
           <div className={styles.summary}><StatusBadge status={detail.status} jenisSurat={detail.jenis_surat} /><time dateTime={detail.created_at}>{dateTime(detail.created_at)}</time></div>
         </section>
         <div className={styles.columns}>
