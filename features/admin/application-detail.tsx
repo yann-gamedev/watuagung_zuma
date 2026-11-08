@@ -11,6 +11,7 @@ import { agamaOptions, dusunOptions, kewarganegaraanOptions, pendidikanOptions, 
 import { AdminUnauthorizedError } from "./api";
 import { useAdminSession } from "./session";
 import { applicationServiceLabels, buildApplicationsHref, parseApplicationFilters, parseApplicationSection } from "./application-filters";
+import { useUnsavedChanges } from "./use-unsaved-changes";
 import styles from "./application-detail.module.css";
 import neighborhoodStyles from "./neighborhood.module.css";
 
@@ -178,12 +179,7 @@ function DetailContent({ id }: { id: string }) {
     return () => { cancelled = true; mounted.current = false; };
   }, [readDetail, validId, attempt]);
 
-  useEffect(() => {
-    if (!statementDirty) return;
-    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [statementDirty]);
+  useUnsavedChanges(!!statementDirty);
 
   async function reveal(field: "agama" | "status_perkawinan") {
     if (revealBusy) return;
@@ -284,7 +280,7 @@ function DetailContent({ id }: { id: string }) {
     else void change(status);
   }
   return <div className={styles.page}>
-    <Link className="btn btn-secondary" href={backHref} onClick={(event) => { if (statementDirty && !window.confirm("Kalimat belum disimpan. Tinggalkan halaman?")) event.preventDefault(); }}><ArrowLeft size={22} aria-hidden="true" />Kembali ke daftar</Link>
+    <Link className="btn btn-secondary" href={backHref}><ArrowLeft size={22} aria-hidden="true" />Kembali ke daftar</Link>
     {!validId ? <p className="error-box" role="alert">Nomor permohonan tidak valid. Buka detail dari daftar permohonan.</p> : <>
       {error && <p className="error-box" role="alert">{error}</p>}
       {loading && <p role="status">Memuat detail permohonan...</p>}
