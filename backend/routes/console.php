@@ -78,6 +78,9 @@ Artisan::command('applications:purge {--dry-run}', function () {
             $application->forceFill([
                 'nama' => $initials, 'nik' => '', 'no_kk' => '', 'telepon' => '', 'alamat' => '', 'alamat_usaha' => null,
                 'tempat_lahir' => '', 'tanggal_lahir' => '', 'keperluan' => '', 'catatan' => null, 'purged_at' => now(),
+                'dusun' => null, 'agama' => null, 'kewarganegaraan' => null, 'status_perkawinan' => null, 'pendidikan' => null,
+                'pekerjaan' => null, 'barang_hilang' => null, 'acara' => null, 'tempat_acara' => null, 'tanggal_mulai' => null,
+                'tanggal_selesai' => null, 'jenis_hiburan' => null, 'isi_keterangan' => null, 'isi_keterangan_awal' => null,
             ]);
             $application->timestamps = false; // updated_at asli tetap.
             $application->save();

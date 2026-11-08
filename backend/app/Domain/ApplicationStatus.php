@@ -79,6 +79,21 @@ enum ApplicationStatus: string
         return array_keys(array_filter(self::rules($type)[$from] ?? [], fn (array $roles) => in_array($role, $roles, true)));
     }
 
+    /**
+     * Isi surat yang dicetak (mis. isi keterangan UMUM) hanya boleh disunting kantor
+     * sebelum diajukan ke Kepala Desa; NEED_REVISION kembali ke kantor sebelum diajukan ulang.
+     */
+    public static function canEditContent(string $status, ?string $role): bool
+    {
+        return in_array($role, self::OFFICE, true)
+            && in_array($status, ['SUBMITTED', 'RT_APPROVED', 'RW_APPROVED', 'VERIFIED', 'PROCESSING', 'NEED_REVISION'], true);
+    }
+
+    public static function canEditContentRole(?string $role): bool
+    {
+        return in_array($role, self::OFFICE, true);
+    }
+
     public static function requiresNote(string $to): bool
     {
         return in_array($to, [self::Rejected->value, self::NeedRevision->value], true);

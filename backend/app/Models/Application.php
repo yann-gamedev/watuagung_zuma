@@ -11,10 +11,11 @@ use Illuminate\Database\Eloquent\Model;
 class Application extends Model
 {
     protected $guarded = ['id'];
-    protected $hidden = ['id', 'lookup_secret_hash', 'nik', 'no_kk', 'telepon', 'alamat', 'alamat_usaha', 'tempat_lahir', 'tanggal_lahir'];
+    protected $hidden = ['id', 'lookup_secret_hash', 'nik', 'no_kk', 'telepon', 'alamat', 'alamat_usaha', 'tempat_lahir', 'tanggal_lahir', 'agama', 'status_perkawinan'];
     protected function casts(): array {
         // tanggal_lahir is an encrypted "Y-m-d" string (validated on submit), not a Carbon date.
-        return ['nik' => 'encrypted', 'no_kk' => 'encrypted', 'telepon' => 'encrypted', 'alamat' => 'encrypted', 'alamat_usaha' => 'encrypted', 'tempat_lahir' => 'encrypted', 'tanggal_lahir' => 'encrypted', 'rt' => AreaCode::class, 'rw' => AreaCode::class];
+        // tanggal_mulai/tanggal_selesai stay plain "Y-m-d" strings for the same reason.
+        return ['nik' => 'encrypted', 'no_kk' => 'encrypted', 'telepon' => 'encrypted', 'alamat' => 'encrypted', 'alamat_usaha' => 'encrypted', 'tempat_lahir' => 'encrypted', 'tanggal_lahir' => 'encrypted', 'agama' => 'encrypted', 'status_perkawinan' => 'encrypted', 'rt' => AreaCode::class, 'rw' => AreaCode::class];
     }
 
     public function scopeForUser(Builder $query, User $user): void {

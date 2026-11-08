@@ -14,11 +14,13 @@ use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
+use Tests\LetterPayloads;
+use Symfony\Component\Process\Process;
 
 /** All identities here are fictional. */
 class LetterPdfTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, LetterPayloads;
 
     protected function setUp(): void
     {
@@ -271,7 +273,7 @@ class LetterPdfTest extends TestCase
         $defaults = [
             'kabupaten' => 'PASURUAN',
             'kecamatan' => 'PRIGEN',
-            'alamat_kantor' => 'Jl. Taman Safari Indonesia II, Dusun Watuagung RT 001/RW 001',
+            'alamat_kantor' => 'Jl. Taman Safari II No. 01 Desa Watuagung Kec. Prigen Tlp. (0343) 7660001 Kode Pos 67157',
             'kepala_desa' => 'DIDIK HARIYANTO',
         ];
         $env = \Illuminate\Support\Env::getRepository();
@@ -285,7 +287,7 @@ class LetterPdfTest extends TestCase
         try {
             $config = require config_path('letters.php');
             $this->assertSame($defaults, $config['desa']);
-            $this->assertSame('[PLACEHOLDER]', $config['kode_desa']);
+            $this->assertSame('424.314.2.02', $config['kode_desa']);
             foreach ($defaults as $key => $value) {
                 $env->set('LETTER_'.strtoupper($key), 'Pengganti fiktif '.$key);
             }
@@ -301,23 +303,126 @@ class LetterPdfTest extends TestCase
         }
     }
 
-    public function test_all_four_templates_render(): void
+    private function pdfText(string $pdf): array
     {
-        foreach (LetterType::cases() as $type) {
-            $application = $this->application(['jenis_surat' => $type->value]);
-            $this->act();
-            $this->assertStringStartsWith('%PDF-', $this->pdf($application)->assertOk()->getContent());
-            foreach ([true, false] as $draft) {
-                $html = view('letters.'.strtolower($type->value), [
-                    'a' => $application, 'draft' => $draft, 'number' => null,
-                    'date' => now()->locale('id'), 'qr' => null, 'desa' => config('letters.desa'),
-                ])->render();
-                $this->assertStringContainsString('PEMERINTAH KABUPATEN '.e(config('letters.desa.kabupaten')), $html);
-                $this->assertStringContainsString('KECAMATAN '.e(config('letters.desa.kecamatan')), $html);
-                $this->assertStringContainsString('<p>'.e(config('letters.desa.alamat_kantor')).'</p>', $html);
-                $this->assertStringContainsString('<strong><u>'.e(config('letters.desa.kepala_desa')).'</u></strong>', $html);
-                $this->assertStringContainsString('Format sementara, menunggu template resmi', $html);
+        $process = new Process([getenv('PYTHON_BINARY') ?: 'python', base_path('tests/pdf_text.py')]);
+        $process->setInput($pdf)->mustRun();
+
+        return json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    #[DataProvider('offeredLetterTypes')]
+    public function test_official_pdf_text_and_one_a4_page(string $type): void
+    {
+        $this->travelTo(now()->parse('2026-10-01 12:00:00'));
+        config()->set('letters.desa.kepala_desa', 'KEPALA DESA FIKTIF');
+        $application = $this->application(self::letterPayload($type, [
+            'tanggal_mulai' => '2026-10-06', 'tanggal_selesai' => '2026-10-07',
+            'isi_keterangan' => 'Orang tersebut bekerja di Kota Fiktif setelah diperiksa petugas.',
+            'isi_keterangan_awal' => 'Teks asli warga fiktif jangan dicetak.',
+        ]));
+        $this->act();
+        if ($type === 'UMUM') {
+            $this->patchJson('/api/v1/staff/applications/'.$application->request_id.'/isi-keterangan', [
+                'isi_keterangan' => 'Pernyataan fiktif hasil suntingan petugas.',
+            ])->assertOk();
+            $application->refresh();
+        }
+        $this->change($application, 'WAITING_APPROVAL')->assertOk();
+        $this->act('village_head');
+        $this->change($application, 'APPROVED')->assertOk();
+        $pdf = $this->pdf($application)->assertOk()->getContent();
+        $parsed = $this->pdfText($pdf);
+        $text = $parsed['text'];
+        foreach ([LetterType::from($type)->title(), '470/1/424.314.2.02/2026',
+            'PEMERINTAH KABUPATEN PASURUAN', 'KECAMATAN PRIGEN', 'KEPALA DESA WATUAGUNG',
+            'Yang bertanda tangan di bawah ini Kepala Desa Watuagung Kecamatan Prigen Kabupaten Pasuruan, menerangkan dengan sebenarnya bahwa :',
+            'Watuagung, 01 Oktober 2026', 'KEPALA DESA FIKTIF', 'QR bukan tanda tangan elektronik.',
+            'Tempat Fiktif, 01-01-2000', 'Dusun Talang RT : 001 RW : 002', 'Indonesia',
+        ] as $expected) $this->assertStringContainsString($expected, $text);
+        foreach (['pengantar Ketua RT', 'Format sementara', 'Teks asli warga fiktif jangan dicetak.', 'DRAF'] as $absent) {
+            $this->assertStringNotContainsString($absent, $text);
+        }
+        $this->assertCount(1, $parsed['pages']);
+        $this->assertEqualsWithDelta(595.28, $parsed['pages'][0][0], 0.1);
+        $this->assertEqualsWithDelta(841.89, $parsed['pages'][0][1], 0.1);
+        $residency = 'Orang tersebut diatas adalah benar-benar penduduk Desa Watuagung Kecamatan Prigen Kabupaten Pasuruan.';
+        $expected = match ($type) {
+            'DOMISILI' => ['1. Orang tersebut diatas adalah benar-benar berdomisili di Dusun Talang RT : 001 RW : 002 Desa Watuagung Kecamatan Prigen Kabupaten Pasuruan.'],
+            'BELUM_MENIKAH' => ['1. '.$residency, '2. Orang tersebut di atas sampai saat ini belum pernah menikah di Kantor Urusan Agama (KUA) manapun.'],
+            'SKTM' => ['1. Orang tersebut diatas adalah benar-benar penduduk Dusun Talang RT : 001 RW : 002 Desa Watuagung Kecamatan Prigen Kabupaten Pasuruan.', '2. Keterangan ini dipergunakan untuk : Keperluan fiktif.'],
+            'KEHILANGAN' => ['1. '.$residency, 'Yang bersangkutan telah kehilangan : KTP.'],
+            'UMUM' => ['- Menerangkan dengan sebenarnya bahwa orang tersebut diatas benar-benar penduduk Desa Watuagung.', '- '.$application->isi_keterangan],
+            'KERAMAIAN' => ['a. Nama Lengkap', 'b. Tempat/tgl lahir', 'c. Jenis Kelamin', 'd. Kewarganegaraan', 'e. Alamat', 'f. Nomor Telepon', 'g. Maksud',
+                'Nama tersebut diatas Bermaksud Permohonan ijin :', 'Acara : Hajatan pernikahan fiktif', 'Tempat : Rumah pemohon',
+                'Hari/Tanggal : Selasa–Rabu, 06–07 Oktober 2026', 'Jenis Hiburan : Organ tunggal'],
+        };
+        foreach ($expected as $phrase) $this->assertStringContainsString($phrase, $text);
+        if ($type === 'KERAMAIAN') {
+            foreach ([$application->nik, $application->no_kk, 'Nomor NIK', 'Nomor KSK'] as $secret) $this->assertStringNotContainsString($secret, $text);
+            $this->assertStringContainsString('Demikian atas ijin permohonan ini kami sampaikan dan semoga dapat dipergunakan sebagaimana mestinya.', $text);
+        } else {
+            $labels = ['Nama', 'Jenis Kelamin', 'Tempat/Tgl. Lahir', 'Agama', 'Kewarganegaraan', 'Status Perkawinan', 'Pendidikan', 'Pekerjaan', 'Nomor NIK', 'Nomor KSK', 'Alamat'];
+            $position = 0;
+            foreach ($labels as $i => $label) {
+                $found = strpos($text, ($i + 1).'. '.$label, $position);
+                $this->assertNotFalse($found, $label);
+                $position = $found + strlen($label);
             }
+            foreach ([$application->nik, $application->no_kk, 'Islam', 'Belum Kawin', 'SLTA/Sederajat', 'Karyawan Swasta', 'KETERANGAN :',
+                'Demikian Surat Keterangan ini diberikan kepada yang bersangkutan untuk dapat dipergunakan sebagaimana mestinya.'] as $phrase) $this->assertStringContainsString($phrase, $text);
+        }
+        $this->assertSame(in_array($type, ['BELUM_MENIKAH', 'KEHILANGAN']), str_contains($text, 'Yang bersangkutan'));
+
+        // Opt-in export reuses tested fixtures; never writes examples into repository/storage.
+        if ($directory = getenv('LETTER_SAMPLE_DIR')) {
+            $this->assertDirectoryExists($directory);
+            $this->assertFalse(str_starts_with(strtolower(realpath($directory)), strtolower(realpath(base_path('..')))));
+            $this->assertNotFalse(file_put_contents($directory.'/'.$type.'.pdf', $pdf));
+        }
+    }
+
+    public static function eventDates(): array
+    {
+        return [
+            ['2026-10-06', '2026-10-06', 'Selasa, 06 Oktober 2026'],
+            ['2026-10-06', '2026-10-07', 'Selasa–Rabu, 06–07 Oktober 2026'],
+            ['2026-10-30', '2026-11-02', 'Jumat–Senin, 30 Oktober–02 November 2026'],
+            ['2026-12-30', '2027-01-02', 'Rabu–Sabtu, 30 Desember 2026–02 Januari 2027'],
+        ];
+    }
+
+    #[DataProvider('eventDates')]
+    public function test_event_date_ranges_in_pdf(string $start, string $end, string $expected): void
+    {
+        $application = $this->application(self::letterPayload('KERAMAIAN', ['tanggal_mulai' => $start, 'tanggal_selesai' => $end]));
+        $parsed = $this->pdfText(Letter::render($application, null));
+        $this->assertStringContainsString($expected, $parsed['text']);
+        $this->assertStringContainsString('DRAF', $parsed['text']);
+    }
+
+    public function test_layout_escapes_text_embeds_logo_and_places_qr_after_signatures(): void
+    {
+        $application = $this->application(self::letterPayload('KEHILANGAN', ['barang_hilang' => '<b>Barang fiktif</b>']));
+        $html = view(Letter::view(LetterType::Kehilangan), [
+            'a' => $application, 'title' => LetterType::Kehilangan->title(), 'draft' => false,
+            'number' => null, 'date' => now()->locale('id'), 'qr' => 'qr-fiktif',
+            'desa' => array_replace(config('letters.desa'), ['kepala_desa' => 'KEPALA FIKTIF']),
+        ])->render();
+        $this->assertStringContainsString('data:image/jpeg;base64,'.base64_encode(file_get_contents(resource_path('letters/logo-kabupaten-pasuruan.jpg'))), $html);
+        $this->assertStringContainsString('<strong>&lt;b&gt;Barang fiktif&lt;/b&gt;</strong>', $html);
+        $this->assertStringContainsString('<strong><u>Warga Fiktif</u></strong>', $html);
+        $this->assertStringContainsString('<strong><u>KEPALA FIKTIF</u></strong>', $html);
+        $this->assertGreaterThan(strpos($html, '<strong><u>KEPALA FIKTIF'), strpos($html, 'data:image/png;base64,qr-fiktif'));
+    }
+
+    public function test_legacy_types_with_missing_new_fields_still_render(): void
+    {
+        foreach ([LetterType::Sku, LetterType::KtpKk] as $type) {
+            $application = $this->application(['jenis_surat' => $type->value]);
+            $parsed = $this->pdfText(Letter::render($application, null));
+            $this->assertStringContainsString($type->title(), $parsed['text']);
+            $this->assertStringContainsString('Jalan Fiktif 9', $parsed['text']);
         }
     }
 }

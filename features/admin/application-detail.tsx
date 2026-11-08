@@ -8,7 +8,7 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import { z } from "zod";
 import { StatusBadge, statusLabels } from "@/components/site";
 import { services } from "@/lib/data";
-import { statuses, type LetterFile, type StaffAccessCodeResponse, type StaffApplicationDetail, type StaffStatusResponse, type Status } from "@/types/pelayanan";
+import { agamaOptions, dusunOptions, kewarganegaraanOptions, pendidikanOptions, serviceCodes, statusPerkawinanOptions, statuses, type LetterFile, type StaffAccessCodeResponse, type StaffApplicationDetail, type StaffStatusResponse, type Status } from "@/types/pelayanan";
 import { AdminUnauthorizedError } from "./api";
 import { useAdminSession } from "./session";
 import { buildApplicationsHref, parseApplicationFilters, parseApplicationSection } from "./application-filters";
@@ -23,15 +23,23 @@ const actionLabels: Record<Status, string> = {
   NEED_REVISION: "Minta perbaikan", REJECTED: "Tolak",
 };
 const detailSchema = z.object({
-  request_id: z.string(), nama: z.string(), jenis_surat: z.enum(["SKU", "DOMISILI", "SKTM", "KTP_KK"]),
+  request_id: z.string(), nama: z.string(), jenis_surat: z.enum(serviceCodes),
   status: z.enum(statuses), created_at: z.string(), updated_at: z.string(), allowed_transitions: z.array(z.enum(statuses)),
   nik: z.string(), no_kk: z.string(), tempat_lahir: z.string().optional(), tanggal_lahir: z.string().optional(),
   jenis_kelamin: z.string().optional(), alamat: z.string(), rt: z.string(), rw: z.string(), telepon: z.string().optional(),
   nama_usaha: z.string().nullable(), jenis_usaha: z.string().nullable(), alamat_usaha: z.string().nullable(),
   keperluan: z.string(), catatan: z.string().nullable(), can_reset_access_code: z.boolean(),
+  // Field surat final (S1); tampilannya menyusul di S4. Data lama berisi null.
+  dusun: z.enum(dusunOptions).nullable(), barang_hilang: z.string().nullable(), acara: z.string().nullable(),
+  tempat_acara: z.string().nullable(), tanggal_mulai: z.string().nullable(), tanggal_selesai: z.string().nullable(),
+  jenis_hiburan: z.string().nullable(), isi_keterangan: z.string().nullable(), isi_keterangan_awal: z.string().nullable(),
+  can_edit_isi_keterangan: z.boolean(),
+  agama: z.enum(agamaOptions).nullable().optional(), status_perkawinan: z.enum(statusPerkawinanOptions).nullable().optional(),
+  kewarganegaraan: z.enum(kewarganegaraanOptions).nullable().optional(), pendidikan: z.enum(pendidikanOptions).nullable().optional(),
+  pekerjaan: z.string().nullable().optional(),
   letter_numbers: z.array(z.object({ number: z.string(), status: z.enum(["issued", "void"]), void_reason: z.string().nullable(), issued_at: z.string() })).optional(),
   letter: z.object({ approved_at: z.string(), source: z.enum(["generated", "uploaded"]).nullable(), sha256: z.string().nullable(), file_updated_at: z.string().nullable(), file_purged_at: z.string().nullable() }).nullable().optional(),
-  history: z.array(z.object({ action: z.enum(["ACCESS_CODE_RESET"]).nullable(), from_status: z.enum(statuses).nullable(), to_status: z.enum(statuses),
+  history: z.array(z.object({ action: z.enum(["ACCESS_CODE_RESET", "STATEMENT_EDITED"]).nullable(), from_status: z.enum(statuses).nullable(), to_status: z.enum(statuses),
     note: z.string().nullable(), staff_name: z.string().nullable(), created_at: z.string() })),
 });
 function lowerLabel(status: Status) {

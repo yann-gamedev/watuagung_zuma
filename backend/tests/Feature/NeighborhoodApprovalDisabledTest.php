@@ -10,23 +10,17 @@ use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\LetterPayloads;
 use Tests\TestCase;
 
 /** Identitas warga dan akun seluruhnya fiktif. */
 class NeighborhoodApprovalDisabledTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, LetterPayloads;
 
     private function payload(string $type): array
     {
-        return [
-            'jenis_surat' => $type, 'nama' => 'Warga Fiktif',
-            'nik' => '0000000000001234', 'no_kk' => '0000000000005678',
-            'tempat_lahir' => 'Tempat Fiktif', 'tanggal_lahir' => '2000-01-01', 'jenis_kelamin' => 'Perempuan',
-            'alamat' => 'Alamat fiktif', 'rt' => '1', 'rw' => '2', 'telepon' => '08000000000',
-            'keperluan' => 'Keperluan fiktif', 'nama_usaha' => 'Usaha Fiktif',
-            'jenis_usaha' => 'Dagang', 'alamat_usaha' => 'Alamat usaha fiktif',
-        ];
+        return self::letterPayload($type);
     }
 
     private function actAs(User $user): void
@@ -37,15 +31,16 @@ class NeighborhoodApprovalDisabledTest extends TestCase
 
     public static function letterTypes(): array
     {
-        return array_map(fn ($type) => [$type->value], LetterType::cases());
+        return self::offeredLetterTypes();
     }
 
     public static function publicFlags(): array
     {
         $cases = [];
         foreach ([false, true] as $enabled) {
-            foreach (LetterType::cases() as $type) {
-                $cases[] = [$enabled, $type->value, $enabled && $type !== LetterType::Sku];
+            // Hanya jenis yang masih ditawarkan; SKU (satu-satunya tanpa RT/RW) tidak dapat diajukan lagi.
+            foreach (LetterType::offeredValues() as $type) {
+                $cases[] = [$enabled, $type, $enabled];
             }
         }
         return $cases;
