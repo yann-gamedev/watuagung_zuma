@@ -1,6 +1,8 @@
 @extends('letters.layout')
-@section('title', 'SURAT KETERANGAN DOMISILI')
+@section('title', $title)
 @section('body')
-<p>Orang tersebut benar berdomisili di alamat di atas, wilayah Desa Watuagung, berdasarkan pengantar Ketua RT {{ $a->rt }} / RW {{ $a->rw }}.</p>
-<p>Surat keterangan ini diberikan untuk keperluan: {{ $a->keperluan }}.</p>
+<p><strong>KETERANGAN :</strong></p>
+<table class="keterangan">
+    <tr><td class="urut">1.</td><td>Orang tersebut diatas adalah benar-benar berdomisili di Dusun {{ $a->dusun ?? '[DUSUN]' }} RT : {{ str_pad($a->rt, 3, '0', STR_PAD_LEFT) }} RW : {{ str_pad($a->rw, 3, '0', STR_PAD_LEFT) }} Desa Watuagung Kecamatan Prigen Kabupaten Pasuruan.</td></tr>
+</table>
 @endsection

@@ -77,12 +77,9 @@ class Letter
         ])->setPaper('a4')->output();
     }
 
-    /** ponytail: jenis tanpa template sendiri memakai template generik sampai template resmi (S2). */
     public static function view(LetterType $type): string
     {
-        $view = 'letters.'.strtolower($type->value);
-
-        return view()->exists($view) ? $view : 'letters.umum';
+        return 'letters.'.strtolower($type->value);
     }
 
     public static function verifyUrl(string $code): string

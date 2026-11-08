@@ -1,6 +1,9 @@
 @extends('letters.layout')
-@section('title', 'SURAT KETERANGAN TIDAK MAMPU')
+@section('title', $title)
 @section('body')
-<p>Berdasarkan pengantar Ketua RT {{ $a->rt }} / RW {{ $a->rw }}, orang tersebut benar warga Desa Watuagung yang tergolong keluarga tidak mampu.</p>
-<p>Surat keterangan ini diberikan untuk keperluan: {{ $a->keperluan }}.</p>
+<p><strong>KETERANGAN :</strong></p>
+<table class="keterangan">
+    <tr><td class="urut">1.</td><td>Orang tersebut diatas adalah benar-benar penduduk Dusun {{ $a->dusun ?? '[DUSUN]' }} RT : {{ str_pad($a->rt, 3, '0', STR_PAD_LEFT) }} RW : {{ str_pad($a->rw, 3, '0', STR_PAD_LEFT) }} Desa Watuagung Kecamatan Prigen Kabupaten Pasuruan.</td></tr>
+    <tr><td class="urut">2.</td><td>Keterangan ini dipergunakan untuk : {{ $a->keperluan }}.</td></tr>
+</table>
 @endsection
