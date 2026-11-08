@@ -29,6 +29,7 @@ export default async function Page({
     return (
       <PublicShell>
         <PageHeading
+          editorial
           eyebrow="KABAR WATUAGUNG"
           title="Berita Desa"
           intro="Cerita kegiatan, pembangunan, dan kebersamaan warga."
@@ -44,6 +45,7 @@ export default async function Page({
   return (
     <PublicShell>
       <PageHeading
+        editorial
         eyebrow={n.category}
         title={n.title}
         intro={n.date + " · Konten contoh"}

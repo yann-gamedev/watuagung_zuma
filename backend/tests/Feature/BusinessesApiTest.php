@@ -114,6 +114,10 @@ class BusinessesApiTest extends TestCase
         $this->getJson('/api/v1/businesses?category=jasa')->assertOk()->assertJsonPath('total', 13)->assertJsonCount(12, 'data')->assertJsonPath('data.0.name', 'Jasa 00');
         $this->getJson('/api/v1/businesses?category=jasa&page=2')->assertOk()->assertJsonCount(1, 'data');
         $this->getJson('/api/v1/businesses?category=pertanian_peternakan')->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.category_label', 'Pertanian & Peternakan');
+        $this->make(['name' => 'Zebra Terbaru', 'category' => 'jasa', 'published_at' => now()->subMinute()]);
+        $this->getJson('/api/v1/businesses?category=jasa&sort=latest')->assertOk()->assertJsonPath('data.0.name', 'Zebra Terbaru');
+        $this->getJson('/api/v1/businesses?category=jasa&sort=name')->assertOk()->assertJsonPath('data.0.name', 'Jasa 00');
+        $this->getJson('/api/v1/businesses?sort=acak')->assertUnprocessable()->assertJsonValidationErrors('sort');
         $this->getJson('/api/v1/businesses?category=salah')->assertUnprocessable()->assertJsonValidationErrors('category');
         $this->getJson('/api/v1/businesses?page=0')->assertUnprocessable()->assertJsonValidationErrors('page');
     }
@@ -321,6 +325,20 @@ class BusinessesApiTest extends TestCase
         $business = $this->make();
         for ($i = 0; $i < 10; $i++) $this->deleteJson("/api/v1/staff/businesses/{$business->id}/photo")->assertOk();
         $this->postJson("/api/v1/staff/businesses/{$business->id}/photo", [])->assertStatus(429);
+    }
+
+    public function test_delete_preflight_allows_panel_origin_only(): void
+    {
+        $headers = ['Origin' => 'http://127.0.0.1:3000', 'Access-Control-Request-Method' => 'DELETE', 'Access-Control-Request-Headers' => 'authorization'];
+        foreach (['/api/v1/staff/businesses/1', '/api/v1/staff/businesses/1/photo', '/api/v1/staff/posts/1', '/api/v1/staff/posts/1/cover'] as $path) {
+            $this->options($path, [], $headers)->assertNoContent()
+                ->assertHeader('Access-Control-Allow-Origin', 'http://127.0.0.1:3000')
+                ->assertHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+        }
+        // Origin lain tidak mendapat izin CORS walau DELETE diizinkan.
+        $this->options('/api/v1/staff/businesses/1', [], ['Origin' => 'https://evil.example'] + $headers)->assertHeaderMissing('Access-Control-Allow-Origin');
+        // Preflight bukan otorisasi: DELETE tanpa token tetap 401.
+        $this->deleteJson('/api/v1/staff/businesses/1', [], ['Origin' => 'http://127.0.0.1:3000'])->assertUnauthorized();
     }
 
     public function test_public_throttle(): void

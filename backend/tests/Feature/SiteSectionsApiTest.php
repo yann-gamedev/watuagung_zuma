@@ -920,6 +920,6 @@ class SiteSectionsApiTest extends TestCase
         for ($i = 0; $i < 60; $i++) $this->getJson('/api/v1/site/profile')->assertNotFound();
         $this->getJson('/api/v1/site/profile')->assertStatus(429);
         $this->options('/api/v1/staff/site/profile', [], ['Origin' => 'http://localhost:3000', 'Access-Control-Request-Method' => 'PUT', 'Access-Control-Request-Headers' => 'authorization,content-type'])
-            ->assertNoContent()->assertHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, OPTIONS');
+            ->assertNoContent()->assertHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     }
 }

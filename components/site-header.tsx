@@ -34,7 +34,7 @@ const primaryLinks: { label: string; href: string; isActive: (p: string) => bool
   },
 ];
 
-// Hanya route yang sudah ada. Peta Wilayah dan UMKM belum punya halaman.
+// Hanya route yang sudah ada. Peta Wilayah belum punya halaman.
 const menuGroups: { title: string; links: MenuLink[] }[] = [
   {
     title: "Layanan Warga",
@@ -56,6 +56,7 @@ const menuGroups: { title: string; links: MenuLink[] }[] = [
     title: "Ekonomi & Info",
     links: [
       { label: "BUMDes", href: "/bumdes" },
+      { label: "UMKM", href: "/umkm" },
       { label: "Berita & Agenda", href: "/berita" },
       { label: "Transparansi Anggaran", href: "/transparansi" },
     ],
@@ -69,6 +70,7 @@ const mobileLinks: MenuLink[] = [
   { label: "Profil Desa", href: "/profil" },
   { label: "Perangkat Desa", href: "/struktur-pemerintahan" },
   { label: "BUMDes", href: "/bumdes" },
+  { label: "UMKM", href: "/umkm" },
   { label: "Berita & Agenda", href: "/berita" },
   { label: "Transparansi", href: "/transparansi" },
   { label: "Kontak", href: "/kontak" },

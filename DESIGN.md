@@ -75,6 +75,7 @@ Satu keluarga: **Plus Jakarta Sans** (400, 500, 600, 700, 800), dimuat dengan `n
 | Teks sekunder | 16px | 15–16px | 400 | 1.55 |
 | Label kecil (maks. 1 per layar) | 16px | 14px | 700, letter-spacing .04em | — |
 | Minimum mutlak | 15px | 14px | — | — |
+| H1 judul halaman berita/UMKM (`PageHeading editorial`, §6) | 51,2px (`clamp(2rem, 4vw, 3.2rem)`) | 32px | 400 | 1.22, letter-spacing −0.025em |
 
 Pengecualian ukuran minimum hanya untuk dua hal: subteks identitas "PEMERINTAH DESA" / "ADMINISTRASI DESA" (11–13px, berat 600, letter-spacing .12–.14em) dan caption foto (13–14px). Keduanya bukan teks yang harus dibaca untuk menyelesaikan tugas.
 
@@ -96,6 +97,8 @@ Identitas teks "WATUAGUNG" memakai berat 800 dan letter-spacing `.08em`. Judul l
 - Foto hero `/village.jpg` dengan caption "foto ilustrasi" dan atribusi di footer.
 - Foto yang belum ada diganti kotak placeholder berlabel jelas `[FOTO KEGIATAN]`, berlatar `#E7E1CF`. Jangan pakai foto stok dan jangan pakai ilustrasi generik.
 - **Pengecualian berita publik (2 November 2026, disetujui pengguna):** sampul memakai `<img>` native, `alt` judul, `loading="lazy"`, rasio 16:9. Tanpa sampul memakai pola visual berita yang sudah ada (`.news-art`), tanpa teks `[FOTO KEGIATAN]`; pola foto ilustrasi bukan dokumentasi kegiatan. Kartu dan tata letak lama dipertahankan, teks penting mengikuti minimum §3.
+  - **Pembaruan 6 November 2026:** gambar kartu di `/berita` dan `/umkm` setinggi tetap 154px (140px ≤640px, `object-fit: cover`), mengikuti redesain berita `4f53046`. Gambar di halaman detail tetap 16:9. Kartu Kabar desa di beranda tidak berubah.
+- **UMKM tanpa foto:** kotak polos `--sage` dengan ikon `Store` `--olive`, `aria-hidden`. Jangan memakai pola/foto ilustrasi berita karena bisa dikira foto usaha. Foto UMKM hanya foto produk/tempat usaha, bukan dokumen identitas.
 
 ## 6. Komponen kunci
 
@@ -207,6 +210,27 @@ Disetujui pengguna:
 - Badge **Dibatalkan** memakai token penolakan dengan ikon dan teks; **Diberikan** memakai token verifikasi. Tidak ada ekspor.
 - Detail kantor menampilkan riwayat nomor dan alasan pembatalan. Nomor aktif tampil pada cek status warga sejak disetujui; placeholder diberi keterangan format sementara.
 
+### Halaman berita dan UMKM — gaya editorial (6 November 2026)
+
+Acuan: redesain berita `4f53046` (Purwa, 16 Oktober 2026), disesuaikan dengan minimum teks §3. Hanya untuk `/berita`, detail berita, `/umkm`, dan `/umkm/lihat`; halaman lain tetap memakai judul tebal.
+
+- **Judul halaman:** `PageHeading` dengan prop `editorial` (kelas `.page-heading-editorial`). H1 sesuai tabel §3; eyebrow 15px/700, letter-spacing .16em; padding 28px atas, 50px bawah (33px ≤900px). Ilustrasi kanan memakai pola `.news-heading-illustration` dengan ikon lucide 54px; label teks kecil di dalam ilustrasi hanya untuk berita (dekoratif); UMKM tanpa label dan seluruh ilustrasi `aria-hidden`.
+- **Baris pengantar:** paragraf pengantar kiri, jumlah item kanan 15–16px/700 `--green`.
+- **Notice "Konten contoh":** pola `.notice` berlatar krem, radius 6px, padding 16/20px, label tebal di kiri (bertumpuk di ≤600px). Hanya tampil untuk konten contoh.
+- **Kartu (`.news-card` di dalam `.news-page`/`.umkm-page`):** grid 3 kolom (2 kolom ≤850px, 1 kolom ≤600px), radius 10px, gambar sesuai §5. Meta (kategori + tanggal/dusun) 15px, letter-spacing .05em; judul kartu 18–19px/700; ringkasan 16px `--muted` (UMKM dibatasi 4 baris); tautan aksi 16px "Baca selengkapnya →" / "Lihat usaha →". Seluruh kartu adalah satu tautan, fokus `--gold`.
+- **Detail (kartu artikel `.article-body`):** kartu putih maks. 780px di tengah, berisi notice (bila contoh), gambar 16:9, lead/fakta, paragraf 17px line-height 1.9, catatan akhir `.article-endnote` 15px (garis kiri `--olive`, latar `--sage`) untuk konten contoh atau UMKM tanpa izin kontak, lalu tautan **← Kembali …** 16px dengan area sentuh 48px di dalam kartu.
+- **UMKM:** filter kategori berupa tombol (`.btn`, aktif = tombol utama, `aria-pressed`) di atas grid; detail menampilkan kotak fakta (Kategori, Dusun, Pemilik bila diizinkan) dan tombol utama **Chat WhatsApp** (ikon `MessageCircle`, `wa.me`, tab baru) hanya bila server mengirim nomor.
+- **Keadaan kosong:** kartu `.content-card` berjudul informatif ("Belum ada UMKM yang ditampilkan." / "Belum ada berita resmi.") dan langkah berikutnya; demo tanpa API tidak menampilkan UMKM karangan.
+
+### Video YouTube (R8, 5 November 2026)
+
+- Komponen `YouTubeEmbed`: bingkai 16:9, lebar maks. 960px, radius 14px, latar `--forest-deep`. Gambar mini `hqdefault` dulu; tombol **Putar video** emas (`--gold`, teks `--forest-deep`, 17px/700, tinggi 52px desktop/48px ponsel) di tengah. Iframe `youtube-nocookie` baru dimuat setelah diklik; `title` = judul video, fokus pindah ke iframe.
+- Judul bagian H2 26px ("Video profil desa", "Video tutorial pengajuan surat"), judul video di bawah bingkai 16px `--muted`. Tanpa video, bagian tidak dirender (tanpa kotak kosong).
+
+### Panel UMKM (5 November 2026)
+
+Meniru panel berita: daftar (tabel desktop, kartu ponsel) dengan filter nama/kategori/status, badge status Terbit/Draf, kolom "Kontak pemilik: Ditampilkan/Tidak ditampilkan". Formulir dalam `fieldset` radius 18px; kotak "Kontak pemilik" terpisah berisi nama, WhatsApp, dan kotak centang izin dalam label bergaris (tinggi ≥48px, centang 24px `accent-color: --leaf`).
+
 ## 7. Struktur beranda (urutan)
 
 1. Hero foto + header A + H1 fungsional + 2 CTA
@@ -214,10 +238,11 @@ Disetujui pengguna:
 3. Layanan surat yang tersedia
 4. Cara mengajukan surat
 5. Profil singkat (section `--forest`): foto, ringkasan, 3 angka placeholder, tombol Visi & Misi dan Perangkat Desa
-6. Kabar desa (3 berita)
-7. BUMDes & UMKM (2 kotak)
-8. Kontak kantor + peta
-9. Footer `--forest-deep`: logo penuh, 3 kolom link, atribusi foto
+6. Video profil desa (hanya bila diisi di panel, R8)
+7. Kabar desa (3 berita)
+8. BUMDes & UMKM (2 kotak). Kotak UMKM menampilkan 3 usaha terbit terbaru (nama + kategori · dusun, tautan ke detail) dan **Lihat semua UMKM**; bila kosong, galat, atau demo tetap teks + badge **Segera hadir**
+9. Kontak kantor + peta
+10. Footer `--forest-deep`: logo penuh, 3 kolom link, atribusi foto
 
 ## 8. Cara memakai dokumen ini
 

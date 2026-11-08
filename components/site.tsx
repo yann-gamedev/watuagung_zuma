@@ -59,6 +59,7 @@ export function Footer() {
         <nav className="footer-links" aria-label="Info di footer">
           <h3>Info</h3>
           <Link href="/bumdes">BUMDes</Link>
+          <Link href="/umkm">UMKM</Link>
           <Link href="/berita">Berita</Link>
           <Link href="/agenda">Agenda</Link>
           <Link href="/pengumuman">Pengumuman</Link>
@@ -208,15 +209,18 @@ export function PageHeading({
   intro,
   visual,
   parent,
+  editorial = false,
 }: {
   eyebrow: string;
   title: string;
   intro: string;
   visual?: ReactNode;
   parent?: { label: string; href: string };
+  /** Gaya judul halaman berita/UMKM (commit 4f53046): h1 besar tipis, eyebrow renggang. */
+  editorial?: boolean;
 }) {
   return (
-    <div className="page-heading">
+    <div className={editorial ? "page-heading page-heading-editorial" : "page-heading"}>
       <div className="container">
         <div className="breadcrumb">
           <Link href="/">Beranda</Link>

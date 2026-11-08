@@ -7,6 +7,7 @@ import { PublicShell } from "@/components/site";
 import { OfficeContact } from "@/components/office-contact";
 import { PublicNews } from "@/features/news/public-news";
 import { SiteVideo } from "@/components/site-video";
+import { HomeBusinesses } from "@/features/umkm/public-businesses";
 export default function Home() {
   return (
     <PublicShell>
@@ -95,14 +96,7 @@ export default function Home() {
             Lihat unit usaha <ArrowRight size={22} aria-hidden="true" />
           </Link>
         </article>
-        <article className="home-economy-card home-umkm">
-          <h2>UMKM Watuagung</h2>
-          <p>Daftar produk warga sedang disiapkan.</p>
-          <span className="home-bottom-badge">Segera hadir</span>
-          <Link href="/potensi" className="home-bottom-link">
-            Lihat potensi desa <ArrowRight size={22} aria-hidden="true" />
-          </Link>
-        </article>
+        <HomeBusinesses />
       </section>
       <section className="container home-bottom-container home-bottom home-contact" aria-labelledby="contact-title">
         <OfficeContact titleId="contact-title" />

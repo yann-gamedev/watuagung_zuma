@@ -58,7 +58,7 @@ export function PublicNews({ home = false }: { home?: boolean }) {
     );
   }
   return (
-    <section className="section container" aria-busy={loading}>
+    <section className="section container news-page" aria-busy={loading}>
       {page?.data.length ? <>
         <div className="news-intro-row">
           <p className="news-intro-copy">Ikuti kabar kegiatan warga, perkembangan desa, layanan, dan inisiatif ekonomi lokal.</p>

@@ -9,6 +9,7 @@ export function NewsArticle({ title, summary, body, coverUrl = null, sample = fa
     <NewsCover title={title} url={coverUrl} className="article-image-frame" />
     <p className="article-lead">{summary}</p>
     <div className="article-copy">{body.split(/\r?\n[\t ]*\r?\n/).filter((paragraph) => paragraph.trim()).map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div>
+    {sample && <div className="article-endnote">Informasi dalam artikel contoh ini perlu dikonfirmasi melalui kanal resmi desa.</div>}
     {children}
   </article>;
 }

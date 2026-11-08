@@ -4451,3 +4451,140 @@ td {
     min-height: 48px;
   }
 }
+
+/* UMKM: kartu memakai pola berita (.news-card); hanya filter, ringkasan, dan detail yang baru. */
+.umkm-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.umkm-filters .btn {
+  min-height: 48px;
+}
+.umkm-page .news-count {
+  display: block;
+  margin-bottom: 24px;
+  font-size: 16px;
+}
+.umkm-page .news-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+.umkm-detail-facts {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 32px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--white);
+}
+.umkm-detail-facts div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.umkm-detail-facts dt {
+  min-width: 96px;
+  color: var(--muted);
+}
+.umkm-detail-facts dd {
+  font-weight: 700;
+}
+.home-umkm-list {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 16px;
+}
+.home-umkm-list a {
+  display: grid;
+  gap: 2px;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--ink);
+}
+.home-umkm-list a:hover strong {
+  text-decoration: underline;
+}
+.home-umkm-list span {
+  color: var(--muted);
+  font-size: 16px;
+}
+.umkm-no-photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sage);
+  color: var(--olive);
+}
+
+/* Halaman berita dan UMKM mengikuti proporsi redesain berita 4f53046 (16 Okt 2026),
+   dengan teks tetap >= 15px sesuai PRODUCT.md. Halaman lain tidak terpengaruh. */
+.page-heading-editorial {
+  padding: 28px 0 50px;
+}
+.page-heading-editorial h1 {
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+}
+.page-heading-editorial .eyebrow {
+  margin-bottom: 12px;
+  font-size: 15px;
+  letter-spacing: 0.16em;
+}
+.news-page .news-card .news-cover,
+.umkm-page .news-card .news-cover {
+  height: 154px;
+  aspect-ratio: auto;
+}
+.news-page .news-card .news-meta,
+.umkm-page .news-card .news-meta {
+  font-size: 15px;
+  letter-spacing: 0.05em;
+}
+.news-page .news-card .news-summary,
+.umkm-page .news-card .news-summary,
+.news-page .news-card .text-link,
+.umkm-page .news-card .text-link {
+  font-size: 16px;
+}
+.news-page .news-count {
+  font-size: 15px;
+}
+.news-sample-notice,
+.article-sample-notice {
+  padding: 16px 20px;
+  border-radius: 6px;
+}
+.article-endnote {
+  font-size: 15px;
+}
+.article-body .article-back-link {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  font-size: 16px;
+}
+.umkm-chat {
+  gap: 8px;
+  margin-top: 8px;
+}
+@media (max-width: 900px) {
+  .page-heading-editorial {
+    padding-bottom: 33px;
+  }
+}
+@media (max-width: 640px) {
+  .news-page .news-card .news-cover,
+  .umkm-page .news-card .news-cover {
+    height: 140px;
+  }
+}

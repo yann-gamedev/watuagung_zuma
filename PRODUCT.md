@@ -65,6 +65,9 @@ Tujuan pelayanan harus dibedakan dari kemampuan yang sudah tersedia. Tidak ada t
 
 - **[BARU] Surat PDF dan verifikasi QR:** draf PDF bertanda DRAF untuk kantor, PDF final ber-QR saat `APPROVED`, unggah surat manual hasil pindaian, dan halaman publik `/verifikasi/` yang hanya menampilkan nomor surat, jenis surat, tanggal terbit, nama tersamar, serta status sah/dibatalkan. Kop, nama Kepala Desa, dan isi template masih `[PLACEHOLDER]`.
 
+- **[BARU] Direktori UMKM warga (5–6 November 2026):** petugas (admin/staff) menambah, menyunting, menerbitkan, dan menghapus UMKM di panel `/admin/umkm/`. Warga melihat `/umkm` (filter kategori) dan detail `/umkm/lihat/?slug=`; beranda menampilkan 3 usaha terbaru, atau "Segera hadir" bila kosong. Nama pemilik dan WhatsApp disimpan terenkripsi dan **hanya tampil bila pemilik sudah mengizinkan** (centang di panel); tanpa izin, tombol Chat WhatsApp tidak ada. Demo tanpa API tidak menampilkan UMKM karangan. Data UMKM resmi dan formulir izin pemilik dari desa belum diterima.
+- **[BARU] Konten profil, kontak, sejarah, transparansi, struktur, dan video** dikelola di panel `/admin/konten/` (R4–R8); visi-misi tetap statis.
+
 ### **[BARU] Catatan hukum: QR verifikasi bukan TTE**
 
 QR verifikasi **bukan** Tanda Tangan Elektronik tersertifikasi. TTE yang sah setara tanda tangan basah membutuhkan sertifikat dari Penyelenggara Sertifikasi Elektronik (misalnya BSrE). Sampai integrasi itu ada, surat tetap dicetak dan ditandatangani basah serta distempel oleh Kepala Desa, dan QR hanya berfungsi sebagai alat cek keaslian. Jangan menulis di halaman mana pun bahwa surat "ditandatangani secara elektronik".
@@ -75,7 +78,7 @@ QR verifikasi **bukan** Tanda Tangan Elektronik tersertifikasi. TTE yang sah set
 
 - Unggah dokumen persyaratan.
 - Template surat resmi desa dan Tanda Tangan Elektronik tersertifikasi (BSrE).
-- Pengelolaan konten profil, BUMDes, dan UMKM melalui backend. Berita memiliki API CMS; halaman publik membaca berita terbit di browser tanpa build ulang (C4, 2 November 2026). Mode tanpa API tetap memakai contoh `lib/data.ts` sesuai `NEXT_PUBLIC_SHOW_SAMPLE_CONTENT`. Panel C3 sudah di-commit pada `1b2e6dd`; lihat `docs/progres-2026-11-02-c3.md` untuk verifikasi dan batasnya.
+- Pengelolaan konten BUMDes melalui backend. Berita memiliki API CMS; halaman publik membaca berita terbit di browser tanpa build ulang (C4, 2 November 2026). Mode tanpa API tetap memakai contoh `lib/data.ts` sesuai `NEXT_PUBLIC_SHOW_SAMPLE_CONTENT`. Panel C3 sudah di-commit pada `1b2e6dd`; lihat `docs/progres-2026-11-02-c3.md` untuk verifikasi dan batasnya.
 - Pemulihan kode akses / OTP.
 
 Urutan pengembangannya ada di `ROADMAP.md`.
