@@ -7,7 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { z } from "zod";
 import { StatusBadge, statusLabels } from "@/components/site";
-import { agamaOptions, dusunOptions, kewarganegaraanOptions, pendidikanOptions, serviceCodes, statusPerkawinanOptions, statuses, type LetterFile, type StaffAccessCodeResponse, type StaffApplicationDetail, type StaffStatusResponse, type Status } from "@/types/pelayanan";
+import { agamaOptions, dusunOptions, kewarganegaraanOptions, pendidikanOptions, serviceCodes, statusPerkawinanOptions, statuses, type LetterFile, type StaffAccessCodeResponse, type StaffApplicationDetail, type StaffStatementResponse, type StaffStatusResponse, type Status } from "@/types/pelayanan";
 import { AdminUnauthorizedError } from "./api";
 import { useAdminSession } from "./session";
 import { applicationServiceLabels, buildApplicationsHref, parseApplicationFilters, parseApplicationSection } from "./application-filters";
@@ -28,7 +28,7 @@ const detailSchema = z.object({
   jenis_kelamin: z.string().optional(), alamat: z.string(), rt: z.string(), rw: z.string(), telepon: z.string().optional(),
   nama_usaha: z.string().nullable(), jenis_usaha: z.string().nullable(), alamat_usaha: z.string().nullable(),
   keperluan: z.string(), catatan: z.string().nullable(), can_reset_access_code: z.boolean(),
-  // Field surat final (S1); tampilannya menyusul di S4. Data lama berisi null.
+  // Kolom nullable menjaga permohonan lama tetap terbaca.
   dusun: z.enum(dusunOptions).nullable(), barang_hilang: z.string().nullable(), acara: z.string().nullable(),
   tempat_acara: z.string().nullable(), tanggal_mulai: z.string().nullable(), tanggal_selesai: z.string().nullable(),
   jenis_hiburan: z.string().nullable(), isi_keterangan: z.string().nullable(), isi_keterangan_awal: z.string().nullable(),
@@ -47,12 +47,15 @@ function lowerLabel(status: Status) {
 function dateTime(value: string) {
   return new Date(value).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Jakarta" });
 }
+function dateOnly(value: string | null | undefined) {
+  return value ? new Date(`${value}T00:00:00`).toLocaleDateString("id-ID", { dateStyle: "long" }) : "—";
+}
 const draftStatuses: Status[] = ["PROCESSING", "WAITING_APPROVAL"];
 const finalStatuses: Status[] = ["APPROVED", "READY_FOR_PICKUP", "COMPLETED"];
 const uploadStatuses: Status[] = ["APPROVED", "READY_FOR_PICKUP"];
 
 /** Draf/surat final/QR: diambil dengan token di header lalu dibuka dari blob, bukan dari URL ber-token. */
-function LetterFiles({ detail, role }: { detail: StaffApplicationDetail; role: string }) {
+function LetterFiles({ detail, role, blocked, dirty }: { detail: StaffApplicationDetail; role: string; blocked: boolean; dirty: boolean }) {
   const { request } = useAdminSession();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -99,7 +102,8 @@ function LetterFiles({ detail, role }: { detail: StaffApplicationDetail; role: s
     {notice && <p className={styles.notice} role="status">{notice}</p>}
     {error && <p className="error-box" role="alert">{error}</p>}
     <div className={styles.buttons}>
-      {draft && <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void open(`${base}/letter.pdf`, `draf-${detail.request_id}.pdf`, false)}>Lihat draf PDF</button>}
+      {draft && <button type="button" className="btn btn-secondary" disabled={busy || blocked} onClick={() => void open(`${base}/letter.pdf`, `draf-${detail.request_id}.pdf`, false)}>Lihat draf PDF</button>}
+      {draft && dirty && <p role="status">Simpan kalimat dan tunggu penyimpanan selesai sebelum memeriksa draf.</p>}
       {final && <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void open(`${base}/letter.pdf`, `surat-${detail.request_id}.pdf`, true)}>Unduh surat final</button>}
       {final && office && <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void open(`${base}/letter-qr.png`, `qr-${detail.request_id}.png`, true)}>Unduh QR verifikasi</button>}
     </div>
@@ -130,6 +134,12 @@ function DetailContent({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
+  const [statement, setStatement] = useState("");
+  const [statementError, setStatementError] = useState("");
+  const [statementNotice, setStatementNotice] = useState("");
+  const [revealed, setRevealed] = useState<Partial<Record<"agama" | "status_perkawinan", string>>>({});
+  const [revealBusy, setRevealBusy] = useState(false);
+  const [revealError, setRevealError] = useState("");
   const [pending, setPending] = useState<Status | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [resetOpen, setResetOpen] = useState(false);
@@ -145,6 +155,7 @@ function DetailContent({ id }: { id: string }) {
   const actionRef = useRef<HTMLButtonElement | null>(null);
   const actionHeadingRef = useRef<HTMLHeadingElement>(null);
   const validId = /^REQ-\d{4}-[A-Z0-9]+$/.test(id) && id.length <= 64;
+  const statementDirty = detail?.can_edit_isi_keterangan && statement.trim() !== (detail.isi_keterangan ?? "");
   const source = user?.role === "rt_head" ? "antrean-rt" : user?.role === "rw_head" ? "antrean-rw" : parseApplicationSection(params.get("from"));
   const backHref = buildApplicationsHref(source, parseApplicationFilters(params, source));
   const readDetail = useCallback(async () => {
@@ -158,7 +169,7 @@ function DetailContent({ id }: { id: string }) {
     mounted.current = true;
     let cancelled = false;
     if (validId) void readDetail().then((result) => {
-      if (!cancelled) { setDetail(result); setLoading(false); }
+      if (!cancelled) { setDetail(result); setStatement(result.isi_keterangan ?? ""); setLoading(false); }
     }).catch((e: unknown) => {
       if (!cancelled && !(e instanceof AdminUnauthorizedError)) {
         setError(e instanceof Error ? e.message : "Gagal memuat detail."); setLoading(false);
@@ -167,10 +178,57 @@ function DetailContent({ id }: { id: string }) {
     return () => { cancelled = true; mounted.current = false; };
   }, [readDetail, validId, attempt]);
 
+  useEffect(() => {
+    if (!statementDirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [statementDirty]);
+
+  async function reveal(field: "agama" | "status_perkawinan") {
+    if (revealBusy) return;
+    setRevealBusy(true); setRevealError("");
+    try {
+      // GET detail mencatat application.viewed; jangan ungkap nilai bila audit gagal.
+      const fresh = await readDetail();
+      if (mounted.current) setRevealed((current) => ({ ...current, [field]: fresh[field] ?? "—" }));
+    } catch (e) {
+      if (mounted.current && !(e instanceof AdminUnauthorizedError)) setRevealError(e instanceof Error ? e.message : "Gagal menampilkan data.");
+    } finally { if (mounted.current) setRevealBusy(false); }
+  }
+  async function saveStatement(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (changing.current || !detail?.can_edit_isi_keterangan) return;
+    const parsed = z.string().trim().min(2, "Isi keterangan minimal 2 karakter.").max(500, "Isi keterangan maksimal 500 karakter.").safeParse(statement);
+    setStatementError(""); setStatementNotice("");
+    if (!parsed.success) { setStatementError(parsed.error.issues[0].message); return; }
+    changing.current = true; setBusy(true);
+    let saved = false;
+    try {
+      const result = await request<StaffStatementResponse>(`/staff/applications/${encodeURIComponent(id)}/isi-keterangan`, {
+        method: "PATCH", body: JSON.stringify({ isi_keterangan: parsed.data }),
+      });
+      saved = true;
+      if (!mounted.current) return;
+      setStatement(result.isi_keterangan);
+      setDetail((current) => current && { ...current, isi_keterangan: result.isi_keterangan, can_edit_isi_keterangan: result.can_edit_isi_keterangan });
+      const fresh = await readDetail();
+      if (mounted.current) { setDetail(fresh); setStatement(fresh.isi_keterangan ?? ""); setStatementNotice("Kalimat tersimpan. Periksa hasil melalui Lihat draf PDF sebelum diajukan ke Kepala Desa."); }
+    } catch (e) {
+      if (!mounted.current || e instanceof AdminUnauthorizedError) return;
+      if (saved) setStatementNotice("Kalimat tersimpan, tetapi detail gagal dimuat ulang. Muat ulang halaman untuk melihat riwayat terbaru.");
+      else {
+        setStatementError(e instanceof Error ? e.message : "Gagal menyimpan kalimat. Isian Anda tetap tersedia.");
+        // Status bisa berubah oleh petugas lain; muat ulang agar izin sunting dan tombol tidak macet.
+        try { const fresh = await readDetail(); if (mounted.current) setDetail(fresh); } catch { /* teks tetap tersedia */ }
+      }
+    } finally { changing.current = false; if (mounted.current) setBusy(false); }
+  }
+
   // After a status change the action buttons may disappear; move focus to a stable heading.
   const focusActions = () => requestAnimationFrame(() => actionHeadingRef.current?.focus());
   async function change(status: Status) {
-    if (changing.current || !detail?.allowed_transitions.includes(status)) return;
+    if (changing.current || statementDirty || !detail?.allowed_transitions.includes(status)) return;
     changing.current = true; setBusy(true); setActionError(""); setNotice("");
     let updated = false;
     try {
@@ -226,7 +284,7 @@ function DetailContent({ id }: { id: string }) {
     else void change(status);
   }
   return <div className={styles.page}>
-    <Link className="btn btn-secondary" href={backHref}><ArrowLeft size={22} aria-hidden="true" />Kembali ke daftar</Link>
+    <Link className="btn btn-secondary" href={backHref} onClick={(event) => { if (statementDirty && !window.confirm("Kalimat belum disimpan. Tinggalkan halaman?")) event.preventDefault(); }}><ArrowLeft size={22} aria-hidden="true" />Kembali ke daftar</Link>
     {!validId ? <p className="error-box" role="alert">Nomor permohonan tidak valid. Buka detail dari daftar permohonan.</p> : <>
       {error && <p className="error-box" role="alert">{error}</p>}
       {loading && <p role="status">Memuat detail permohonan...</p>}
@@ -245,12 +303,21 @@ function DetailContent({ id }: { id: string }) {
               <div><dt>Nomor KK</dt><dd className={styles.identity}>{detail.no_kk}</dd></div>
               {!neighborhood && <>
                 <div><dt>Tempat lahir</dt><dd>{detail.tempat_lahir ?? "—"}</dd></div>
-                <div><dt>Tanggal lahir</dt><dd>{detail.tanggal_lahir ? new Date(`${detail.tanggal_lahir}T00:00:00`).toLocaleDateString("id-ID", { dateStyle: "long" }) : "—"}</dd></div>
+                <div><dt>Tanggal lahir</dt><dd>{dateOnly(detail.tanggal_lahir)}</dd></div>
                 <div><dt>Jenis kelamin</dt><dd>{detail.jenis_kelamin ?? "—"}</dd></div>
+                {([ ["agama", "Agama"], ["status_perkawinan", "Status perkawinan"] ] as const).map(([field, label]) => <div key={field}><dt>{label}</dt><dd className={styles.sensitive}>
+                  <span>{revealed[field] ?? (detail[field] ? "••••••" : "—")}</span>
+                  {detail[field] && <button type="button" className="btn btn-secondary" disabled={revealBusy} aria-label={`${revealed[field] ? "Sembunyikan" : "Tampilkan"} ${label.toLowerCase()}`}
+                    onClick={() => revealed[field] !== undefined ? setRevealed((current) => ({ ...current, [field]: undefined })) : void reveal(field)}>{revealed[field] !== undefined ? "Sembunyikan" : "Tampilkan"}</button>}
+                </dd></div>)}
+                <div><dt>Kewarganegaraan</dt><dd>{detail.kewarganegaraan ?? "—"}</dd></div>
+                <div><dt>Pendidikan</dt><dd>{detail.pendidikan ?? "—"}</dd></div>
+                <div><dt>Pekerjaan</dt><dd>{detail.pekerjaan || "—"}</dd></div>
                 <div><dt>Telepon</dt><dd>{detail.telepon ?? "—"}</dd></div>
               </>}
-            </dl></section>
+            </dl>{revealBusy && <p role="status">Memuat data dan mencatat akses...</p>}{revealError && <p className="error-box" role="alert">{revealError}</p>}</section>
             <section className={styles.card}><h2>Alamat</h2><dl className={styles.fields}>
+              <div><dt>Dusun</dt><dd>{detail.dusun ?? "—"}</dd></div>
               <div><dt>Alamat tempat tinggal</dt><dd>{detail.alamat}</dd></div>
               <div><dt>RT / RW</dt><dd>{detail.rt} / {detail.rw}</dd></div>
             </dl></section>
@@ -259,7 +326,31 @@ function DetailContent({ id }: { id: string }) {
               <div><dt>Jenis usaha</dt><dd>{detail.jenis_usaha || "—"}</dd></div>
               <div><dt>Alamat usaha</dt><dd>{detail.alamat_usaha || "—"}</dd></div>
             </dl></section>}
-            <section className={styles.card}><h2>Keperluan</h2><p className={styles.multiline}>{detail.keperluan}</p>
+            <section className={styles.card}><h2>Detail permintaan</h2>
+              <dl className={styles.fields}>
+                {detail.jenis_surat === "KEHILANGAN" && <div><dt>Barang yang hilang</dt><dd>{detail.barang_hilang || "—"}</dd></div>}
+                {detail.jenis_surat === "KERAMAIAN" && <>
+                  <div><dt>Acara</dt><dd>{detail.acara || "—"}</dd></div>
+                  <div><dt>Tempat acara</dt><dd>{detail.tempat_acara || "—"}</dd></div>
+                  <div><dt>Tanggal mulai</dt><dd>{dateOnly(detail.tanggal_mulai)}</dd></div>
+                  <div><dt>Tanggal selesai</dt><dd>{dateOnly(detail.tanggal_selesai)}</dd></div>
+                  <div><dt>Jenis hiburan</dt><dd>{detail.jenis_hiburan || "—"}</dd></div>
+                </>}
+              </dl>
+              {detail.jenis_surat === "UMUM" && <>
+                {detail.can_edit_isi_keterangan && (user?.role === "staff" || user?.role === "admin") ? <form className={styles.statement} onSubmit={(event) => void saveStatement(event)}>
+                  <label htmlFor="printed-statement">Isi keterangan yang dicetak</label>
+                  <p id="statement-help">2–500 karakter. Simpan kalimat sebelum memeriksa draf dan mengajukan ke Kepala Desa.</p>
+                  <textarea id="printed-statement" className="search-input" rows={6} minLength={2} maxLength={500} required readOnly={busy}
+                    aria-describedby={`statement-help${statementError ? " statement-error" : ""}`} aria-invalid={!!statementError}
+                    value={statement} onChange={(event) => { setStatement(event.target.value); setStatementError(""); setStatementNotice(""); }} />
+                  {statementError && <p id="statement-error" className="error-box" role="alert">{statementError}</p>}
+                  {statementNotice && <p className={styles.notice} role="status">{statementNotice}</p>}
+                  <button type="submit" className="btn" disabled={busy || !statementDirty}>{busy ? "Menyimpan..." : "Simpan kalimat"}</button>
+                </form> : <><h3>Isi keterangan yang dicetak</h3>{statementError && <p className="error-box" role="alert">{statementError}</p>}<p className={styles.multiline}>{detail.isi_keterangan || "—"}</p></>}
+                <h3>Teks asli dari warga</h3><p className={styles.multiline}>{detail.isi_keterangan_awal || "—"}</p>
+              </>}
+              <h3>Keperluan</h3><p className={styles.multiline}>{detail.keperluan}</p>
               <h3>Catatan terakhir</h3><p className={styles.multiline}>{detail.catatan || "Belum ada catatan."}</p></section>
             {!neighborhood && <section className={styles.card}><h2>Nomor surat</h2>
               {detail.letter_numbers?.length ? <dl className={styles.fields}>{detail.letter_numbers.map((letter) => <div key={letter.number}>
@@ -269,10 +360,10 @@ function DetailContent({ id }: { id: string }) {
                 {letter.number.includes("[PLACEHOLDER]") && <dd>Format sementara, menunggu ketentuan resmi desa.</dd>}
               </div>)}</dl> : <p>Belum ada nomor surat yang tercatat. Nomor diberikan saat diajukan ke Kepala Desa; permohonan lama tidak diberi nomor secara retroaktif.</p>}
             </section>}
-            {!neighborhood && user && <LetterFiles key={`${detail.status}-${detail.letter?.file_updated_at}`} detail={detail} role={user.role} />}
+            {!neighborhood && user && <LetterFiles key={`${detail.status}-${detail.letter?.file_updated_at}`} detail={detail} role={user.role} blocked={busy || !!statementDirty} dirty={!!statementDirty} />}
             <section className={styles.card}><h2>Riwayat status</h2>
               {detail.history.length ? <ol className={styles.timeline}>{detail.history.map((event, index) => <li key={`${event.created_at}-${index}`}>
-                <h3>{event.action === "ACCESS_CODE_RESET" ? "Kode akses dibuat ulang" : <>{event.from_status ? `${statusLabels[event.from_status]} → ` : ""}{statusLabels[event.to_status]}</>}</h3>
+                <h3>{event.action === "ACCESS_CODE_RESET" ? "Kode akses dibuat ulang" : event.action === "STATEMENT_EDITED" ? "Isi keterangan disunting" : <>{event.from_status ? `${statusLabels[event.from_status]} → ` : ""}{statusLabels[event.to_status]}</>}</h3>
                 <p>{event.staff_name ?? "Pengajuan warga / sistem"}</p>
                 <time dateTime={event.created_at}>{dateTime(event.created_at)}</time>
                 {event.note && <p className={styles.multiline}>{event.note}</p>}
@@ -282,11 +373,12 @@ function DetailContent({ id }: { id: string }) {
           <section className={`${styles.card} ${styles.actions}`} aria-labelledby="action-title"><h2 id="action-title" ref={actionHeadingRef} tabIndex={-1}>Tindakan petugas</h2>
             {notice && <p className={styles.notice} role="status">{notice}</p>}
             {actionError && <p id="action-error" className="error-box" role="alert">{actionError}</p>}
+            {statementDirty && <p role="status">Ada kalimat yang belum disimpan. Simpan kalimat sebelum mengubah status.</p>}
             {detail.allowed_transitions.length ? <>
               <label htmlFor="staff-note">Catatan status</label>
               <p id="note-help">{neighborhood ? "Wajib untuk Tolak." : "Wajib untuk Tolak dan Minta perbaikan."} Jangan tuliskan NIK, KK, telepon, atau alamat dalam catatan.</p>
               <textarea ref={noteRef} id="staff-note" className="search-input" aria-describedby={actionError ? "note-help action-error" : "note-help"} aria-invalid={actionError.startsWith("Catatan wajib") || undefined} value={note} onChange={(event) => setNote(event.target.value)} disabled={busy} maxLength={1000} rows={5} />
-              <div className={styles.buttons}>{detail.allowed_transitions.map((status) => <button type="button" id={`status-${status}`} className="btn btn-secondary" key={status} disabled={busy} onClick={(event) => choose(status, event.currentTarget)}>{actionLabels[status]}</button>)}</div>
+              <div className={styles.buttons}>{detail.allowed_transitions.map((status) => <button type="button" id={`status-${status}`} className="btn btn-secondary" key={status} disabled={busy || !!statementDirty} onClick={(event) => choose(status, event.currentTarget)}>{actionLabels[status]}</button>)}</div>
             </> : <p>Tidak ada tindakan yang tersedia untuk peran Anda pada status ini.</p>}
             {busy && <p role="status">Menyimpan perubahan...</p>}
             {detail.can_reset_access_code && <>

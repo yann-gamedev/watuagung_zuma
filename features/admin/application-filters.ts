@@ -17,9 +17,9 @@ type SearchParamsReader = { get: (name: string) => string | null };
 
 export const APPLICATION_SEARCH_MAX_LENGTH = 100;
 export const applicationServiceLabels: Record<ServiceCode, string> = {
-  SKU: "Surat Keterangan Usaha",
-  KTP_KK: "Surat Pengantar KTP / KK",
   ...Object.fromEntries(services.map((service) => [service.code, service.title])),
+  SKU: "Surat Keterangan Usaha (jenis lama)",
+  KTP_KK: "Surat Pengantar KTP / KK (jenis lama)",
 } as Record<ServiceCode, string>;
 
 /** Never use a URL-provided path as a navigation destination. */
