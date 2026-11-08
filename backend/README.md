@@ -13,7 +13,7 @@ Panduan terkait: [README utama](../README.md), [indeks dokumentasi](../docs/READ
 | `app/Models/` | Model dan perlindungan data sensitif |
 | `routes/` | Route API/web, CLI akun, dan jadwal pembersihan token |
 | `database/` | Migration dan fixture/seeder fiktif; SQLite lokal tidak dilacak |
-| `resources/views/letters/` | Template Blade surat sementara |
+| `resources/views/letters/` | Template Blade enam surat resmi + SKU/KTP_KK lama |
 | `config/` | Konfigurasi aplikasi, CORS, sesi, dan penerbitan surat |
 | `storage/` | Berkas privat, cache, dan log lokal; jangan dipublikasikan |
 | `tests/` | Pengujian fitur dan unit |
@@ -240,7 +240,7 @@ Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Validasi yang g
 - `App\Domain\LetterSubmission`: aturan validasi, pilihan baku (`DUSUN`, `AGAMA`, `KEWARGANEGARAAN`, `STATUS_PERKAWINAN`, `PENDIDIKAN`), pesan galat, dan nama atribut. `ApplicationController::store()` hanya memanggil `LetterSubmission::validate()`. Isian milik jenis lain memakai aturan `prohibited` (ditolak, bukan diabaikan). `kewarganegaraan` kosong → `WNI`. Tanggal keramaian: mulai ≥ hari ini, selesai ≥ mulai, rentang ≤ 7 hari termasuk kedua ujung.
 - Migration `2026_11_08_000000_add_final_letter_fields_to_applications`: kolom nullable `dusun`, `agama` (text, encrypted), `kewarganegaraan`, `status_perkawinan` (text, encrypted), `pendidikan`, `pekerjaan`, `barang_hilang`, `acara`, `tempat_acara`, `tanggal_mulai`, `tanggal_selesai` (date), `jenis_hiburan`, `isi_keterangan`, `isi_keterangan_awal` (teks asli warga sebagai pembanding sunting petugas). Kolom usaha SKU tidak dihapus. `down()` menghapus keempat belas kolom.
 - `ApplicationStatus::canEditContent()` menentukan kapan isi surat boleh disunting kantor (`SUBMITTED`, `RT_APPROVED`, `RW_APPROVED`, `VERIFIED`, `PROCESSING`, `NEED_REVISION`; peran staff/admin). Detail mengirim `can_edit_isi_keterangan`.
-- PDF: `Letter::view()` memakai `letters/{jenis}.blade.php` bila ada, selain itu template generik `letters/umum.blade.php` sampai template resmi (S2).
+- PDF S2: `Letter::view()` memakai `letters/{jenis}.blade.php` untuk delapan jenis. Enam jenis final mengikuti contoh resmi desa; SKU/KTP_KK tetap bisa dirender dengan kolom baru kosong. Judul final dari `LetterType::title()`.
 - Kontrak lengkap dan tabel jenis: [docs/integrasi.md § Enam jenis surat final](../docs/integrasi.md#enam-jenis-surat-final-s1-8-november-2026). Tes: `tests/Feature/LetterTypesTest.php`, payload fiktif bersama di `tests/LetterPayloads.php`.
 
 ### Berita
@@ -355,7 +355,18 @@ Filter digabung dengan AND; pasangan pencarian nomor/nama dikelompokkan dengan O
 
 Dependensi: `barryvdh/laravel-dompdf` (PDF dari Blade) dan `bacon/bacon-qr-code` (QR PNG lewat ekstensi GD). Jalankan `php artisan migrate` untuk `2026_10_24_000000_create_letters`. Atur `LETTER_VERIFY_URL` di `.env` ke URL frontend `/verifikasi/` yang dapat dijangkau pemindai; localhost komputer tidak dapat diakses langsung dari ponsel lain.
 
-- Template Blade di `resources/views/letters/` (`layout` + `sku`, `domisili`, `sktm`, `ktp_kk`, dan `umum` generik untuk BELUM_MENIKAH/KERAMAIAN/KEHILANGAN/UMUM sampai S2). Kop, kabupaten, kecamatan, alamat kantor, dan nama Kepala Desa dari `config/letters.php` `desa` masih **`[PLACEHOLDER]`**; footer "Format sementara" dihapus setelah template resmi diterapkan.
+- Template resmi S2 di `resources/views/letters/`: kop berlogo Kabupaten Pasuruan (JPG sumber pengguna di `resources/letters/`, data URI), garis ganda, judul/nomor, identitas 1–11, keterangan per jenis, tanda tangan dan QR di bawah area tanda tangan. BELUM_MENIKAH/KEHILANGAN juga memuat tanda tangan pemohon. KERAMAIAN memakai identitas a–g tanpa NIK/KK serta tanggal acara Indonesia (satu hari atau rentang, termasuk lintas bulan/tahun). UMUM mencetak `isi_keterangan` hasil suntingan petugas, bukan `isi_keterangan_awal`. SKU/KTP_KK lama tetap tersedia. Footer sementara dihapus.
+- Identitas kop/nama Kepala Desa dari `config/letters.php` `desa`; alamat bawaan sesuai `docs/PROMPTS-SURAT.md`. **Env lokal yang sudah berisi `LETTER_ALAMAT_KANTOR` tetap mengalahkan nilai bawaan**: sesuaikan manual ke alamat kop di `.env.example` bila masih memakai alamat lama, lalu bangun ulang cache konfigurasi bila digunakan. Sesi S2 tidak mengubah `.env` atau PDF final tersimpan/unggahan lama.
+- Tes teks PDF memerlukan **Python + pypdf yang tersedia pada mesin pengujian**, bukan dependensi runtime/npm/Composer baru. `PYTHON_BINARY` opsional memilih executable Python. Helper `tests/pdf_text.py` membaca PDF asli lewat stdin; pemeriksaan judul/nomor/keterangan, identitas, redaksi, rentang tanggal, escaping, serta satu halaman A4 ada di `LetterPdfTest`. Ketiadaan alat ekstraksi membuat tes gagal, bukan dilewati diam-diam.
+- Contoh fiktif dari fixture tes, tanpa menulis ke repo atau database pengembangan (PowerShell, direktori tujuan wajib sudah ada dan di luar repo):
+
+  ```powershell
+  $env:LETTER_SAMPLE_DIR = Join-Path $env:LOCALAPPDATA 'Temp\opencode\letters-final-templates'
+  New-Item -ItemType Directory -Force $env:LETTER_SAMPLE_DIR | Out-Null
+  try { php artisan test --filter=test_official_pdf_text_and_one_a4_page } finally { Remove-Item Env:LETTER_SAMPLE_DIR }
+  ```
+
+  Menghasilkan `DOMISILI.pdf`, `SKTM.pdf`, `BELUM_MENIKAH.pdf`, `KERAMAIAN.pdf`, `KEHILANGAN.pdf`, `UMUM.pdf`. Nama pemohon dan Kepala Desa contoh fiktif. QR memakai kode acak database tes yang dihapus sesudah tes, **bukan verifikasi surat operasional**. Isi normal teruji satu A4; teks panjang tetap mengalir ke halaman berikutnya, tidak dipotong.
 - **Draf:** `GET …/letter.pdf` saat `PROCESSING`/`WAITING_APPROVAL` membuat PDF bertanda **DRAF** tanpa QR, tidak disimpan. Audit `letter.draft_viewed`.
 - **Persetujuan:** `WAITING_APPROVAL → APPROVED` oleh Kepala Desa menyisipkan baris `letters` (`approved_by`, `approved_at`, `verification_code` 32 karakter acak, unik) dalam transaksi yang sama. Setelah commit PDF final dibuat dari template dengan QR `LETTER_VERIFY_URL?kode=<kode>`; bila gagal, persetujuan tetap tersimpan dan PDF dibuat saat unduhan pertama.
 - **Final:** sejak `APPROVED` (juga `READY_FOR_PICKUP`, `COMPLETED`). Berkas disimpan di disk privat `local` (`storage/app/private/letters/`), **dienkripsi dengan APP_KEY** karena memuat NIK/alamat; `sha256` adalah hash PDF asli. Setiap unduhan → audit `letter.downloaded`. Status lain → 404.

@@ -17,7 +17,7 @@
 | M4 — Pengaduan | Dialihkan ke Google Form desa (24 Okt 2026); tautan selesai | URL Google Form dari desa (`NEXT_PUBLIC_COMPLAINT_FORM_URL`) |
 | M5 — CMS | API berita, sampul, panel C3 dan halaman publik C4 sudah di-commit | CORS DELETE, konten lain dan keputusan produksi K2/K4 |
 | M6 — Lampiran persyaratan | Belum dibuat | Unggah privat, batas file, retensi; berbeda dari unggah surat final M7 |
-| M7 — PDF/QR | Template sementara selesai; S1 (enam jenis surat final, nomor `470/{urut}/424.314.2.02/{tahun}`) selesai di backend 8 Nov 2026 | S2 template resmi, S3 formulir warga, S4 panel petugas; uji browser Laravel dan pindai QR; TTE di luar lingkup |
+| M7 — PDF/QR | S1 jenis/nomor dan S2 enam template resmi + kop selesai di backend 8 Nov 2026 | Review PDF terhadap surat asli, S3 formulir warga, S4 panel petugas; uji browser Laravel dan pindai QR; TTE di luar lingkup |
 | M8 — Produksi | Belum siap operasional | Infrastruktur, privasi/retensi, prosedur bantuan, verifikasi keamanan |
 
 Sumber: kode/route API, file yang terlacak Git, `docs/progres-2026-10-21.md`, `docs/progres-2026-10-22.md`, dan verifikasi sesi perbaikan layout (`603b267`, `2f788bf`). Status ini menggambarkan branch kerja lokal, bukan bukti semua perubahan telah digabung ke `main` atau di-deploy.
@@ -195,7 +195,7 @@ Bergantung pada K5 dan M2.
 
 - [x] Template Blade sementara untuk empat jenis surat (`backend/resources/views/letters/`); format kop resmi masih menunggu. Empat PDF contoh dan draf diperiksa visual (21 Okt 2026).
 - [x] Identitas wilayah, alamat kantor, dan penandatangan dari RKP Desa 2027 bagian 7 melalui env `LETTER_KABUPATEN`, `LETTER_KECAMATAN`, `LETTER_ALAMAT_KANTOR`, `LETTER_KEPALA_DESA`. Tes backend 183/1.925 assertions, lint, tsc, build, build:demo, test:demo lulus; empat PDF final + empat draf diperiksa visual (25 Okt 2026, `docs/progres-2026-10-25.md`). Kode desa dan kode klasifikasi diselesaikan S1 (8 Nov 2026); kop resmi di S2.
-- [ ] Template per jenis surat sesuai format resmi desa (kop, nomor, penandatangan) — menunggu contoh surat asli; sementara petugas dapat mengunggah surat manual
+- [x] Template enam jenis sesuai format resmi desa (S2, 8 Nov 2026): logo/kop, identitas, keterangan, tanggal acara, tanda tangan dan QR; enam contoh fiktif satu A4, teks PDF diuji. Review kesamaan dengan surat asli oleh pengguna masih tertunda; unggah manual tetap tersedia
 - [x] Format penomoran surat resmi dari contoh surat desa: `{kode_klasifikasi}/{urut}/{kode_desa}/{tahun}`, klasifikasi `470` semua jenis, kode desa `424.314.2.02`, tanpa bulan romawi (S1, 8 Nov 2026). Mesin penomoran/register tetap di M3a. Kode `35.314.10.2.02` pada contoh Izin Keramaian dianggap salah ketik sampai desa menjawab.
 - [x] Draf PDF bertanda DRAF untuk staff/admin/village_head saat PROCESSING/WAITING_APPROVAL; PDF final ber-QR saat `APPROVED`, disimpan terenkripsi di storage privat dengan SHA-256; siapa/kapan Kepala Desa menyetujui dicatat; setiap unduhan diaudit
 - [x] Unggah surat manual hasil pindaian (staff/admin) yang menggantikan PDF otomatis dengan kode QR yang sama; unduh PNG QR untuk ditempel
