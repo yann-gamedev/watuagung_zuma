@@ -11,7 +11,7 @@ export function ServiceList({ fullRequirements = false }: { fullRequirements?: b
       <div className="home-section-heading">
         <div>
           <h2 id="services-title">Layanan surat yang tersedia</h2>
-          <p>Siapkan dokumen di bawah ini sebelum mengajukan.</p>
+          <p>Pilih jenis surat dan baca persyaratan pengambilannya.</p>
         </div>
         {!fullRequirements && (
           <Link className="home-all-services" href="/pelayanan">
@@ -26,7 +26,7 @@ export function ServiceList({ fullRequirements = false }: { fullRequirements?: b
               <h3>{service.title}</h3>
               {fullRequirements ? (
                 <div className="service-full-requirements">
-                  <p>Persyaratan</p>
+                  <p>Persyaratan sementara — menunggu konfirmasi desa</p>
                   <ul>
                     {service.requirements.map((requirement) => (
                       <li key={requirement}>{requirement}</li>
@@ -35,10 +35,10 @@ export function ServiceList({ fullRequirements = false }: { fullRequirements?: b
                 </div>
               ) : (
                 <p className="home-service-requirements">
-                  Syarat: {service.requirements.join(", ")}
+                  Syarat sementara: {service.requirements.join(", ")}
                 </p>
               )}
-              <p className="home-service-time">{fullRequirements ? "Estimasi waktu: " : "Selesai "}{service.time}</p>
+              <p className="home-service-time">Waktu pelayanan: {service.time}</p>
             </div>
             <Link
               className="home-service-apply"
@@ -51,7 +51,7 @@ export function ServiceList({ fullRequirements = false }: { fullRequirements?: b
           </li>
         ))}
       </ul>
-      <p className="home-service-note">Persyaratan dan waktu masih contoh.</p>
+      <p className="home-service-note">Persyaratan sementara dan waktu pelayanan menunggu konfirmasi desa.</p>
     </section>
   );
 }

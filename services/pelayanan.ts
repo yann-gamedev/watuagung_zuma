@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { offeredServiceCodes, serviceCodes, statuses, type Submission, type Receipt, type StatusReceipt } from "@/types/pelayanan";
+import { serviceCodes, statuses, type Submission, type Receipt, type StatusReceipt } from "@/types/pelayanan";
+import { submissionSchema } from "@/lib/validation";
 // An explicit demo build must never contact an API, even with a stale API URL.
 export const apiBase = process.env.NEXT_PUBLIC_DEMO_MODE === "true"
   ? undefined
@@ -33,10 +34,10 @@ function demoRecords(): Receipt[] {
 export const pelayananService = {
   async submit(data: Submission): Promise<Receipt> {
     if (apiBase) return receiptSchema.extend({ lookup_secret: z.string().min(1), requires_neighborhood_approval: z.boolean() }).parse(await apiRequest('/applications', { method: 'POST', body: JSON.stringify(data) }));
+    const parsed = submissionSchema.safeParse(data);
+    if (!parsed.success) throw new Error(parsed.error.issues.map((issue) => issue.message).join(' '));
     await new Promise((resolve) => setTimeout(resolve, 650));
-    // Sama dengan API: SKU dan KTP_KK tidak dapat diajukan lagi.
-    if (!(offeredServiceCodes as readonly string[]).includes(data.jenis_surat)) throw new Error('Jenis surat ini tidak dapat diajukan secara online.');
-    const result: Receipt = { success: true, request_id: `REQ-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, status: 'SUBMITTED', requires_neighborhood_approval: false, jenis_surat: data.jenis_surat };
+    const result: Receipt = { success: true, request_id: `REQ-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, status: 'SUBMITTED', requires_neighborhood_approval: false, jenis_surat: parsed.data.jenis_surat };
     try { localStorage.setItem(key, JSON.stringify([...demoRecords().slice(-49), result])); }
     catch { throw new Error('Penyimpanan simulasi tidak tersedia. Izinkan penyimpanan browser lalu coba lagi.'); }
     return result;

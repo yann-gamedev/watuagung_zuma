@@ -1,5 +1,5 @@
 import { services } from "@/lib/data";
-import { statuses, type ServiceCode, type Status } from "@/types/pelayanan";
+import { serviceCodes, statuses, type ServiceCode, type Status } from "@/types/pelayanan";
 
 export type ApplicationSection = "permohonan" | "persetujuan" | "surat" | "antrean-rt" | "antrean-rw";
 export type ApplicationSort = "terbaru" | "terlama";
@@ -16,9 +16,11 @@ export type ApplicationFilters = {
 type SearchParamsReader = { get: (name: string) => string | null };
 
 export const APPLICATION_SEARCH_MAX_LENGTH = 100;
-export const applicationServiceLabels: Record<ServiceCode, string> = Object.fromEntries(
-  services.map((service) => [service.code, service.title]),
-) as Record<ServiceCode, string>;
+export const applicationServiceLabels: Record<ServiceCode, string> = {
+  SKU: "Surat Keterangan Usaha",
+  KTP_KK: "Surat Pengantar KTP / KK",
+  ...Object.fromEntries(services.map((service) => [service.code, service.title])),
+} as Record<ServiceCode, string>;
 
 /** Never use a URL-provided path as a navigation destination. */
 export function parseApplicationSection(value: string | null | undefined): ApplicationSection {
@@ -39,7 +41,7 @@ export function parseApplicationFilters(params: SearchParamsReader, section: App
   return {
     q: (params.get("q") ?? "").trim().slice(0, APPLICATION_SEARCH_MAX_LENGTH),
     status,
-    jenis_surat: services.some((item) => item.code === service) && !(neighborhood && service === "SKU") ? service as ServiceCode : "",
+    jenis_surat: serviceCodes.includes(service as ServiceCode) && !(neighborhood && service === "SKU") ? service as ServiceCode : "",
     ...(neighborhood ? { view } : {}),
     ...(params.get("my_queue") === "1" ? { my_queue: true } : {}),
     ...(params.get("today") === "1" ? { today: true } : {}),

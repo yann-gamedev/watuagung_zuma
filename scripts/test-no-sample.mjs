@@ -27,5 +27,5 @@ assert.match(page("pengumuman"), /Belum ada pengumuman resmi\./);
 assert.match(page(""), /Sumber data: dokumen resmi Pemerintah Desa Watuagung\./);
 assert.ok(!page("").includes('id="news-title"'), "Beranda masih merender bagian berita");
 assert.ok(page("").includes('href="/berita/"'), "Tautan /berita hilang dari beranda");
-assert.match(page("pelayanan/sku"), /masih contoh/, "Label contoh persyaratan harus tetap");
+assert.match(page("pelayanan/domisili"), /menunggu konfirmasi desa/, "Label persyaratan sementara harus tetap");
 console.log(`PASS: ${files.length} files without sample news/agenda/announcement text; empty states and official footer present.`);

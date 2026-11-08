@@ -204,7 +204,8 @@ export interface StaffPasswordRequest {
 /**
  * POST /applications. Wajib per jenis (lihat docs/integrasi.md): dusun untuk semua jenis; agama,
  * status_perkawinan, pendidikan, pekerjaan untuk semua kecuali KERAMAIAN; isian khusus hanya untuk
- * jenisnya (dikirim untuk jenis lain = 422). Opsional di sini hanya sampai formulir S3 diperbarui.
+ * jenisnya (dikirim untuk jenis lain = 422). Field bersyarat tetap opsional pada tipe transport;
+ * formulir dan demo memeriksa kewajibannya melalui submissionSchema.
  */
 export interface Submission {
   jenis_surat: ServiceCode;
@@ -214,7 +215,7 @@ export interface Submission {
   tempat_lahir: string;
   tanggal_lahir: string;
   jenis_kelamin: string;
-  dusun?: Dusun;
+  dusun: Dusun;
   alamat: string;
   rt: string;
   rw: string;
