@@ -62,7 +62,7 @@ class BirthDataEncryptionTest extends TestCase
             'a' => $application->fresh(), 'draft' => true, 'number' => null, 'qr' => null,
             'date' => now()->locale('id'), 'desa' => config('letters.desa'),
         ])->render();
-        $this->assertStringContainsString('Tempat Fiktif, 2 Januari 2000', $html);
+        $this->assertStringContainsString('Tempat Fiktif, 02-01-2000', $html);
     }
 
     public function test_migration_round_trip_keeps_legacy_rows_intact(): void
