@@ -61,15 +61,15 @@ class LetterRegisterTest extends TestCase
             $this->change($application, 'WAITING_APPROVAL')->assertOk();
             $this->assertDatabaseHas('letter_numbers', [
                 'application_id' => $application->id, 'year' => 2026, 'sequence' => $index + 1,
-                'number' => '[PLACEHOLDER]/'.($index + 1).'/[PLACEHOLDER]/XII/2026',
+                'number' => '470/'.($index + 1).'/424.314.2.02/2026',
                 'status' => 'issued', 'void_reason' => null, 'issued_by' => $user->id,
                 'issued_at' => now()->format('Y-m-d H:i:s'),
             ]);
         }
         $this->travelTo(now()->setDate(2027, 1, 1));
         $this->change($this->application(), 'WAITING_APPROVAL')->assertOk();
-        $this->assertDatabaseHas('letter_numbers', ['year' => 2027, 'sequence' => 1, 'number' => '[PLACEHOLDER]/1/[PLACEHOLDER]/I/2027']);
-        $this->assertDatabaseHas('letter_number_counters', ['year' => 2026, 'sequence' => 4]);
+        $this->assertDatabaseHas('letter_numbers', ['year' => 2027, 'sequence' => 1, 'number' => '470/1/424.314.2.02/2027']);
+        $this->assertDatabaseHas('letter_number_counters', ['year' => 2026, 'sequence' => count(LetterType::cases())]);
         $this->assertDatabaseHas('letter_number_counters', ['year' => 2027, 'sequence' => 1]);
     }
 
@@ -83,7 +83,7 @@ class LetterRegisterTest extends TestCase
 
         $this->assertDatabaseHas('letter_numbers', [
             'application_id' => $application->id, 'year' => 2026, 'sequence' => 1,
-            'number' => '[PLACEHOLDER]/1/[PLACEHOLDER]/XII/2026',
+            'number' => '470/1/424.314.2.02/2026',
             'issued_at' => '2026-12-31 23:59:00',
         ]);
         $this->getJson('/api/v1/staff/letter-register')->assertOk()
@@ -104,29 +104,34 @@ class LetterRegisterTest extends TestCase
 
         $this->assertDatabaseHas('letter_numbers', [
             'application_id' => $application->id, 'year' => 2027, 'sequence' => 1,
-            'number' => '[PLACEHOLDER]/1/[PLACEHOLDER]/I/2027',
+            'number' => '470/1/424.314.2.02/2027',
             'issued_at' => '2027-01-01 00:01:00',
         ]);
         $this->assertDatabaseHas('letter_number_counters', ['year' => 2026, 'sequence' => 2]);
         $this->assertDatabaseHas('letter_number_counters', ['year' => 2027, 'sequence' => 1]);
         $this->getJson('/api/v1/staff/letter-register')->assertOk()
             ->assertJsonPath('total', 1)
-            ->assertJsonPath('data.0.number', '[PLACEHOLDER]/1/[PLACEHOLDER]/I/2027')
+            ->assertJsonPath('data.0.number', '470/1/424.314.2.02/2027')
             ->assertJsonPath('data.0.issued_at', '2026-12-31T17:01:00.000000Z');
         $this->getJson('/api/v1/staff/applications/'.$application->request_id)->assertOk()
             ->assertJsonPath('letter_numbers.0.issued_at', '2026-12-31T17:01:00.000000Z')
             ->assertJsonPath('history.0.created_at', '2026-12-31T17:01:00.000000Z');
     }
 
-    public function test_configuration_and_roman_months_are_used(): void
+    public function test_number_uses_village_format_without_roman_month_for_every_type(): void
     {
-        config(['letters.kode_desa' => 'DESA-CONTOH', 'letters.kode_klasifikasi.SKU' => 'KLASIFIKASI-CONTOH']);
+        $this->assertSame('{kode_klasifikasi}/{urut}/{kode_desa}/{tahun}', config('letters.format'));
+        $this->assertSame('424.314.2.02', config('letters.kode_desa'));
+        foreach (LetterType::cases() as $type) $this->assertSame('470', config('letters.kode_klasifikasi.'.$type->value));
         $this->act('admin');
-        foreach (['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'] as $index => $month) {
-            $this->travelTo(now()->setDate(2026, $index + 1, 1));
-            $this->change($this->application(), 'WAITING_APPROVAL')->assertOk();
-            $this->assertDatabaseHas('letter_numbers', ['number' => 'KLASIFIKASI-CONTOH/'.($index + 1).'/DESA-CONTOH/'.$month.'/2026']);
+        foreach ([1, 6, 12] as $index => $month) {
+            $this->travelTo(now()->setDate(2026, $month, 1));
+            $this->change($this->application(['jenis_surat' => 'UMUM']), 'WAITING_APPROVAL')->assertOk();
+            $this->assertDatabaseHas('letter_numbers', ['number' => '470/'.($index + 1).'/424.314.2.02/2026']);
         }
+        config(['letters.kode_desa' => 'DESA-CONTOH', 'letters.kode_klasifikasi.SKTM' => 'KLASIFIKASI-CONTOH']);
+        $this->change($this->application(['jenis_surat' => 'SKTM']), 'WAITING_APPROVAL')->assertOk();
+        $this->assertDatabaseHas('letter_numbers', ['number' => 'KLASIFIKASI-CONTOH/4/DESA-CONTOH/2026']);
     }
 
     public static function voidStatuses(): array
@@ -250,7 +255,7 @@ class LetterRegisterTest extends TestCase
         $this->change($application, 'REJECTED', 'Alasan privat fiktif')->assertOk();
         $first = $this->getJson('/api/v1/staff/letter-register')->assertOk()->assertJsonPath('total', 22)
             ->assertJsonPath('per_page', 20)->assertJsonPath('last_page', 2)->assertJsonCount(20, 'data')
-            ->assertJsonPath('data.0.status', 'void')->assertJsonPath('data.0.number', '[PLACEHOLDER]/22/[PLACEHOLDER]/I/2026');
+            ->assertJsonPath('data.0.status', 'void')->assertJsonPath('data.0.number', '470/22/424.314.2.02/2026');
         foreach ($first->json('data') as $row) {
             $this->assertEqualsCanonicalizing(['number', 'issued_at', 'jenis_surat', 'nama', 'status'], array_keys($row));
             $this->assertSame(now()->toISOString(), $row['issued_at']);

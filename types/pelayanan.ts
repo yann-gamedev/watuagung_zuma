@@ -17,7 +17,26 @@ export const statuses = [
   "NEED_REVISION",
 ] as const;
 export type Status = (typeof statuses)[number];
-export type ServiceCode = "SKU" | "DOMISILI" | "SKTM" | "KTP_KK";
+/** Semua kode jenis surat yang dapat muncul di data (cermin `LetterType.php`). */
+export const serviceCodes = ["SKU", "DOMISILI", "SKTM", "KTP_KK", "BELUM_MENIKAH", "KERAMAIAN", "KEHILANGAN", "UMUM"] as const;
+export type ServiceCode = (typeof serviceCodes)[number];
+/** Jenis yang dapat diajukan; SKU dan KTP_KK hanya ada pada data lama (POST = 422). */
+export const offeredServiceCodes = ["DOMISILI", "SKTM", "BELUM_MENIKAH", "KERAMAIAN", "KEHILANGAN", "UMUM"] as const satisfies readonly ServiceCode[];
+export type OfferedServiceCode = (typeof offeredServiceCodes)[number];
+/** Pilihan baku pengajuan; validasi sebenarnya di `backend/app/Domain/LetterSubmission.php`. */
+export const dusunOptions = ["Watuagung", "Talang", "Sekar"] as const;
+export const agamaOptions = ["Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu", "Kepercayaan terhadap Tuhan YME"] as const;
+export const kewarganegaraanOptions = ["WNI", "WNA"] as const;
+export const statusPerkawinanOptions = ["Belum Kawin", "Kawin", "Cerai Hidup", "Cerai Mati"] as const;
+export const pendidikanOptions = [
+  "Tidak/Belum Sekolah", "Belum Tamat SD/Sederajat", "Tamat SD/Sederajat", "SLTP/Sederajat", "SLTA/Sederajat",
+  "Diploma I/II", "Akademi/Diploma III/Sarjana Muda", "Diploma IV/Strata I", "Strata II", "Strata III",
+] as const;
+export type Dusun = (typeof dusunOptions)[number];
+export type Agama = (typeof agamaOptions)[number];
+export type Kewarganegaraan = (typeof kewarganegaraanOptions)[number];
+export type StatusPerkawinan = (typeof statusPerkawinanOptions)[number];
+export type Pendidikan = (typeof pendidikanOptions)[number];
 export type StaffLoginRequest = { password: string } & (
   | { username: string; email?: never }
   | { email: string; username?: never }
@@ -34,8 +53,11 @@ export interface StaffApplication {
   can_reset_access_code: boolean;
 }
 export interface StaffApplicationEvent {
-  /** null = perubahan status; ACCESS_CODE_RESET = kode akses dibuat ulang (status tidak berubah). */
-  action: "ACCESS_CODE_RESET" | null;
+  /**
+   * null = perubahan status; ACCESS_CODE_RESET = kode akses dibuat ulang; STATEMENT_EDITED = isi keterangan UMUM
+   * disunting (note "Isi keterangan disunting"). Keduanya tanpa perubahan status.
+   */
+  action: "ACCESS_CODE_RESET" | "STATEMENT_EDITED" | null;
   from_status: Status | null;
   to_status: Status;
   note: string | null;
@@ -43,11 +65,32 @@ export interface StaffApplicationEvent {
   created_at: string;
 }
 /** Hanya respons detail terotorisasi; jangan simpan ke storage atau log. */
-export interface StaffApplicationDetail extends StaffApplication, Omit<Submission, "nama_usaha" | "jenis_usaha" | "alamat_usaha" | "telepon" | "tempat_lahir" | "tanggal_lahir" | "jenis_kelamin"> {
+export interface StaffApplicationDetail extends StaffApplication, Pick<Submission, "nama" | "nik" | "no_kk" | "alamat" | "rt" | "rw" | "keperluan"> {
   telepon?: string;
   tempat_lahir?: string;
   tanggal_lahir?: string;
   jenis_kelamin?: string;
+  /** Hanya peran kantor; agama dan status perkawinan didekripsi server. null pada data lama. */
+  agama?: Agama | null;
+  status_perkawinan?: StatusPerkawinan | null;
+  kewarganegaraan?: Kewarganegaraan | null;
+  pendidikan?: Pendidikan | null;
+  pekerjaan?: string | null;
+  /** null pada data lama (sebelum enam jenis surat final). */
+  dusun: Dusun | null;
+  barang_hilang: string | null;
+  acara: string | null;
+  tempat_acara: string | null;
+  /** "YYYY-MM-DD". */
+  tanggal_mulai: string | null;
+  tanggal_selesai: string | null;
+  jenis_hiburan: string | null;
+  /** Versi yang dicetak; dapat disunting petugas. */
+  isi_keterangan: string | null;
+  /** Teks asli dari warga, tidak pernah berubah. */
+  isi_keterangan_awal: string | null;
+  /** Dari server: UMUM, peran staff/admin, status sebelum WAITING_APPROVAL. */
+  can_edit_isi_keterangan: boolean;
   nama_usaha: string | null;
   jenis_usaha: string | null;
   alamat_usaha: string | null;
@@ -103,6 +146,13 @@ export interface StaffAccessCodeResponse {
   request_id: string;
   lookup_secret: string;
 }
+/** PATCH /staff/applications/{id}/isi-keterangan, body `{ isi_keterangan }` (2–500 karakter). */
+export interface StaffStatementResponse {
+  success: true;
+  request_id: string;
+  isi_keterangan: string;
+  can_edit_isi_keterangan: boolean;
+}
 export interface StaffStatusResponse {
   success: true;
   request_id: string;
@@ -151,6 +201,11 @@ export interface StaffPasswordRequest {
   old_password: string;
   password: string;
 }
+/**
+ * POST /applications. Wajib per jenis (lihat docs/integrasi.md): dusun untuk semua jenis; agama,
+ * status_perkawinan, pendidikan, pekerjaan untuk semua kecuali KERAMAIAN; isian khusus hanya untuk
+ * jenisnya (dikirim untuk jenis lain = 422). Opsional di sini hanya sampai formulir S3 diperbarui.
+ */
 export interface Submission {
   jenis_surat: ServiceCode;
   nama: string;
@@ -159,13 +214,32 @@ export interface Submission {
   tempat_lahir: string;
   tanggal_lahir: string;
   jenis_kelamin: string;
+  dusun?: Dusun;
   alamat: string;
   rt: string;
   rw: string;
   telepon: string;
+  /** Bawaan server WNI bila kosong. */
+  kewarganegaraan?: Kewarganegaraan;
+  agama?: Agama;
+  status_perkawinan?: StatusPerkawinan;
+  pendidikan?: Pendidikan;
+  /** Teks bebas, maksimal 60 karakter. */
+  pekerjaan?: string;
+  /** Data lama SKU; tidak dapat diajukan lagi. */
   nama_usaha?: string;
   jenis_usaha?: string;
   alamat_usaha?: string;
+  /** KEHILANGAN, maksimal 200. */
+  barang_hilang?: string;
+  /** KERAMAIAN: acara/tempat/hiburan maksimal 120; tanggal "YYYY-MM-DD", mulai >= hari ini, rentang <= 7 hari. */
+  acara?: string;
+  tempat_acara?: string;
+  tanggal_mulai?: string;
+  tanggal_selesai?: string;
+  jenis_hiburan?: string;
+  /** UMUM, maksimal 500. */
+  isi_keterangan?: string;
   keperluan: string;
 }
 export interface Receipt {

@@ -285,7 +285,7 @@ class LetterPdfTest extends TestCase
         try {
             $config = require config_path('letters.php');
             $this->assertSame($defaults, $config['desa']);
-            $this->assertSame('[PLACEHOLDER]', $config['kode_desa']);
+            $this->assertSame('424.314.2.02', $config['kode_desa']);
             foreach ($defaults as $key => $value) {
                 $env->set('LETTER_'.strtoupper($key), 'Pengganti fiktif '.$key);
             }
@@ -301,15 +301,20 @@ class LetterPdfTest extends TestCase
         }
     }
 
-    public function test_all_four_templates_render(): void
+    public function test_every_letter_type_renders(): void
     {
+        $specific = [
+            'BELUM_MENIKAH' => [], 'KEHILANGAN' => ['barang_hilang' => 'KTP fiktif'],
+            'KERAMAIAN' => ['acara' => 'Hajatan fiktif', 'tempat_acara' => 'Rumah fiktif', 'tanggal_mulai' => '2026-12-01', 'tanggal_selesai' => '2026-12-02', 'jenis_hiburan' => 'Musik fiktif'],
+            'UMUM' => ['isi_keterangan' => 'Bekerja di kota fiktif'],
+        ];
         foreach (LetterType::cases() as $type) {
-            $application = $this->application(['jenis_surat' => $type->value]);
+            $application = $this->application(['jenis_surat' => $type->value] + ($specific[$type->value] ?? []));
             $this->act();
             $this->assertStringStartsWith('%PDF-', $this->pdf($application)->assertOk()->getContent());
             foreach ([true, false] as $draft) {
-                $html = view('letters.'.strtolower($type->value), [
-                    'a' => $application, 'draft' => $draft, 'number' => null,
+                $html = view(Letter::view($type), [
+                    'a' => $application, 'title' => $type->title(), 'draft' => $draft, 'number' => null,
                     'date' => now()->locale('id'), 'qr' => null, 'desa' => config('letters.desa'),
                 ])->render();
                 $this->assertStringContainsString('PEMERINTAH KABUPATEN '.e(config('letters.desa.kabupaten')), $html);
@@ -317,6 +322,8 @@ class LetterPdfTest extends TestCase
                 $this->assertStringContainsString('<p>'.e(config('letters.desa.alamat_kantor')).'</p>', $html);
                 $this->assertStringContainsString('<strong><u>'.e(config('letters.desa.kepala_desa')).'</u></strong>', $html);
                 $this->assertStringContainsString('Format sementara, menunggu template resmi', $html);
+                $this->assertStringContainsString(e($type->title()), $html);
+                foreach ($specific[$type->value] ?? [] as $value) $this->assertStringContainsString(e($value), $html);
             }
         }
     }

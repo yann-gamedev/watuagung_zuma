@@ -17,7 +17,7 @@
 | M4 — Pengaduan | Dialihkan ke Google Form desa (24 Okt 2026); tautan selesai | URL Google Form dari desa (`NEXT_PUBLIC_COMPLAINT_FORM_URL`) |
 | M5 — CMS | API berita, sampul, panel C3 dan halaman publik C4 sudah di-commit | CORS DELETE, konten lain dan keputusan produksi K2/K4 |
 | M6 — Lampiran persyaratan | Belum dibuat | Unggah privat, batas file, retensi; berbeda dari unggah surat final M7 |
-| M7 — PDF/QR | Implementasi dengan template sementara selesai | Format resmi desa, uji browser Laravel dan pindai QR; TTE di luar lingkup |
+| M7 — PDF/QR | Template sementara selesai; S1 (enam jenis surat final, nomor `470/{urut}/424.314.2.02/{tahun}`) selesai di backend 8 Nov 2026 | S2 template resmi, S3 formulir warga, S4 panel petugas; uji browser Laravel dan pindai QR; TTE di luar lingkup |
 | M8 — Produksi | Belum siap operasional | Infrastruktur, privasi/retensi, prosedur bantuan, verifikasi keamanan |
 
 Sumber: kode/route API, file yang terlacak Git, `docs/progres-2026-10-21.md`, `docs/progres-2026-10-22.md`, dan verifikasi sesi perbaikan layout (`603b267`, `2f788bf`). Status ini menggambarkan branch kerja lokal, bukan bukti semua perubahan telah digabung ke `main` atau di-deploy.
@@ -194,15 +194,24 @@ Bergantung pada K2 dan K4. **Pengecualian R3 disetujui 3 November 2026:** backen
 Bergantung pada K5 dan M2.
 
 - [x] Template Blade sementara untuk empat jenis surat (`backend/resources/views/letters/`); format kop resmi masih menunggu. Empat PDF contoh dan draf diperiksa visual (21 Okt 2026).
-- [x] Identitas wilayah, alamat kantor, dan penandatangan dari RKP Desa 2027 bagian 7 melalui env `LETTER_KABUPATEN`, `LETTER_KECAMATAN`, `LETTER_ALAMAT_KANTOR`, `LETTER_KEPALA_DESA`. Tes backend 183/1.925 assertions, lint, tsc, build, build:demo, test:demo lulus; empat PDF final + empat draf diperiksa visual (25 Okt 2026, `docs/progres-2026-10-25.md`). Kop resmi, kode desa, dan kode klasifikasi tetap menunggu F9b.
+- [x] Identitas wilayah, alamat kantor, dan penandatangan dari RKP Desa 2027 bagian 7 melalui env `LETTER_KABUPATEN`, `LETTER_KECAMATAN`, `LETTER_ALAMAT_KANTOR`, `LETTER_KEPALA_DESA`. Tes backend 183/1.925 assertions, lint, tsc, build, build:demo, test:demo lulus; empat PDF final + empat draf diperiksa visual (25 Okt 2026, `docs/progres-2026-10-25.md`). Kode desa dan kode klasifikasi diselesaikan S1 (8 Nov 2026); kop resmi di S2.
 - [ ] Template per jenis surat sesuai format resmi desa (kop, nomor, penandatangan) — menunggu contoh surat asli; sementara petugas dapat mengunggah surat manual
-- [ ] Format penomoran surat resmi dari desa — mesin penomoran/register dipisahkan ke M3a; kode klasifikasi dan kode desa masih `[PLACEHOLDER]`
+- [x] Format penomoran surat resmi dari contoh surat desa: `{kode_klasifikasi}/{urut}/{kode_desa}/{tahun}`, klasifikasi `470` semua jenis, kode desa `424.314.2.02`, tanpa bulan romawi (S1, 8 Nov 2026). Mesin penomoran/register tetap di M3a. Kode `35.314.10.2.02` pada contoh Izin Keramaian dianggap salah ketik sampai desa menjawab.
 - [x] Draf PDF bertanda DRAF untuk staff/admin/village_head saat PROCESSING/WAITING_APPROVAL; PDF final ber-QR saat `APPROVED`, disimpan terenkripsi di storage privat dengan SHA-256; siapa/kapan Kepala Desa menyetujui dicatat; setiap unduhan diaudit
 - [x] Unggah surat manual hasil pindaian (staff/admin) yang menggantikan PDF otomatis dengan kode QR yang sama; unduh PNG QR untuk ditempel
 - [x] Verifikasi publik `GET /verify/{kode}` (30/menit) dan halaman statis `/verifikasi/`: nomor, jenis, tanggal terbit, nama tersamar, sah/dibatalkan; catatan hukum TTE/BSrE di `PRODUCT.md`
 - [x] Verifikasi teknis sesi PDF: `php artisan test` (177 tes, 1.838 assertions), lint, tsc, build, build demo, test:demo dan `test-admin-filters` lulus; PDF contoh empat jenis + draf diperiksa visual. Bukti di `docs/progres-2026-10-21.md`.
 - [ ] Uji manual end-to-end dengan Laravel lokal (alur persetujuan → unduh → unggah → pindai QR dengan ponsel) dan pemeriksaan visual halaman terkait pada 390px/1440px — menunggu pengguna. Pastikan migration dan `LETTER_VERIFY_URL` pada lingkungan uji sudah sesuai.
-- [ ] Data dari desa: contoh surat asli tiap jenis, format nomor, nama dan jabatan penandatangan
+- [ ] Data dari desa: contoh surat asli tiap jenis, format nomor, nama dan jabatan penandatangan — contoh enam jenis diterima 8 Nov 2026 dan disarikan (data fiktif) di `docs/PROMPTS-SURAT.md`; pertanyaan terbuka ke desa ada di dokumen itu
+
+### Layanan surat final S1–S4 (menggantikan F9b, keputusan 8 Nov 2026)
+
+Enam jenis surat tetap: DOMISILI, SKTM, BELUM_MENIKAH, KERAMAIAN, KEHILANGAN, UMUM. SKU dan pengantar KTP/KK dihapus dari layanan online (kode tetap untuk data lama). Rancangan dan prompt sesi: `docs/PROMPTS-SURAT.md`.
+
+- [x] **S1 — Backend jenis surat final** (`feat/letters-final-types`): `LetterType` delapan case dengan `isOffered()`/`title()`, validasi per jenis di `LetterSubmission` (pesan bahasa Indonesia, isian jenis lain ditolak), 14 kolom nullable baru (agama/status perkawinan terenkripsi dan tersembunyi), nomor format desa, detail petugas memuat field baru, `PATCH /staff/applications/{id}/isi-keterangan` untuk UMUM, retensi mengosongkan kolom baru, PDF jenis baru memakai template generik sementara, kontrak frontend/demo. SQLite 378 tes / 6.306 assertion (PHP WinGet), lint, tsc, build, build:demo, test:demo lulus; PostgreSQL belum dijalankan sesi ini (`docs/progres-2026-11-08.md`).
+- [ ] **S2 — Template PDF enam jenis + kop resmi** (`feat/letters-final-templates`)
+- [ ] **S3 — Formulir warga dan halaman layanan** (`feat/letters-final-form`); sampai selesai, formulir lama gagal (422) pada mode API karena data diri baru wajib
+- [ ] **S4 — Panel petugas untuk jenis baru** (`feat/letters-final-admin`); label jenis baru dan riwayat `STATEMENT_EDITED` belum ditampilkan khusus
 - [ ] TTE tersertifikasi (BSrE) — di luar lingkup sampai ada kerja sama resmi
 
 ## M8 — Kesiapan produksi

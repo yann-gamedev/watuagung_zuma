@@ -8,8 +8,7 @@ import { Send, LoaderCircle, CircleAlert } from "lucide-react";
 import { FormField } from "@/components/form-field";
 import { submissionSchema, type SubmissionValues } from "@/lib/validation";
 import { pelayananService, isDemo } from "@/services/pelayanan";
-import type { ServiceCode } from "@/types/pelayanan";
-export function ApplicationForm({ code }: { code: ServiceCode }) {
+export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"] }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const {

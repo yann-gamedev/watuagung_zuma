@@ -30,7 +30,7 @@ Path berikut relatif terhadap `/api/v1`. Transport menggunakan `Accept: applicat
 
 | Metode | Path | Permintaan / kegunaan |
 | --- | --- | --- |
-| POST | `/applications` | Publik, 5/menit | Field sesuai [Submission](../types/pelayanan.ts); SKU memerlukan informasi usaha |
+| POST | `/applications` | Publik, 5/menit | Field sesuai [Submission](../types/pelayanan.ts) dan [aturan per jenis surat](#enam-jenis-surat-final-s1-8-november-2026); SKU/KTP_KK → 422 |
 | POST | `/applications/status` | `request_id` dan `lookup_secret`; 5 kode salah per nomor → 429 selama 15 menit |
 | POST | `/staff/login` | `username` dan `password`; kompatibilitas klien lama: `email` dan `password`; respons bearer token |
 | POST | `/staff/logout` | Mencabut token petugas aktif |
@@ -41,8 +41,9 @@ Path berikut relatif terhadap `/api/v1`. Transport menggunakan `Accept: applicat
 | POST | `/staff/users/{id}/reset-password` | Admin: kata sandi sementara baru (min. 10), wajib ganti, semua token akun dicabut |
 | POST | `/staff/me/password` | Semua peran: `old_password` + kata sandi baru (min. 10); token lain dicabut |
 | GET | `/staff/summary` | Ringkasan lima peran: `by_status`, `my_queue`, `today`, `oldest`; scope wilayah/jenis sama dengan daftar, `Cache-Control: private, no-store` |
-| GET | `/staff/applications` | Daftar paginasi, dibatasi wilayah dan jenis surat RT/RW (tanpa SKU) untuk `rt_head`/`rw_head` (`page` ≥ 1, 20 per halaman). Filter opsional `status` (satu) **atau** `statuses[]` (beberapa), tidak boleh keduanya; `q` (maksimal 100 karakter) mencari sebagian nomor/nama secara literal dan tidak peka huruf besar/kecil, `jenis_surat` = `SKU`/`DOMISILI`/`SKTM`/`KTP_KK`, `sort` = `terbaru` (bawaan)/`terlama`. Tiap item ([StaffApplication](../types/pelayanan.ts)) memuat `allowed_transitions`, tanpa data pribadi sensitif atau catatan bebas |
-| GET | `/staff/applications/{request_id}` | Detail terotorisasi untuk lima peran panel: data pemohon, usaha, keperluan, catatan, `allowed_transitions`, dan riwayat status. Ketua RT/RW hanya untuk wilayahnya (di luar wilayah → 404) dan menerima versi terbatas. Respons `Cache-Control: no-store`; akses berhasil dicatat di `audit_logs` |
+| GET | `/staff/applications` | Daftar paginasi, dibatasi wilayah dan jenis surat RT/RW (tanpa SKU) untuk `rt_head`/`rw_head` (`page` ≥ 1, 20 per halaman). Filter opsional `status` (satu) **atau** `statuses[]` (beberapa), tidak boleh keduanya; `q` (maksimal 100 karakter) mencari sebagian nomor/nama secara literal dan tidak peka huruf besar/kecil, `jenis_surat` = `DOMISILI`/`SKTM`/`BELUM_MENIKAH`/`KERAMAIAN`/`KEHILANGAN`/`UMUM` serta kode lama `SKU`/`KTP_KK`, `sort` = `terbaru` (bawaan)/`terlama`. Tiap item ([StaffApplication](../types/pelayanan.ts)) memuat `allowed_transitions`, tanpa data pribadi sensitif atau catatan bebas |
+| GET | `/staff/applications/{request_id}` | Detail terotorisasi untuk lima peran panel: data pemohon (termasuk data diri surat final), isian khusus per jenis, usaha (data lama), keperluan, catatan, `allowed_transitions`, dan riwayat status. Ketua RT/RW hanya untuk wilayahnya (di luar wilayah → 404) dan menerima versi terbatas. Respons `Cache-Control: no-store`; akses berhasil dicatat di `audit_logs` |
+| PATCH | `/staff/applications/{request_id}/isi-keterangan` | Staff/admin, 30/menit: `isi_keterangan` (2–500) untuk UMUM sebelum `WAITING_APPROVAL`; respons [StaffStatementResponse](../types/pelayanan.ts). Lihat [sunting isi keterangan](#sunting-isi-keterangan-umum) |
 | PATCH | `/staff/applications/{request_id}/status` | `status` dan `catatan`; respons ([StaffStatusResponse](../types/pelayanan.ts)) memuat `allowed_transitions` baru |
 | GET | `/staff/applications/{request_id}/letter.pdf` | Staff/admin/village_head: draf (PROCESSING/WAITING_APPROVAL) atau final (sejak APPROVED); diaudit |
 | POST | `/staff/applications/{request_id}/letter.pdf` | Staff/admin: multipart `file` PDF ≤ 5 MB, saat APPROVED/READY_FOR_PICKUP |
@@ -183,12 +184,44 @@ Frontend mengirim `{ username, password }`. Username unik, 1–64 karakter, diaw
 
 Jalankan migration penambahan username sebelum memakai frontend baru. Akun lama tetap memiliki username nullable dan bisa memakai API login email; untuk form baru, administrator perlu menetapkan username unik pada akun tersebut. Tidak ada akun/kata sandi bawaan atau endpoint pendaftaran publik. Tipe frontend: `StaffLoginRequest` dan `StaffLoginResponse` di `types/pelayanan.ts`.
 
+## Enam jenis surat final (S1, 8 November 2026)
+
+Rancangan dan sumber pilihan: `docs/PROMPTS-SURAT.md`. Aturan ada di `backend/app/Domain/LetterType.php` (jenis, judul resmi `title()`, `isOffered()`, isian khusus) dan `backend/app/Domain/LetterSubmission.php` (aturan validasi, pilihan baku, pesan galat bahasa Indonesia). Controller tidak menyalin tabel ini. Tipe frontend: `serviceCodes`, `offeredServiceCodes`, dan `*Options` di `types/pelayanan.ts`.
+
+| Kode | Judul surat | Isian khusus wajib |
+| --- | --- | --- |
+| `DOMISILI` | SURAT KETERANGAN DOMISILI | — |
+| `SKTM` | SURAT KETERANGAN TIDAK MAMPU | — (`keperluan` dicetak) |
+| `BELUM_MENIKAH` | SURAT KETERANGAN BELUM MENIKAH | — |
+| `KERAMAIAN` | SURAT KETERANGAN IZIN KERAMAIAN | `acara`, `tempat_acara`, `jenis_hiburan` (2–120), `tanggal_mulai`, `tanggal_selesai` |
+| `KEHILANGAN` | SURAT KETERANGAN KEHILANGAN | `barang_hilang` (2–200) |
+| `UMUM` | SURAT KETERANGAN | `isi_keterangan` (2–500) |
+| `SKU`, `KTP_KK` | (data lama) | tidak dapat diajukan: 422 `Jenis surat ini tidak dapat diajukan secara online.` |
+
+- **Data diri, semua jenis:** `nama`, `nik`, `no_kk`, `tempat_lahir`, `tanggal_lahir`, `jenis_kelamin`, `dusun` (Watuagung/Talang/Sekar), `alamat`, `rt`, `rw`, `telepon`, `keperluan` (2–200), `kewarganegaraan` (WNI/WNA; kosong → WNI).
+- **Kecuali KERAMAIAN, juga wajib:** `agama` (Islam, Kristen, Katolik, Hindu, Buddha, Konghucu, Kepercayaan terhadap Tuhan YME), `status_perkawinan` (Belum Kawin, Kawin, Cerai Hidup, Cerai Mati), `pendidikan` (pilihan baku KK, lihat `pendidikanOptions`), `pekerjaan` (teks bebas 2–60). Untuk KERAMAIAN keempatnya opsional, tetapi nilai yang dikirim tetap divalidasi.
+- **Pilihan bersifat persis** (huruf besar/kecil diperhatikan). Nilai di luar daftar → 422 `… tidak valid. Pilih salah satu pilihan yang tersedia.`
+- **Tanggal keramaian:** format `YYYY-MM-DD`; `tanggal_mulai` ≥ hari ini (zona waktu aplikasi, WIB); `tanggal_selesai` ≥ `tanggal_mulai`; rentang paling lama 7 hari kalender **termasuk** hari mulai dan selesai (mis. 10–16 boleh, 10–17 ditolak).
+- **Isian milik jenis lain ditolak** (422 `… tidak dipakai untuk jenis surat ini.`), bukan diabaikan: tidak ada data yang tersimpan tanpa disadari dan kesalahan klien langsung terlihat. String kosong/null tetap diterima agar formulir lama tidak gagal.
+- **Penyimpanan:** kolom baru semuanya nullable (data lama tetap sah). `agama` dan `status_perkawinan` memakai cast `encrypted` dan masuk `$hidden` seperti NIK. Isian lain teks biasa. `tanggal_mulai`/`tanggal_selesai` dikirim `YYYY-MM-DD`. `isi_keterangan_awal` menyimpan teks asli warga (tidak pernah berubah) sebagai pembanding untuk petugas.
+- **Respons:** pengajuan dan cek status publik tidak berubah (tanpa data diri). Daftar petugas, ringkasan, dan buku register tidak memuat field baru. Detail petugas memuat `dusun`, isian khusus, `isi_keterangan`, `isi_keterangan_awal`, dan `can_edit_isi_keterangan` untuk semua peran panel; `agama`, `status_perkawinan`, `kewarganegaraan`, `pendidikan`, `pekerjaan` hanya untuk peran kantor (tidak untuk Ketua RT/RW), didekripsi. Akses detail tetap tercatat `application.viewed`.
+- **RT/RW:** bila `letters.neighborhood_approval` dinyalakan, semua jenis kecuali SKU melalui RT/RW.
+- **PDF:** jenis tanpa template sendiri (BELUM_MENIKAH, KERAMAIAN, KEHILANGAN, UMUM) sementara memakai `resources/views/letters/umum.blade.php` (generik, judul dari `LetterType::title()`); template resmi menyusul di S2.
+- **Retensi:** `applications:purge` mengosongkan semua kolom baru.
+- **Formulir warga belum diubah (S3):** sampai S3, formulir lama tidak mengirim `dusun`/data diri baru, sehingga pengajuan lewat API mode akan 422. Mode demo mengikuti kontrak (SKU/KTP_KK ditolak).
+
+### Sunting isi keterangan (UMUM)
+
+- `PATCH /staff/applications/{request_id}/isi-keterangan` dengan `{ "isi_keterangan": "…" }` (2–500, dipangkas spasinya).
+- Peran `staff`/`admin` saja (lainnya 403). Di luar wilayah/tidak ada → 404. Bukan UMUM → 422 `Isi keterangan hanya ada pada Surat Keterangan Umum.` Status `WAITING_APPROVAL`, `APPROVED`, `READY_FOR_PICKUP`, `COMPLETED`, `REJECTED` → 422 `Isi keterangan tidak dapat disunting setelah diajukan ke Kepala Desa.` `NEED_REVISION` boleh (kembali ke kantor sebelum diajukan ulang). Aturan ada di `ApplicationStatus::canEditContent()`; frontend memakai `can_edit_isi_keterangan` dari server.
+- Tercatat di `application_events` dengan `action: STATEMENT_EDITED`, `from_status` = `to_status` = status saat itu, `note: "Isi keterangan disunting"`. `audit_logs` mencatat `application.statement_edited` dengan ID saja, tanpa isi lama/baru.
+
 ## Nomor surat dan buku registrasi
 
 - Nomor dialokasikan dalam transaksi yang sama dengan `PROCESSING → WAITING_APPROVAL`. Satu urutan untuk semua jenis surat per tahun, reset pada pergantian tahun sesuai zona waktu aplikasi (`config/app.php`, env `APP_TIMEZONE` dengan bawaan `Asia/Jakarta`): pukul 00.00 WIB tanggal 1 Januari. Nomor yang dibatalkan tidak digunakan ulang.
-- Format dari `backend/config/letters.php`: `{kode_klasifikasi}/{urut}/{kode_desa}/{bulan_romawi}/{tahun}`. Klasifikasi per jenis di `LetterType`; kode klasifikasi dan kode desa masih `[PLACEHOLDER]`, bukan data resmi.
+- Format dari `backend/config/letters.php`: `{kode_klasifikasi}/{urut}/{kode_desa}/{tahun}`, contoh `470/12/424.314.2.02/2026` (sesuai contoh surat desa, tanpa bulan romawi). Kode klasifikasi `470` untuk semua jenis termasuk SKU/KTP_KK lama (`LetterType::classificationCode()`), kode desa `424.314.2.02`. Contoh Izin Keramaian memakai `35.314.10.2.02`; dianggap salah ketik sampai desa menjawab (pertanyaan 2 di `docs/PROMPTS-SURAT.md`).
 - `WAITING_APPROVAL → REJECTED/NEED_REVISION` oleh Kepala Desa membatalkan nomor aktif dengan alasan dari catatan wajib. Pengajuan ulang setelah perbaikan mendapat nomor baru. Riwayat nomor lama tetap disimpan; permohonan lama tidak diberi nomor retroaktif.
-- **GET `/staff/letter-register`**: token ability `applications:manage`, akun aktif berperan `staff`, `admin`, atau `village_head`; tanpa token 401, RT/RW/peran/ability salah 403. Query opsional `year` (bilangan bulat 1000–9999, bawaan tahun server), `jenis_surat` (SKU/DOMISILI/SKTM/KTP_KK), `page` (≥1). Filter digabung AND; paginator 20 baris. Kesalahan validasi 422.
+- **GET `/staff/letter-register`**: token ability `applications:manage`, akun aktif berperan `staff`, `admin`, atau `village_head`; tanpa token 401, RT/RW/peran/ability salah 403. Query opsional `year` (bilangan bulat 1000–9999, bawaan tahun server), `jenis_surat` (delapan kode, termasuk kode lama), `page` (≥1). Filter digabung AND; paginator 20 baris. Kesalahan validasi 422.
 - Item daftar hanya `{ number, issued_at, jenis_surat, nama, status }`; `status` adalah `issued` atau `void`, bukan status permohonan. Tidak memuat NIK, KK, telepon, alamat, kode akses, maupun alasan bebas. Respons `Cache-Control: private, no-store`.
 - Detail kantor menambahkan `letter_numbers: [{ number, status, void_reason, issued_at }]`; tidak dikirim kepada RT/RW. `void_reason` nullable. Tanggal API tetap ISO 8601 UTC (instan yang sama, bukan waktu lokal tanpa zona). Tipe frontend: `LetterNumber`, `LetterRegisterEntry`, `LetterRegisterPage`.
 - Cek status warga menambahkan `letter_number: string | null`; hanya nomor aktif pada `APPROVED`, `READY_FOR_PICKUP`, atau `COMPLETED`, selain itu null. Permohonan lama tanpa nomor tetap null. Kode akses tetap wajib; tidak ada riwayat nomor batal/alasan pembatalan baru pada respons publik.
@@ -238,7 +271,7 @@ Migration `2026_10_22_000000_add_staff_account_fields_to_users_table` membuat `e
 Sumber kebenaran kebutuhan persetujuan adalah `backend/app/Domain/LetterType.php`; `ApplicationStatus` menggunakannya, bukan daftar jenis surat tersendiri. Hanya konfigurasi backend `letters.neighborhood_approval` yang mengaktifkan RT/RW:
 
 - Bawaan false, **semua jenis surat**: `SUBMITTED` → `VERIFIED` → `PROCESSING` → `WAITING_APPROVAL` → `APPROVED` → `READY_FOR_PICKUP` → `COMPLETED`.
-- Saat true, DOMISILI/SKTM/KTP_KK: `SUBMITTED` → `RT_APPROVED` → `RW_APPROVED` → `VERIFIED` → lanjutan sama. SKU selalu langsung ke kantor.
+- Saat true, semua jenis kecuali SKU (DOMISILI, SKTM, BELUM_MENIKAH, KERAMAIAN, KEHILANGAN, UMUM, dan KTP_KK lama): `SUBMITTED` → `RT_APPROVED` → `RW_APPROVED` → `VERIFIED` → lanjutan sama. SKU selalu langsung ke kantor.
 
 Wewenang per peran ditentukan server di `backend/app/Domain/ApplicationStatus.php` (tabel lengkap di [README backend](../backend/README.md#alur-status-dan-wewenang)). `staff` dan `admin` memverifikasi, memproses, mengajukan ke kepala desa, menandai siap diambil, dan menandai sudah diambil; **hanya** `village_head` memutuskan `WAITING_APPROVAL` → `APPROVED`/`REJECTED`/`NEED_REVISION`. Admin tidak dapat menyetujui. Hanya saat fitur aktif, `rt_head` menyetujui/menolak `SUBMITTED` non-SKU di RT-nya dan `rw_head` menyetujui/menolak `RT_APPROVED` di RW-nya; kantor baru bertindak setelah `RW_APPROVED`. `lib/letter-workflow.ts` hanya membentuk tampilan dari `requires_neighborhood_approval` respons publik, tanpa tabel jenis surat duplikat.
 
@@ -257,12 +290,12 @@ Frontend adalah static export: halaman `/admin/permohonan/detail/` diekspor tanp
 
 ### Privasi detail dan audit akses
 
-- Kontrak detail: `StaffApplicationDetail` di `types/pelayanan.ts`; field formulir lengkap ditambah `request_id`, `status`, `created_at`, `updated_at`, `catatan`, `allowed_transitions`, dan `history`; field usaha nullable untuk layanan non-SKU. Setiap event berisi `from_status` (nullable untuk pengajuan awal), `to_status`, `note`, `staff_name` (nullable untuk sistem/petugas yang dihapus), dan `created_at`.
+- Kontrak detail: `StaffApplicationDetail` di `types/pelayanan.ts`; field formulir lengkap ditambah `request_id`, `status`, `created_at`, `updated_at`, `catatan`, `allowed_transitions`, dan `history`; field usaha nullable untuk layanan non-SKU; field surat final nullable untuk data lama. Setiap event berisi `action` (null = perubahan status, `ACCESS_CODE_RESET`, atau `STATEMENT_EDITED`), `from_status` (nullable untuk pengajuan awal), `to_status`, `note`, `staff_name` (nullable untuk sistem/petugas yang dihapus), dan `created_at`.
 - NIK/KK tampil utuh untuk semua peran panel (keputusan 20 Okt 2026: dibutuhkan untuk verifikasi). Detail tidak disimpan dalam localStorage/sessionStorage atau dicetak ke console.
 - Audit memuat hanya `user_id`, `action=application.viewed`, `subject_type`, `subject_id`, dan `created_at` (selain primary key). Tidak ada isi identitas, catatan, token, maupun payload. Setiap GET detail berhasil, termasuk pemuatan ulang setelah perubahan status, menghasilkan audit. Audit harus tersimpan sebelum respons detail dikirim.
-- NIK, KK, telepon, alamat, alamat usaha, tempat lahir, dan tanggal lahir tetap terenkripsi di database (`tanggal_lahir` tetap dikirim `YYYY-MM-DD` di detail); daftar memakai daftar field eksplisit tanpa nilai tersebut maupun catatan bebas. Hash kode akses tidak pernah dikirim di detail.
+- NIK, KK, telepon, alamat, alamat usaha, tempat lahir, tanggal lahir, agama, dan status perkawinan tetap terenkripsi di database (`tanggal_lahir` tetap dikirim `YYYY-MM-DD` di detail); daftar memakai daftar field eksplisit tanpa nilai tersebut maupun catatan bebas. Hash kode akses tidak pernah dikirim di detail.
 - **Pengecualian disetujui 18 Oktober 2026:** nama yang diketik sebagai pencarian boleh berada di `q` pada URL halaman/API. URL dapat tersimpan dalam riwayat browser dan access log infrastruktur; atur redaksi query string pada proxy/web server sebelum produksi. Jangan memasukkan NIK, KK, telepon, alamat, token, atau catatan ke pencarian/URL. Audit aplikasi tidak mencatat query pencarian.
-- **Ketua RT/RW:** server mengirim NIK/KK utuh tetapi **tidak** mengirim `telepon`, `tempat_lahir`, `tanggal_lahir`, maupun `jenis_kelamin` (field opsional di `StaffApplicationDetail`). Audit akses tetap sama untuk semua peran.
+- **Ketua RT/RW:** server mengirim NIK/KK utuh tetapi **tidak** mengirim `telepon`, `tempat_lahir`, `tanggal_lahir`, `jenis_kelamin`, `agama`, `status_perkawinan`, `kewarganegaraan`, `pendidikan`, maupun `pekerjaan` (field opsional di `StaffApplicationDetail`). Audit akses tetap sama untuk semua peran.
 - Akses detail memakai ability `applications:manage` dan pemeriksaan lima peran panel di server, ditambah batas wilayah untuk ketua RT/RW. Kemampuan melihat detail tidak memberi hak menyetujui: hanya kepala desa memutuskan `WAITING_APPROVAL`.
 
 ## Menjalankan dan memeriksa
@@ -280,7 +313,7 @@ Build menghasilkan static export pada `out/`; hosting harus mendukung direktori 
 
 ESLint mengecualikan dependensi Composer dan output/cache generasi secara spesifik; kode aplikasi tetap diperiksa. Pengujian PHP terpisah dijelaskan pada README backend.
 
-Uji menggunakan data fiktif: formulir kosong, NIK/KK tidak valid, tanggal masa depan, SKU tanpa informasi usaha, pengajuan valid, salin receipt, kode akses salah, perubahan status, filter dan pagination, serta logout. Jangan mengklaim alur API lulus hanya berdasarkan build frontend.
+Uji menggunakan data fiktif: formulir kosong, NIK/KK tidak valid, tanggal masa depan, SKU/KTP_KK (422), isian jenis lain (422), tanggal keramaian lampau atau lebih dari 7 hari, pengajuan valid per jenis, sunting isi keterangan UMUM, salin receipt, kode akses salah, perubahan status, filter dan pagination, serta logout. Jangan mengklaim alur API lulus hanya berdasarkan build frontend.
 
 ## Kontak kantor dan peta
 

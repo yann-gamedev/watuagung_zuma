@@ -43,9 +43,16 @@ for (const tanggal_lahir of ["2000-02-31", "2001-02-29", "2026-04-31", "1899-12-
   assert.equal(submissionSchema.safeParse({ ...valid, tanggal_lahir }).success, false, tanggal_lahir);
 assert.equal(submissionSchema.safeParse({ ...valid, tanggal_lahir: "2000-02-29" }).success, true);
 assert.equal(submissionSchema.safeParse({ ...valid, jenis_surat: "SKU" }).success, false);
-for (const jenis_surat of ["SKU", "DOMISILI", "SKTM", "KTP_KK"]) {
-  const data = { ...valid, jenis_surat, nama_usaha: "Contoh usaha", jenis_usaha: "Perdagangan", alamat_usaha: "Alamat contoh" };
-  assert.equal(submissionSchema.safeParse(data).success, true);
+// Sama dengan API: SKU dan KTP_KK tidak dapat diajukan lagi; tidak ada bukti yang disimpan.
+for (const jenis_surat of ["SKU", "KTP_KK"]) {
+  const before = stored;
+  await assert.rejects(pelayananService.submit({ ...valid, jenis_surat, nama_usaha: "Contoh usaha", jenis_usaha: "Perdagangan", alamat_usaha: "Alamat contoh" }), /tidak dapat diajukan secara online/);
+  assert.equal(stored, before);
+}
+for (const jenis_surat of ["DOMISILI", "SKTM", "BELUM_MENIKAH", "KERAMAIAN", "KEHILANGAN", "UMUM"]) {
+  const data = { ...valid, jenis_surat };
+  // Formulir (lib/validation.ts) baru mengenal jenis final di S3.
+  if (["DOMISILI", "SKTM"].includes(jenis_surat)) assert.equal(submissionSchema.safeParse(data).success, true);
   const receipt = await pelayananService.submit(data);
   assert.deepEqual(await pelayananService.getStatus(receipt.request_id), receipt);
   assert.equal(receipt.jenis_surat, jenis_surat);
@@ -98,4 +105,4 @@ await assert.rejects(apiService.submit(valid), /requires_neighborhood_approval/)
 await assert.rejects(apiService.getStatus(apiReceipt.request_id, "test-only"), /requires_neighborhood_approval/);
 execFileSync(process.execPath, ["scripts/test-public-news.mjs"], { stdio: "inherit" });
 execFileSync(process.execPath, ["scripts/test-public-businesses.mjs"], { stdio: "inherit" });
-console.log("PASS: demo isolation, four services without RT/RW, optional server workflow metadata, removed autofill, calendar validation, storage privacy, complaint form URL, public news, public UMKM.");
+console.log("PASS: demo isolation, six final services without RT/RW, retired SKU/KTP_KK rejected, optional server workflow metadata, removed autofill, calendar validation, storage privacy, complaint form URL, public news, public UMKM.");

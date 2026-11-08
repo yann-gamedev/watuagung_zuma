@@ -4,7 +4,7 @@ import Link from "next/link";
 import { RefreshCw } from "lucide-react";
 import { z } from "zod";
 import { StatusBadge } from "@/components/site";
-import { statuses, type StaffSummary } from "@/types/pelayanan";
+import { serviceCodes, statuses, type StaffSummary } from "@/types/pelayanan";
 import { AdminUnauthorizedError } from "./api";
 import { useAdminSession } from "./session";
 import { applicationServiceLabels, buildApplicationDetailHref, buildApplicationsHref, parseApplicationFilters } from "./application-filters";
@@ -17,7 +17,7 @@ const summarySchema = z.object({
   today: count,
   oldest: z.array(z.object({
     request_id: z.string().regex(/^REQ-\d{4}-[A-Z0-9]+$/).max(64),
-    nama: z.string(), jenis_surat: z.enum(["SKU", "DOMISILI", "SKTM", "KTP_KK"]),
+    nama: z.string(), jenis_surat: z.enum(serviceCodes),
     status: z.enum(statuses), created_at: z.string().datetime(), allowed_transitions: z.array(z.enum(statuses)),
   })).max(5),
 });

@@ -65,10 +65,9 @@ class Letter
     /** $letter null = draf berwatermark, tanpa QR. */
     public static function render(Application $application, ?object $letter): string
     {
-        $type = strtolower($application->jenis_surat);
-
-        return Pdf::loadView('letters.'.$type, [
+        return Pdf::loadView(self::view(LetterType::from($application->jenis_surat)), [
             'a' => $application,
+            'title' => LetterType::from($application->jenis_surat)->title(),
             'draft' => $letter === null,
             'number' => DB::table('letter_numbers')->where('application_id', $application->id)
                 ->where('status', 'issued')->orderByDesc('id')->value('number'),
@@ -76,6 +75,14 @@ class Letter
             'qr' => $letter ? base64_encode(self::qr($letter->verification_code, 240)) : null,
             'desa' => config('letters.desa'),
         ])->setPaper('a4')->output();
+    }
+
+    /** ponytail: jenis tanpa template sendiri memakai template generik sampai template resmi (S2). */
+    public static function view(LetterType $type): string
+    {
+        $view = 'letters.'.strtolower($type->value);
+
+        return view()->exists($view) ? $view : 'letters.umum';
     }
 
     public static function verifyUrl(string $code): string

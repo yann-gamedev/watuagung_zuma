@@ -132,6 +132,8 @@ class StaffController extends Controller {
             'id','request_id','jenis_surat','nama','nik','no_kk','tempat_lahir','tanggal_lahir',
             'jenis_kelamin','alamat','rt','rw','telepon','nama_usaha','jenis_usaha','alamat_usaha',
             'keperluan','status','catatan','created_at','updated_at',
+            'dusun','agama','kewarganegaraan','status_perkawinan','pendidikan','pekerjaan',
+            'barang_hilang','acara','tempat_acara','tanggal_mulai','tanggal_selesai','jenis_hiburan','isi_keterangan','isi_keterangan_awal',
         ])->where('request_id', $request_id)->firstOrFail();
         $history = DB::table('application_events as events')
             ->leftJoin('users', 'users.id', '=', 'events.user_id')
@@ -154,12 +156,22 @@ class StaffController extends Controller {
             'nik'=>$application->nik,
             'no_kk'=>$application->no_kk,
             'alamat'=>$application->alamat,
+            'dusun'=>$application->dusun,
             'rt'=>$application->rt,
             'rw'=>$application->rw,
             'nama_usaha'=>$application->nama_usaha,
             'jenis_usaha'=>$application->jenis_usaha,
             'alamat_usaha'=>$application->alamat_usaha,
             'keperluan'=>$application->keperluan,
+            'barang_hilang'=>$application->barang_hilang,
+            'acara'=>$application->acara,
+            'tempat_acara'=>$application->tempat_acara,
+            'tanggal_mulai'=>self::date($application->tanggal_mulai),
+            'tanggal_selesai'=>self::date($application->tanggal_selesai),
+            'jenis_hiburan'=>$application->jenis_hiburan,
+            'isi_keterangan'=>$application->isi_keterangan,
+            'isi_keterangan_awal'=>$application->isi_keterangan_awal,
+            'can_edit_isi_keterangan'=>self::canEditStatement($application, $user),
             'status'=>$application->status,
             'catatan'=>$application->catatan,
             'created_at'=>$application->created_at,
@@ -174,6 +186,12 @@ class StaffController extends Controller {
                 'tempat_lahir'=>$application->tempat_lahir,
                 'tanggal_lahir'=>$application->tanggal_lahir,
                 'jenis_kelamin'=>$application->jenis_kelamin,
+                // Agama dan status perkawinan terenkripsi; hanya peran kantor, seperti telepon.
+                'agama'=>$application->agama,
+                'status_perkawinan'=>$application->status_perkawinan,
+                'kewarganegaraan'=>$application->kewarganegaraan,
+                'pendidikan'=>$application->pendidikan,
+                'pekerjaan'=>$application->pekerjaan,
                 'letter_numbers'=>DB::table('letter_numbers')->where('application_id', $application->id)->orderBy('id')
                     ->get(['number','status','void_reason','issued_at'])->map(fn ($letter) => [
                         'number'=>$letter->number, 'status'=>$letter->status, 'void_reason'=>$letter->void_reason,
@@ -223,6 +241,52 @@ class StaffController extends Controller {
             'success'=>true,'request_id'=>$result->request_id,'status'=>$result->status,'catatan'=>$result->catatan,
             'allowed_transitions'=>$result->allowedTransitions($user),
         ]);
+    }
+    /** Hanya UMUM; teks lama/baru tidak masuk audit_logs maupun catatan riwayat. */
+    public function updateStatement(Request $request, string $request_id): JsonResponse {
+        $user = $request->user();
+        if (! $user->canAccessPanel() || ! ApplicationStatus::canEditContentRole($user->role)) return $this->forbidden();
+        Validator::make(['request_id'=>$request_id], [
+            'request_id'=>['required','string','max:64','regex:/\AREQ-[0-9]{4}-[A-Z0-9]+\z/'],
+        ])->validate();
+        $data = $request->validate(['isi_keterangan'=>['required','string','min:2','max:500']], [
+            'isi_keterangan.required'=>'Isi keterangan wajib diisi.',
+            'isi_keterangan.string'=>'Isi keterangan harus berupa teks.',
+            'isi_keterangan.min'=>'Isi keterangan minimal :min karakter.',
+            'isi_keterangan.max'=>'Isi keterangan maksimal :max karakter.',
+        ]);
+        $result = DB::transaction(function () use ($user, $request_id, $data) {
+            $application = Application::query()->forUser($user)->where('request_id', $request_id)->lockForUpdate()->firstOrFail();
+            if ($application->jenis_surat !== LetterType::Umum->value) {
+                return response()->json(['message'=>'Isi keterangan hanya ada pada Surat Keterangan Umum.'], 422);
+            }
+            if (! ApplicationStatus::canEditContent($application->status, $user->role)) {
+                return response()->json(['message'=>'Isi keterangan tidak dapat disunting setelah diajukan ke Kepala Desa.'], 422);
+            }
+            $application->update(['isi_keterangan'=>trim($data['isi_keterangan'])]);
+            DB::table('application_events')->insert([
+                'application_id'=>$application->id, 'user_id'=>$user->id, 'action'=>'STATEMENT_EDITED',
+                'from_status'=>$application->status, 'to_status'=>$application->status,
+                'note'=>'Isi keterangan disunting', 'created_at'=>now(),
+            ]);
+            DB::table('audit_logs')->insert([
+                'user_id'=>$user->id, 'action'=>'application.statement_edited', 'subject_type'=>'application',
+                'subject_id'=>$application->id, 'created_at'=>now(),
+            ]);
+            return $application;
+        });
+        if ($result instanceof JsonResponse) return $result;
+        return response()->json([
+            'success'=>true, 'request_id'=>$result->request_id, 'isi_keterangan'=>$result->isi_keterangan,
+            'can_edit_isi_keterangan'=>self::canEditStatement($result, $user),
+        ])->header('Cache-Control', 'private, no-store');
+    }
+    private static function canEditStatement(Application $application, User $user): bool {
+        return $application->jenis_surat === LetterType::Umum->value && ApplicationStatus::canEditContent($application->status, $user->role);
+    }
+    /** PostgreSQL mengembalikan "Y-m-d", SQLite apa adanya; kontrak API selalu "Y-m-d". */
+    private static function date(?string $value): ?string {
+        return $value === null ? null : substr($value, 0, 10);
     }
     /** Kode lama langsung tidak berlaku; kode baru hanya ada di respons ini, tidak pernah di log. */
     public function resetAccessCode(Request $request, string $request_id): JsonResponse {

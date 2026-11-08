@@ -74,6 +74,11 @@ class StaffApplicationsTest extends TestCase
             'alamat' => 'Alamat rumah fiktif', 'rt' => '001', 'rw' => '002', 'telepon' => '08000000000',
             'nama_usaha' => 'Usaha Fiktif', 'jenis_usaha' => 'Perdagangan contoh', 'alamat_usaha' => 'Alamat usaha fiktif',
             'keperluan' => 'Keperluan fiktif', 'status' => 'WAITING_APPROVAL', 'catatan' => 'Catatan privat fiktif',
+            // Data lama SKU: field surat final kosong.
+            'dusun' => null, 'agama' => null, 'kewarganegaraan' => null, 'status_perkawinan' => null, 'pendidikan' => null,
+            'pekerjaan' => null, 'barang_hilang' => null, 'acara' => null, 'tempat_acara' => null, 'tanggal_mulai' => null,
+            'tanggal_selesai' => null, 'jenis_hiburan' => null, 'isi_keterangan' => null, 'isi_keterangan_awal' => null,
+            'can_edit_isi_keterangan' => false,
             'created_at' => $application->created_at->toISOString(), 'updated_at' => $application->updated_at->toISOString(),
             'allowed_transitions' => ApplicationStatus::allowedFor('WAITING_APPROVAL', $role, LetterType::Sku),
             'can_reset_access_code' => $role !== 'village_head',

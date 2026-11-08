@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\Api;
 use App\Domain\AccessCode;
+use App\Domain\LetterSubmission;
 use App\Domain\LetterType;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
@@ -9,24 +10,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 class ApplicationController extends Controller {
     public function store(Request $request): JsonResponse {
-        $data = $request->validate([
-            'jenis_surat'=>['required',Rule::enum(LetterType::class)],
-            'nama'=>['required','string','min:2','max:200'],
-            'nik'=>['required','regex:/^[0-9]{16}$/'], 'no_kk'=>['required','regex:/^[0-9]{16}$/'],
-            'tempat_lahir'=>['required','string','min:2','max:200'],
-            'tanggal_lahir'=>['required','date_format:Y-m-d','after_or_equal:1900-01-01','before_or_equal:today'],
-            'jenis_kelamin'=>['required',Rule::in(['Laki-laki','Perempuan'])],
-            'alamat'=>['required','string','min:2','max:200'],
-            'rt'=>['required','regex:/^[0-9]{1,3}$/'], 'rw'=>['required','regex:/^[0-9]{1,3}$/'],
-            'telepon'=>['required','regex:/^(?:\+62|0)[0-9]{8,13}$/'],
-            'nama_usaha'=>['required_if:jenis_surat,SKU','nullable','string','min:2','max:200'],
-            'jenis_usaha'=>['required_if:jenis_surat,SKU','nullable','string','min:2','max:200'],
-            'alamat_usaha'=>['required_if:jenis_surat,SKU','nullable','string','min:2','max:200'],
-            'keperluan'=>['required','string','min:2','max:200'],
-        ]);
+        // Aturan per jenis surat ada di LetterSubmission/LetterType, bukan di controller.
+        $data = LetterSubmission::validate($request->all());
+        // Teks asli warga disimpan terpisah agar sunting petugas tetap dapat dibandingkan.
+        if (isset($data['isi_keterangan'])) $data['isi_keterangan_awal'] = $data['isi_keterangan'];
         $secret = AccessCode::generate();
         $application = DB::transaction(function () use ($data, $secret) {
             $application = Application::create($data + [

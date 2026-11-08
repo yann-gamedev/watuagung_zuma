@@ -32,7 +32,6 @@ class LetterNumber
             '{kode_klasifikasi}' => config('letters.kode_klasifikasi.'.$application->jenis_surat),
             '{urut}' => (string) $sequence,
             '{kode_desa}' => config('letters.kode_desa'),
-            '{bulan_romawi}' => ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][$issuedAt->month - 1],
             '{tahun}' => (string) $year,
         ]);
         DB::table('letter_numbers')->insert([

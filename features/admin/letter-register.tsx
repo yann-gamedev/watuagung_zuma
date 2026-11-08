@@ -4,14 +4,14 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import { CircleCheck, CircleX, RefreshCw } from "lucide-react";
 import { z } from "zod";
-import type { LetterRegisterPage } from "@/types/pelayanan";
+import { serviceCodes, type LetterRegisterPage } from "@/types/pelayanan";
 import { AdminUnauthorizedError } from "./api";
 import { applicationServiceLabels } from "./application-filters";
 import { useAdminSession } from "./session";
 import styles from "./applications.module.css";
 
 const pageSchema = z.object({
-  data: z.array(z.object({ number: z.string(), issued_at: z.string(), jenis_surat: z.enum(["SKU", "DOMISILI", "SKTM", "KTP_KK"]), nama: z.string(), status: z.enum(["issued", "void"]) })),
+  data: z.array(z.object({ number: z.string(), issued_at: z.string(), jenis_surat: z.enum(serviceCodes), nama: z.string(), status: z.enum(["issued", "void"]) })),
   current_page: z.number().int().positive(), last_page: z.number().int().positive(), total: z.number().int().nonnegative(),
 });
 

@@ -11,12 +11,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
+use Tests\LetterPayloads;
 use Tests\TestCase;
 
 /** Semua data warga dan akun di sini fiktif. */
 class NeighborhoodApprovalTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, LetterPayloads;
 
     private function user(string $role, ?string $rt = null, ?string $rw = null): User
     {
@@ -57,7 +58,10 @@ class NeighborhoodApprovalTest extends TestCase
     public function test_letter_type_configuration(): void
     {
         config()->set('letters.neighborhood_approval', true);
-        $this->assertSame(['SKU' => false, 'DOMISILI' => true, 'SKTM' => true, 'KTP_KK' => true],
+        $this->assertSame([
+            'SKU' => false, 'DOMISILI' => true, 'SKTM' => true, 'KTP_KK' => true,
+            'BELUM_MENIKAH' => true, 'KERAMAIAN' => true, 'KEHILANGAN' => true, 'UMUM' => true,
+        ],
             array_combine(array_column(LetterType::cases(), 'value'), array_map(fn ($type) => $type->requiresNeighborhoodApproval(), LetterType::cases())));
     }
 
@@ -77,11 +81,7 @@ class NeighborhoodApprovalTest extends TestCase
 
     public function test_submission_normalizes_area_and_returns_letter_type(): void
     {
-        $payload = [
-            'jenis_surat' => 'SKTM', 'nama' => 'Warga Fiktif', 'nik' => '0000000000000000', 'no_kk' => '0000000000000000',
-            'tempat_lahir' => 'Contoh', 'tanggal_lahir' => '2000-01-01', 'jenis_kelamin' => 'Laki-laki',
-            'alamat' => 'Alamat fiktif', 'rt' => '5', 'rw' => '09', 'telepon' => '08000000000', 'keperluan' => 'Keperluan fiktif',
-        ];
+        $payload = self::letterPayload('SKTM', ['rt' => '5', 'rw' => '09']);
         $this->postJson('/api/v1/applications', $payload)->assertCreated()->assertJsonPath('jenis_surat', 'SKTM');
         $this->assertDatabaseHas('applications', ['rt' => '005', 'rw' => '009']);
     }
@@ -193,10 +193,12 @@ class NeighborhoodApprovalTest extends TestCase
         $detail = $this->getJson('/api/v1/staff/applications/'.$application->request_id)->assertOk()
             ->assertJsonPath('nik', $application->nik)->assertJsonPath('no_kk', $application->no_kk)
             ->assertJsonPath('allowed_transitions', ['RW_APPROVED', 'REJECTED'])->json();
-        foreach (['telepon', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin'] as $field) $this->assertArrayNotHasKey($field, $detail);
+        foreach (['telepon', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'agama', 'status_perkawinan', 'pendidikan', 'pekerjaan', 'kewarganegaraan'] as $field) $this->assertArrayNotHasKey($field, $detail);
         $this->assertEqualsCanonicalizing([
-            'request_id', 'jenis_surat', 'nama', 'nik', 'no_kk', 'alamat', 'rt', 'rw', 'nama_usaha', 'jenis_usaha', 'alamat_usaha',
-            'keperluan', 'status', 'catatan', 'created_at', 'updated_at', 'allowed_transitions', 'can_reset_access_code', 'history',
+            'request_id', 'jenis_surat', 'nama', 'nik', 'no_kk', 'alamat', 'dusun', 'rt', 'rw', 'nama_usaha', 'jenis_usaha', 'alamat_usaha',
+            'keperluan', 'barang_hilang', 'acara', 'tempat_acara', 'tanggal_mulai', 'tanggal_selesai', 'jenis_hiburan',
+            'isi_keterangan', 'isi_keterangan_awal', 'can_edit_isi_keterangan',
+            'status', 'catatan', 'created_at', 'updated_at', 'allowed_transitions', 'can_reset_access_code', 'history',
         ], array_keys($detail));
         $this->assertDatabaseHas('audit_logs', ['user_id' => $user->id, 'action' => 'application.viewed', 'subject_id' => $application->id]);
         $this->actAs($this->user('staff'));
