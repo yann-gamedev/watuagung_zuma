@@ -13,6 +13,11 @@
 .fields dd { margin: 0; white-space: pre-wrap; }
 .identity { font-variant-numeric: tabular-nums; }
 .multiline { white-space: pre-wrap; }
+.sensitive { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.statement { display: grid; gap: 12px; }
+.statement label { font-weight: 700; }
+.statement textarea { width: 100%; resize: vertical; }
+.statement button { justify-self: start; }
 .actions label { font-weight: 700; }
 .actions textarea { width: 100%; min-height: 120px; resize: vertical; margin-top: 12px; }
 .actions p { color: var(--muted); }

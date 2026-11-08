@@ -13,8 +13,20 @@ function moduleUrl(path) {
   return `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`;
 }
 const { parseApplicationFilters: parse, parseApplicationSection: section, buildApplicationsHref: list,
-  buildApplicationDetailHref: detail, buildApplicationsApiPath: api, APPLICATION_SEARCH_MAX_LENGTH } = await import(moduleUrl("features/admin/application-filters.ts"));
+  buildApplicationDetailHref: detail, buildApplicationsApiPath: api, APPLICATION_SEARCH_MAX_LENGTH,
+  applicationServiceLabels } = await import(moduleUrl("features/admin/application-filters.ts"));
 const params = (query) => new URLSearchParams(query);
+const expectedServices = [
+  ["DOMISILI", "Surat Keterangan Domisili"],
+  ["SKTM", "Surat Keterangan Tidak Mampu"],
+  ["BELUM_MENIKAH", "Surat Keterangan Belum Menikah"],
+  ["KERAMAIAN", "Surat Keterangan Izin Keramaian"],
+  ["KEHILANGAN", "Surat Keterangan Kehilangan"],
+  ["UMUM", "Surat Keterangan"],
+  ["SKU", "Surat Keterangan Usaha (jenis lama)"],
+  ["KTP_KK", "Surat Pengantar KTP / KK (jenis lama)"],
+];
+assert.deepEqual(Object.entries(applicationServiceLabels), expectedServices);
 assert.equal(APPLICATION_SEARCH_MAX_LENGTH, 100);
 assert.deepEqual(parse(params("status=INVALID&jenis_surat=INVALID&sort=invalid&page=-1")), {
   q: "", status: "", jenis_surat: "", sort: "terbaru", page: 1,
@@ -32,12 +44,23 @@ const filtered = new URL(api("surat", parse(params("status=READY_FOR_PICKUP"), "
 assert.equal(filtered.searchParams.get("status"), "READY_FOR_PICKUP");
 assert.equal(filtered.searchParams.has("statuses[]"), false);
 for (const from of ["permohonan", "persetujuan", "surat"]) {
-  const filters = parse(params("q=Warga+Fiktif&jenis_surat=SKU&sort=terlama&page=2&status=APPROVED"), from);
-  const href = new URL(detail("REQ-2026-000001", from, filters), "https://example.test");
-  assert.equal(href.pathname, "/admin/permohonan/detail/");
-  assert.equal(href.searchParams.get("id"), "REQ-2026-000001");
-  assert.equal(href.searchParams.get("from"), from);
-  assert.equal(list(section(href.searchParams.get("from")), parse(href.searchParams, from)), list(from, filters));
+  for (const [code] of expectedServices) {
+    const filters = parse(params(`q=Warga+Fiktif&jenis_surat=${code}&sort=terlama&page=2&status=APPROVED`), from);
+    assert.equal(filters.jenis_surat, code);
+    const backend = new URL(api(from, filters), "https://example.test");
+    assert.equal(backend.searchParams.get("jenis_surat"), code);
+    assert.deepEqual(parse(backend.searchParams, from), filters);
+    const href = new URL(detail("REQ-2026-000001", from, filters), "https://example.test");
+    assert.equal(href.pathname, "/admin/permohonan/detail/");
+    assert.equal(href.searchParams.get("id"), "REQ-2026-000001");
+    assert.equal(href.searchParams.get("from"), from);
+    assert.equal(href.searchParams.get("jenis_surat"), code);
+    assert.deepEqual(parse(href.searchParams, from), filters);
+    const back = new URL(list(section(href.searchParams.get("from")), parse(href.searchParams, from)), "https://example.test");
+    assert.equal(back.searchParams.get("jenis_surat"), code);
+    assert.deepEqual(parse(back.searchParams, from), filters);
+    assert.equal(back.pathname + back.search, list(from, filters));
+  }
 }
 assert.equal(parse(params("status=APPROVED&jenis_surat=SKU"), "antrean-rt").status, "SUBMITTED");
 assert.equal(parse(params("status=APPROVED&jenis_surat=SKU"), "antrean-rt").jenis_surat, "");
@@ -59,4 +82,4 @@ for (const from of ["permohonan", "antrean-rt", "antrean-rw"]) {
 }
 assert.equal(parse(params("my_queue=true&today=garbage")).my_queue, undefined);
 assert.equal(parse(params("my_queue=true&today=garbage")).today, undefined);
-console.log("PASS: admin query validation, fixed queues, search limit, safe navigation, pagination, summary filters and detail round-trip.");
+console.log("PASS: admin service order/labels, all service API/detail/back round-trips, query validation, fixed queues, search limit, safe navigation, pagination and summary filters.");
