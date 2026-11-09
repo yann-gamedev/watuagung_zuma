@@ -1,3 +1,6 @@
 # Pasang dengan crontab -e milik user deploy, bukan menimpa seluruh crontab.
 # Ganti <APP_DIR> dengan path absolut repo; gunakan PHP CLI yang sama dengan PHP-FPM.
 * * * * * cd <APP_DIR>/backend && php artisan schedule:run >> /dev/null 2>&1
+# Backup terenkripsi harian 02.00 WIB; zona waktu server wajib Asia/Jakarta (server-setup.md).
+# Hasil/galat ke syslog: journalctl -t watuagung-backup. Variabel lain (BACKUP_DIR, DB_NAME, ...) lihat backup.sh.
+0 2 * * * APP_DIR=<APP_DIR> PGHOST=localhost PGUSER=<DB_USER> PASSPHRASE_FILE=/etc/watuagung/backup-passphrase bash <APP_DIR>/deploy/backup.sh 2>&1 | logger -t watuagung-backup
