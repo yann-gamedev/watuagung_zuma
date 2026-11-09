@@ -243,10 +243,10 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | POST | `/staff/posts` | Admin, staff, kim (`media:manage`) | Body `title`, `category`, `summary`, `body`, `status`; 201 |
 | GET | `/staff/posts/{id}` | Admin, staff, kim (`media:manage`) | Detail berita termasuk draf |
 | PATCH | `/staff/posts/{id}` | Admin, staff, kim (`media:manage`) | Ubah sebagian field yang sama |
-| DELETE | `/staff/posts/{id}` | Admin, staff, kim (`media:manage`) | Soft delete (baris dan sampul tetap ada, pemulihan lewat database) |
+| DELETE | `/staff/posts/{id}` | Admin, staff, kim (`media:manage`) | Soft delete; file sampul ikut dihapus (pemulihan lewat database tanpa sampul) |
 | POST/DELETE | `/staff/posts/{id}/cover` | Admin, staff, kim (`media:manage`), berbagi 10/menit per akun | Multipart `file` / hapus sampul; 200 detail berita terbaru |
 | GET/POST | `/staff/businesses` | Admin, staff, kim (`media:manage`) | Daftar / buat UMKM |
-| GET/PATCH/DELETE | `/staff/businesses/{id}` | Admin, staff, kim (`media:manage`) | Detail termasuk field pemilik, ubah, soft delete |
+| GET/PATCH/DELETE | `/staff/businesses/{id}` | Admin, staff, kim (`media:manage`) | Detail termasuk field pemilik, ubah, soft delete; file foto ikut dihapus |
 | POST/DELETE | `/staff/businesses/{id}/photo` | Admin, staff, kim (`media:manage`), 10/menit | Unggah / hapus foto UMKM |
 | GET/PUT | `/staff/site/{key}` | Admin, staff (`site:manage`), bukan kim | Baca / ganti konten situs |
 | POST | `/staff/site/{key}/image` | Admin, staff (`site:manage`), 10/menit | Gambar struktur |
@@ -275,7 +275,7 @@ GD menggambar ulang piksel, memperkecil lebar maksimal 1.600 px tanpa memperbesa
 
 Konfigurasi `MEDIA_URL` adalah **URL dasar absolut**, tanpa `/posts`: bawaan kosong/tidak diisi memakai `${APP_URL}/storage`; lokal jalankan `php artisan storage:link`. Untuk produksi isi `MEDIA_URL=https://[DOMAIN]/media`, sesuai `APP_URL`, lalu cache ulang konfigurasi. URL sampul menjadi `https://[DOMAIN]/media/posts/<uuid>.webp`. Nginx menyajikan hanya folder `storage/app/public/posts` di `/media/posts/`, bukan seluruh storage; lihat `docs/deploy-plan.md`.
 
-File baru disimpan sebelum transaksi penggantian dan audit `post.updated`; bila transaksi gagal, file baru dibersihkan dan sampul lama tetap. Baris dikunci saat penggantian; file lama dihapus setelah commit. Gagal hapus file lama → 500 dengan pesan bahwa sampul sudah diperbarui; perlu pembersihan administrator. Soft delete berita **tidak** menghapus file agar bisa dipulihkan. File sampul bersifat publik, termasuk sampul draf/berita terhapus bila URL diketahui; jangan unggah dokumen pribadi. Pembersihan berkala file sisa belum dibuat dan tidak termasuk retensi permohonan F10. Backup harus mencakup folder media.
+File baru disimpan sebelum transaksi penggantian dan audit `post.updated`; bila transaksi gagal, file baru dibersihkan dan sampul lama tetap. Baris dikunci saat penggantian; file lama dihapus setelah commit. Gagal hapus file lama → 500 dengan pesan bahwa sampul sudah diperbarui; perlu pembersihan administrator. Soft delete berita/UMKM mengosongkan path dalam transaksi lalu menghapus file setelah commit, agar storage tidak penuh; pemulihan lewat database menghasilkan berita/UMKM tanpa foto. Gagal hapus dicatat di log, tidak membatalkan penghapusan. File sampul bersifat publik, termasuk sampul draf/berita terhapus bila URL diketahui; jangan unggah dokumen pribadi. Pembersihan berkala: `php artisan media:prune --dry-run` menampilkan target; tanpa opsi, file di `posts/` dan `businesses/` yang tidak dirujuk baris aktif dan berumur > 1 jam dihapus, dan path pada baris terhapus dikosongkan. Dijadwalkan harian (`routes/console.php`); tidak menyentuh `site/` dan tidak termasuk retensi permohonan F10. Backup harus mencakup folder media.
 
 ### UMKM warga
 

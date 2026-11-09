@@ -290,6 +290,23 @@ class BusinessesApiTest extends TestCase
         $this->assertSame(['business.updated', 'business.updated', 'business.updated'], $this->auditActions($business->id));
     }
 
+    public function test_delete_business_removes_photo_file(): void
+    {
+        $this->act();
+        $business = $this->make(['slug' => 'foto-hapus']);
+        $this->post("/api/v1/staff/businesses/{$business->id}/photo", ['file' => $this->image(800, 600)], ['Accept' => 'application/json'])->assertOk();
+        $path = $business->fresh()->photo_path;
+        Storage::disk('public')->assertExists($path);
+
+        $this->deleteJson("/api/v1/staff/businesses/{$business->id}")->assertOk()->assertJsonPath('success', true);
+        Storage::disk('public')->assertMissing($path);
+        $this->assertSoftDeleted('businesses', ['id' => $business->id, 'photo_path' => null]);
+        $this->assertSame(['business.updated', 'business.deleted'], $this->auditActions($business->id));
+        // Pemulihan lewat database menghasilkan UMKM tanpa foto, bukan URL file yang hilang.
+        $business->fresh()->restore();
+        $this->getJson('/api/v1/businesses/foto-hapus')->assertOk()->assertJsonPath('photo_url', null);
+    }
+
     public static function smallPhotos(): array
     {
         return [[519, 385], [599, 400], [600, 399], [1, 1]];
@@ -342,16 +359,6 @@ class BusinessesApiTest extends TestCase
         $this->assertNull($business->fresh()->photo_path);
         $this->assertSame([], Storage::disk('public')->allFiles());
         $this->assertDatabaseCount('audit_logs', 0);
-    }
-
-    public function test_soft_delete_keeps_photo_file(): void
-    {
-        $this->act();
-        $business = $this->make();
-        $this->post("/api/v1/staff/businesses/{$business->id}/photo", ['file' => $this->image()], ['Accept' => 'application/json'])->assertOk();
-        $path = $business->fresh()->photo_path;
-        $this->deleteJson("/api/v1/staff/businesses/{$business->id}")->assertOk();
-        Storage::disk('public')->assertExists($path);
     }
 
     public function test_photo_mutations_share_limit_of_ten_per_minute(): void

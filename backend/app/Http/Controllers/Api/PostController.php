@@ -8,6 +8,7 @@ use App\Support\ImageProcessor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -108,12 +109,17 @@ class PostController extends Controller {
     public function destroy(Request $request, int $id): JsonResponse {
         $user = $request->user();
         if (! $user->canManageMedia()) return $this->forbidden();
-        DB::transaction(function () use ($user, $id) {
+        $oldPath = null;
+        DB::transaction(function () use ($user, $id, &$oldPath) {
             $post = Post::lockForUpdate()->findOrFail($id);
-            $post->forceFill(['updated_by'=>$user->id])->save();
+            $oldPath = $post->cover_path;
+            $post->forceFill(['updated_by'=>$user->id, 'cover_path'=>null])->save();
             $post->delete();
             $this->audit($user->id, 'post.deleted', $post);
         });
+        // Sampul ikut dihapus setelah commit agar storage tidak penuh. Berita yang dipulihkan tidak bersampul.
+        // Gagal hapus tidak membatalkan penghapusan; file yatim dibersihkan `media:prune`.
+        if ($oldPath !== null && ! Storage::disk('public')->delete($oldPath)) Log::warning('Sampul berita terhapus gagal dihapus.', ['path'=>$oldPath]);
         return response()->json(['success'=>true])->header('Cache-Control', 'private, no-store');
     }
 

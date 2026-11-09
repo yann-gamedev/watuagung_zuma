@@ -8,6 +8,7 @@ use App\Support\ImageProcessor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -135,12 +136,17 @@ class BusinessController extends Controller {
     public function destroy(Request $request, int $id): JsonResponse {
         $user = $request->user();
         if (! $user->canManageMedia()) return $this->forbidden();
-        DB::transaction(function () use ($user, $id) {
+        $oldPath = null;
+        DB::transaction(function () use ($user, $id, &$oldPath) {
             $business = Business::lockForUpdate()->findOrFail($id);
-            $business->forceFill(['updated_by'=>$user->id])->save();
+            $oldPath = $business->photo_path;
+            $business->forceFill(['updated_by'=>$user->id, 'photo_path'=>null])->save();
             $business->delete();
             $this->audit($user->id, 'business.deleted', $business);
         });
+        // Foto ikut dihapus setelah commit agar storage tidak penuh. UMKM yang dipulihkan tidak berfoto.
+        // Gagal hapus tidak membatalkan penghapusan; file yatim dibersihkan `media:prune`.
+        if ($oldPath !== null && ! Storage::disk('public')->delete($oldPath)) Log::warning('Foto UMKM terhapus gagal dihapus.', ['path'=>$oldPath]);
         return response()->json(['success'=>true])->header('Cache-Control', self::PRIVATE_CACHE);
     }
 

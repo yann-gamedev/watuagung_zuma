@@ -3,6 +3,8 @@
 use App\Domain\ApplicationStatus;
 use App\Domain\Letter;
 use App\Models\Application;
+use App\Models\Business;
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -94,7 +96,33 @@ Artisan::command('applications:purge {--dry-run}', function () {
     return 0;
 })->purpose('Anonimkan permohonan COMPLETED/REJECTED yang melewati masa simpan (RETENTION_APPLICATION_DAYS)');
 
+// Hapus foto berita/UMKM yang tidak lagi dirujuk baris aktif: sisa soft delete sebelum foto ikut terhapus,
+// atau file yang gagal dihapus. File berumur < 1 jam dilewati agar unggahan yang belum commit tidak ikut terhapus.
+Artisan::command('media:prune {--dry-run}', function () {
+    $dry = (bool) $this->option('dry-run');
+    $disk = Storage::disk('public');
+    $cutoff = now()->subHour()->getTimestamp();
+    $files = 0;
+    foreach (['posts' => [Post::class, 'cover_path'], 'businesses' => [Business::class, 'photo_path']] as $directory => [$model, $column]) {
+        $trashed = $model::onlyTrashed()->whereNotNull($column);
+        // toBase: updated_at baris terhapus tidak berubah.
+        $rows = $dry ? $trashed->count() : $trashed->toBase()->update([$column => null]);
+        if ($rows > 0) $this->line(($dry ? '[dry-run] ' : '')."$directory: $rows baris terhapus dilepas dari fotonya.");
+        $referenced = $model::query()->whereNotNull($column)->pluck($column)->flip();
+        foreach ($disk->files($directory) as $path) {
+            if ($referenced->has($path) || $disk->lastModified($path) > $cutoff) continue;
+            $this->line(($dry ? '[dry-run] ' : '')."hapus $path");
+            $files++;
+            if (! $dry && ! $disk->delete($path)) $this->warn("$path gagal dihapus.");
+        }
+    }
+    $this->info($dry ? "[dry-run] $files file akan dihapus; tidak ada yang diubah." : "$files file foto yatim dihapus.");
+    return 0;
+})->purpose('Hapus foto berita/UMKM yang tidak dirujuk berita/UMKM aktif');
+
 // Hapus token petugas yang sudah kedaluwarsa lebih dari 24 jam.
 Schedule::command('sanctum:prune-expired --hours=24')->daily();
 // Aman dijadwalkan: tanpa RETENTION_APPLICATION_DAYS perintah keluar tanpa mengubah apa pun.
 Schedule::command('applications:purge')->daily();
+// Hanya menghapus file yang tidak dirujuk berita/UMKM aktif.
+Schedule::command('media:prune')->daily();

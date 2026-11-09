@@ -145,6 +145,6 @@ export function BusinessEditor({ id }: { id?: number }) {
     </form>
     {busy && <p role="status">Menyimpan perubahan…</p>}
     {item && <button className="btn btn-secondary" type="button" disabled={busy} onClick={() => dialog.current?.showModal()}>Hapus UMKM</button>}
-    <dialog ref={dialog} className={styles.dialog} aria-labelledby="umkm-delete-title" onCancel={(event) => { if (busy) event.preventDefault(); }}><h2 id="umkm-delete-title">Hapus UMKM</h2><p>UMKM akan dihapus dari website dan daftar panel. Lanjutkan?</p><div className={styles.actions}><button type="button" className="btn btn-secondary" disabled={busy} onClick={() => dialog.current?.close()} autoFocus>Batal</button><button type="button" className="btn" disabled={busy} onClick={() => void remove()}>Ya, hapus UMKM</button></div></dialog>
+    <dialog ref={dialog} className={styles.dialog} aria-labelledby="umkm-delete-title" onCancel={(event) => { if (busy) event.preventDefault(); }}><h2 id="umkm-delete-title">Hapus UMKM</h2><p>UMKM akan dihapus dari website dan daftar panel. Fotonya ikut dihapus dan tidak dapat dikembalikan. Lanjutkan?</p><div className={styles.actions}><button type="button" className="btn btn-secondary" disabled={busy} onClick={() => dialog.current?.close()} autoFocus>Batal</button><button type="button" className="btn" disabled={busy} onClick={() => void remove()}>Ya, hapus UMKM</button></div></dialog>
   </div>;
 }
