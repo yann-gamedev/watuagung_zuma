@@ -20,13 +20,18 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
         ]);
+        // Ability ditolak sebelum route model binding: token tanpa ability mendapat 403, bukan 404 yang membocorkan keberadaan data.
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            prepend: \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
         $exceptions->respond(function (\Symfony\Component\HttpFoundation\Response $response) {
-            if (request()->is('api/v1/staff/site/*') || (request()->isMethod('GET') && request()->is('api/v1/staff/applications', 'api/v1/staff/applications/*', 'api/v1/staff/letter-register', 'api/v1/staff/summary', 'api/v1/staff/posts', 'api/v1/staff/posts/*'))) {
+            if (request()->is('api/v1/staff/site/*') || (request()->isMethod('GET') && request()->is('api/v1/staff/*'))) {
                 $response->headers->set('Cache-Control', 'private, no-store');
             }
 

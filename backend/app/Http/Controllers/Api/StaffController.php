@@ -32,7 +32,7 @@ class StaffController extends Controller {
 
     public function summary(Request $request): JsonResponse {
         $user = $request->user();
-        if (! $user->canAccessPanel()) return $this->forbidden();
+        if (! $user->canManageApplications()) return $this->forbidden();
         $query = Application::query()->forUser($user);
         $counts = (clone $query)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status')->map(fn ($count) => (int) $count)->all();
         $queue = (clone $query)->forMyQueue($user);
@@ -57,7 +57,7 @@ class StaffController extends Controller {
         // Akun nonaktif memakai pesan yang sama dengan kredensial salah.
         if (! $user || ! Hash::check($data['password'], $user->password) || ! $user->canAccessPanel()) return response()->json(['message'=>'Kredensial tidak valid.'], 401);
         $user->forceFill(['last_login_at'=>now()])->save();
-        return response()->json(['token'=>$user->createToken('staff', ['applications:manage'])->plainTextToken,'must_change_password'=>(bool) $user->must_change_password,'user'=>['name'=>$user->name,'role'=>$user->role,'rt'=>$user->rt,'rw'=>$user->rw]]);
+        return response()->json(['token'=>$user->createToken('staff', $user->abilities())->plainTextToken,'must_change_password'=>(bool) $user->must_change_password,'user'=>['name'=>$user->name,'role'=>$user->role,'rt'=>$user->rt,'rw'=>$user->rw]]);
     }
     public function logout(Request $request): JsonResponse {
         $request->user()->currentAccessToken()->delete();
@@ -67,11 +67,11 @@ class StaffController extends Controller {
         $user = $request->user();
         // Role can change after a token is issued; re-check on every call.
         if (! $user->canAccessPanel()) return $this->forbidden();
-        return response()->json(['name'=>$user->name,'username'=>$user->username,'role'=>$user->role,'rt'=>$user->rt,'rw'=>$user->rw,'must_change_password'=>(bool) $user->must_change_password,'features'=>['neighborhood_approval'=>(bool) config('letters.neighborhood_approval', false)]]);
+        return response()->json(['name'=>$user->name,'username'=>$user->username,'role'=>$user->role,'rt'=>$user->rt,'rw'=>$user->rw,'must_change_password'=>(bool) $user->must_change_password,'abilities'=>$user->abilities(),'features'=>['neighborhood_approval'=>(bool) config('letters.neighborhood_approval', false)]]);
     }
     public function index(Request $request): JsonResponse {
         $user = $request->user();
-        if (! $user->canAccessPanel()) return $this->forbidden();
+        if (! $user->canManageApplications()) return $this->forbidden();
         $data = $request->validate([
             'status'=>['sometimes','prohibits:statuses',Rule::in(ApplicationStatus::values())],
             'statuses'=>['sometimes','prohibits:status','array','min:1','max:'.count(ApplicationStatus::cases())],
@@ -105,7 +105,7 @@ class StaffController extends Controller {
     }
     public function letterRegister(Request $request): JsonResponse {
         $user = $request->user();
-        if (! $user->canAccessPanel() || ! in_array($user->role, ['staff', 'admin', 'village_head'], true)) return $this->forbidden();
+        if (! $user->canManageApplications() || ! in_array($user->role, ['staff', 'admin', 'village_head'], true)) return $this->forbidden();
         $data = $request->validate([
             'year'=>['sometimes','integer','between:1000,9999'],
             'jenis_surat'=>['sometimes',Rule::enum(LetterType::class)],
@@ -123,7 +123,7 @@ class StaffController extends Controller {
     }
     public function show(Request $request, string $request_id): JsonResponse {
         $user = $request->user();
-        if (! $user->canAccessPanel()) return $this->forbidden();
+        if (! $user->canManageApplications()) return $this->forbidden();
         // No implicit model binding: authorize and validate before loading private data.
         Validator::make(['request_id'=>$request_id], [
             'request_id'=>['required','string','max:64','regex:/\AREQ-[0-9]{4}-[A-Z0-9]+\z/'],
@@ -209,7 +209,7 @@ class StaffController extends Controller {
     }
     public function update(Request $request, Application $application): JsonResponse {
         $user = $request->user();
-        if (! $user->canAccessPanel()) return $this->forbidden();
+        if (! $user->canManageApplications()) return $this->forbidden();
         if (! $application->isInTerritory($user)) return $this->forbidden();
         $data = $request->validate(['status'=>['required',Rule::in(ApplicationStatus::values())], 'catatan'=>['nullable','string','max:1000']]);
         $note = blank($data['catatan'] ?? null) ? null : trim($data['catatan']);

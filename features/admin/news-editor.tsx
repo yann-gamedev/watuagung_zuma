@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { StaffPostDetail, StaffPostInput, PostStatus } from "@/types/posts";
 import { NewsArticle } from "@/components/news-article";
-import { useAdminSession } from "./session";
+import { can, useAdminSession } from "./session";
 import { AdminUnauthorizedError } from "./api";
 import { categoryLabels, parsePost, postDate, postInputSchema } from "./news-data";
 import { NewsStatus } from "./news-list";
@@ -48,7 +48,7 @@ export function NewsEditor({ id }: { id?: number }) {
   useUnsavedChanges(dirty || busy);
 
   useEffect(() => {
-    if (!id && user && ["admin", "staff"].includes(user.role)) return;
+    if (!id || !can(user, "media:manage")) return;
     let cancelled = false;
     void request<unknown>(id ? `/staff/posts/${id}` : "/staff/posts").then(parsePost).then((result) => {
       if (!cancelled) { setPost(result); setValue(fields(result)); setSaved(fields(result)); }
@@ -108,7 +108,7 @@ export function NewsEditor({ id }: { id?: number }) {
   }
 
   if (loading) return <p role="status">Memuat berita…</p>;
-  if (!user || !["admin", "staff"].includes(user.role)) return <div><p className="error-box" role="alert">{error || "Halaman ini tidak tersedia untuk peran Anda."}</p><Link className="btn btn-secondary" href="/admin/">Kembali ke panel Anda</Link></div>;
+  if (!can(user, "media:manage")) return <div><p className="error-box" role="alert">{error || "Halaman ini tidak tersedia untuk peran Anda."}</p><Link className="btn btn-secondary" href="/admin/">Kembali ke panel Anda</Link></div>;
   if (notice === "Berita dihapus.") return <div><p role="status">{notice}</p><Link className="btn" href="/admin/berita/">Kembali ke daftar berita</Link></div>;
   if (id && !post) return <div><p className="error-box" role="alert">{error}</p><button className="btn" onClick={() => { setLoading(true); setError(""); setAttempt((n) => n + 1); }}>Muat ulang</button><Link className="btn btn-secondary" href="/admin/berita/">Kembali ke daftar berita</Link></div>;
   const cover = file ? localCover : removeCover ? null : post?.cover_url;

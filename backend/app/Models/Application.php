@@ -19,7 +19,7 @@ class Application extends Model
     }
 
     public function scopeForUser(Builder $query, User $user): void {
-        if (! $user->canAccessPanel()) {
+        if (! $user->canManageApplications()) {
             $query->whereRaw('1 = 0');
         } elseif ($user->isNeighborhoodHead()) {
             // Minimisasi data: RT/RW hanya melihat jenis surat yang memerlukan pengantar mereka.
@@ -45,7 +45,7 @@ class Application extends Model
     }
 
     public function isInTerritory(User $user): bool {
-        if (! $user->canAccessPanel()) return false;
+        if (! $user->canManageApplications()) return false;
         if (! $user->isNeighborhoodHead()) return true;
 
         return LetterType::from($this->jenis_surat)->requiresNeighborhoodApproval()

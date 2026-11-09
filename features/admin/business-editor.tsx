@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { businessCategoryLabels, businessHref } from "@/services/businesses";
 import { businessCategories, businessHamlets, type BusinessStatus } from "@/types/business";
-import { useAdminSession } from "./session";
+import { can, useAdminSession } from "./session";
 import { AdminUnauthorizedError, AdminValidationError } from "./api";
 import { businessInputSchema, parseBusiness, type BusinessForm } from "./business-data";
 import { NewsStatus } from "./news-list";
@@ -33,7 +33,7 @@ export function BusinessEditPage() {
 /** Pola sama dengan news-editor.tsx: teks disimpan dulu (foto perlu ID), lalu foto diunggah/dihapus. */
 export function BusinessEditor({ id }: { id?: number }) {
   const { request, user } = useAdminSession();
-  const allowed = !!user && ["admin", "staff"].includes(user.role);
+  const allowed = can(user, "media:manage");
   const [item, setItem] = useState<Detail | null>(null);
   const [value, setValue] = useState<BusinessForm>(empty);
   const [saved, setSaved] = useState<BusinessForm>(empty);

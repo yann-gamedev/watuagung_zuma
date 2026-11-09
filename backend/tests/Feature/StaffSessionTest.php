@@ -43,7 +43,7 @@ class StaffSessionTest extends TestCase
             $user = $this->staff(['role' => $role, 'username' => "petugas-$i", 'email' => "p$i@example.test"]);
             $this->me($this->loginToken($user))
                 ->assertOk()
-                ->assertExactJson(['name' => 'Petugas Fiktif', 'username' => "petugas-$i", 'role' => $role, 'rt' => null, 'rw' => null, 'must_change_password' => false, 'features' => ['neighborhood_approval' => false]]);
+                ->assertExactJson(['name' => 'Petugas Fiktif', 'username' => "petugas-$i", 'role' => $role, 'rt' => null, 'rw' => null, 'must_change_password' => false, 'abilities' => $user->abilities(), 'features' => ['neighborhood_approval' => false]]);
         }
     }
 
@@ -53,7 +53,7 @@ class StaffSessionTest extends TestCase
         $token = $this->postJson('/api/v1/staff/login', [
             'email' => $user->email, 'password' => 'test-password-only',
         ])->assertOk()->json('token');
-        $this->me($token)->assertOk()->assertExactJson(['name' => 'Petugas Fiktif', 'username' => null, 'role' => 'staff', 'rt' => null, 'rw' => null, 'must_change_password' => false, 'features' => ['neighborhood_approval' => false]]);
+        $this->me($token)->assertOk()->assertExactJson(['name' => 'Petugas Fiktif', 'username' => null, 'role' => 'staff', 'rt' => null, 'rw' => null, 'must_change_password' => false, 'abilities' => ['panel', 'applications:manage', 'media:manage', 'site:manage'], 'features' => ['neighborhood_approval' => false]]);
     }
 
     public function test_me_requires_a_token(): void
@@ -97,10 +97,10 @@ class StaffSessionTest extends TestCase
         $this->me($token)->assertForbidden()->assertJsonMissingPath('name');
     }
 
-    public function test_token_without_manage_ability_is_forbidden(): void
+    public function test_token_without_panel_ability_is_forbidden(): void
     {
         $user = $this->staff();
-        $token = $user->createToken('other', ['something:else'])->plainTextToken;
+        $token = $user->createToken('other', ['applications:manage'])->plainTextToken;
         $this->me($token)->assertForbidden();
     }
 

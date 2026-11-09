@@ -11,6 +11,7 @@ const roleLabels: Record<StaffRole, string> = {
   staff: "Petugas",
   village_head: "Kepala Desa",
   admin: "Admin",
+  kim: "KIM (Media Informasi)",
   rt_head: "Ketua RT",
   rw_head: "Ketua RW",
 };
@@ -339,6 +340,7 @@ function AccountForm({ editor, lockRole, onCreate, onUpdate, onReset, onCancel }
         <select id={`${id}-role`} value={role} onChange={(event) => setRole(event.target.value as StaffRole)} disabled={lockRole}>
           {availableRoles.map((item) => <option key={item} value={item}>{roleLabels[item]}</option>)}
         </select>
+        {role === "kim" && <p className={styles.help}>Hanya mengelola berita dan UMKM</p>}
         {lockRole && <p className={styles.help}>Anda tidak dapat menurunkan peran akun sendiri.</p>}
       </div>
       {role === "rt_head" && (

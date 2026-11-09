@@ -41,7 +41,8 @@ export type StaffLoginRequest = { password: string } & (
   | { username: string; email?: never }
   | { email: string; username?: never }
 );
-export type StaffRole = "staff" | "village_head" | "admin" | "rt_head" | "rw_head";
+export type StaffRole = "staff" | "village_head" | "admin" | "rt_head" | "rw_head" | "kim";
+export type StaffAbility = "panel" | "applications:manage" | "media:manage" | "site:manage";
 /** Metadata daftar petugas; tidak memuat NIK, KK, telepon, atau alamat. */
 export interface StaffApplication {
   request_id: string;
@@ -167,6 +168,7 @@ export interface StaffLoginResponse {
 }
 /** GET /staff/me. Akun lama boleh belum punya username. */
 export interface StaffProfile {
+  abilities: StaffAbility[];
   features: { neighborhood_approval: boolean };
   name: string;
   username: string | null;

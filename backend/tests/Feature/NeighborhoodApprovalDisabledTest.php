@@ -26,7 +26,7 @@ class NeighborhoodApprovalDisabledTest extends TestCase
     private function actAs(User $user): void
     {
         $this->app['auth']->forgetGuards();
-        Sanctum::actingAs($user, ['applications:manage']);
+        Sanctum::actingAs($user, ['panel', 'applications:manage']);
     }
 
     public static function letterTypes(): array

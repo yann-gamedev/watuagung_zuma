@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { businessCategoryLabels } from "@/services/businesses";
 import { businessCategories } from "@/types/business";
 import { AdminUnauthorizedError } from "./api";
-import { useAdminSession } from "./session";
+import { can, useAdminSession } from "./session";
 import { staffBusinessesPageSchema } from "./business-data";
 import { postDate } from "./news-data";
 import { NewsStatus } from "./news-list";
@@ -31,7 +31,7 @@ export function BusinessList() {
     setFilters({ q: String(data.get("q") ?? "").trim(), status: String(data.get("status") ?? ""), category: String(data.get("category") ?? ""), page: 1 });
     setAttempt((n) => n + 1);
   }
-  if (!user || !["admin", "staff"].includes(user.role)) return <p className="error-box" role="alert">Halaman ini tidak tersedia untuk peran Anda.</p>;
+  if (!can(user, "media:manage")) return <p className="error-box" role="alert">Halaman ini tidak tersedia untuk peran Anda.</p>;
   return <div className={styles.list}>
     <div className={styles.intro}><p>Kelola daftar UMKM warga. Hanya usaha berstatus Terbit yang tampil di website.</p><Link className="btn" href="/admin/umkm/tambah/">Tambah UMKM</Link></div>
     <section className={styles.panel} aria-labelledby="umkm-heading">

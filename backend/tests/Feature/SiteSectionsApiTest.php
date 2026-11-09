@@ -19,10 +19,10 @@ class SiteSectionsApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function act(string $role = 'staff', array $abilities = ['applications:manage']): User
+    private function act(string $role = 'staff', ?array $abilities = null): User
     {
         $user = User::factory()->create(['role' => $role, 'rt' => '001', 'rw' => '002']);
-        Sanctum::actingAs($user, $abilities);
+        Sanctum::actingAs($user, $abilities ?? $user->abilities());
         return $user;
     }
 

@@ -28,10 +28,10 @@ class PostCoverTest extends TestCase
         if (! extension_loaded('gd')) $this->markTestSkipped('php-gd tidak tersedia; pengujian pemrosesan sampul membutuhkan GD.');
     }
 
-    private function act(string $role = 'staff', array $abilities = ['applications:manage']): User
+    private function act(string $role = 'staff', ?array $abilities = null): User
     {
         $user = User::factory()->create(['role'=>$role, 'rt'=>'001', 'rw'=>'002']);
-        Sanctum::actingAs($user, $abilities);
+        Sanctum::actingAs($user, $abilities ?? $user->abilities());
         return $user;
     }
 

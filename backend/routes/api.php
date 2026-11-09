@@ -16,9 +16,13 @@ Route::get('/v1/posts/{slug}', [PostController::class, 'show'])->middleware('thr
 Route::get('/v1/site/{key}', [SiteSectionController::class, 'show'])->middleware('throttle:60,1');
 Route::get('/v1/businesses', [BusinessController::class, 'index'])->middleware('throttle:60,1');
 Route::get('/v1/businesses/{slug}', [BusinessController::class, 'show'])->middleware('throttle:60,1');
-Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/staff')->group(function () {
+// Grup per ability: route baru wajib masuk salah satu grup sehingga peran tanpa ability tertolak bawaan.
+Route::middleware(['auth:sanctum','abilities:panel'])->prefix('v1/staff')->group(function () {
     Route::post('/logout', [StaffController::class, 'logout']);
     Route::get('/me', [StaffController::class, 'me']);
+    Route::post('/me/password', [StaffUserController::class, 'changeOwnPassword']);
+});
+Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/staff')->group(function () {
     Route::get('/letter-register', [StaffController::class, 'letterRegister']);
     Route::get('/summary', [StaffController::class, 'summary']);
     Route::get('/applications', [StaffController::class, 'index']);
@@ -29,15 +33,18 @@ Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/
     Route::get('/applications/{request_id}/letter.pdf', [LetterController::class, 'download'])->middleware('throttle:30,1');
     Route::post('/applications/{request_id}/letter.pdf', [LetterController::class, 'upload'])->middleware('throttle:10,1');
     Route::get('/applications/{request_id}/letter-qr.png', [LetterController::class, 'qr']);
-    Route::post('/me/password', [StaffUserController::class, 'changeOwnPassword']);
     Route::get('/users', [StaffUserController::class, 'index']);
     Route::post('/users', [StaffUserController::class, 'store']);
     Route::patch('/users/{id}', [StaffUserController::class, 'update']);
     Route::post('/users/{id}/reset-password', [StaffUserController::class, 'resetPassword']);
+});
+Route::middleware(['auth:sanctum','abilities:site:manage'])->prefix('v1/staff')->group(function () {
     Route::get('/site/{key}', [SiteSectionController::class, 'staffShow']);
     Route::put('/site/{key}', [SiteSectionController::class, 'update']);
     Route::post('/site/{key}/image', [SiteSectionController::class, 'image'])->middleware('throttle:10,1,site-image');
     Route::post('/site/{key}/document', [SiteSectionController::class, 'document'])->middleware('throttle:10,1,site-document');
+});
+Route::middleware(['auth:sanctum','abilities:media:manage'])->prefix('v1/staff')->group(function () {
     Route::get('/posts', [PostController::class, 'staffIndex']);
     Route::post('/posts', [PostController::class, 'store']);
     Route::get('/posts/{id}', [PostController::class, 'staffShow'])->whereNumber('id');

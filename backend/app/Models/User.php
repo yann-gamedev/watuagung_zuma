@@ -45,14 +45,42 @@ class User extends Authenticatable {
         };
     }
 
-    /** Buat ulang kode akses: semua peran panel kecuali kepala desa; wilayah dibatasi lewat Application::forUser. */
-    public function canResetAccessCode(): bool {
-        return $this->canAccessPanel() && $this->role !== 'village_head';
+    /** Ability token Sanctum => peran. `panel` dimiliki semua peran panel aktif. */
+    private const ABILITY_ROLES = [
+        'applications:manage' => ['staff', 'admin', 'village_head', 'rt_head', 'rw_head'],
+        'media:manage' => ['admin', 'staff', 'kim'],
+        'site:manage' => ['admin', 'staff'],
+    ];
+
+    /** Satu-satunya sumber ability per peran: dipakai saat login, /me, dan pemeriksaan controller. */
+    public function abilities(): array {
+        if (! $this->canAccessPanel()) return [];
+        $granted = array_keys(array_filter(self::ABILITY_ROLES, fn (array $roles) => in_array($this->role, $roles, true)));
+        return ['panel', ...$granted];
     }
 
-    /** Kelola berita (keputusan C-2): ubah di sini bila desa menambah peran penulis. */
+    public function hasPanelAbility(string $ability): bool {
+        return in_array($ability, $this->abilities(), true);
+    }
+
+    /** Layanan surat: permohonan, ringkasan, register, PDF, kode akses. KIM tidak termasuk. */
+    public function canManageApplications(): bool {
+        return $this->hasPanelAbility('applications:manage');
+    }
+
+    /** Buat ulang kode akses: semua peran layanan surat kecuali kepala desa; wilayah dibatasi lewat Application::forUser. */
+    public function canResetAccessCode(): bool {
+        return $this->canManageApplications() && $this->role !== 'village_head';
+    }
+
+    /** Berita dan UMKM: admin, staff, kim. */
+    public function canManageMedia(): bool {
+        return $this->hasPanelAbility('media:manage');
+    }
+
+    /** Konten desa (site_sections): admin, staff. */
     public function canManageContent(): bool {
-        return $this->canAccessPanel() && in_array($this->role, ['admin', 'staff'], true);
+        return $this->hasPanelAbility('site:manage');
     }
 
     public function canAccessPanel(): bool {
