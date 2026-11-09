@@ -120,8 +120,11 @@ class PostController extends Controller {
     public function uploadCover(Request $request, int $id): JsonResponse {
         if (! $request->user()->canManageMedia()) return $this->forbidden();
         Post::findOrFail($id);
-        $request->validate(['file'=>['bail', 'required', 'file']]);
-        $path = ImageProcessor::store($request->file('file'), 'posts', 3072, 1600);
+        $request->validate(['file'=>['bail', 'required', 'file']], [
+            'file.required'=>'Pilih foto yang akan diunggah.',
+            'file.file'=>'Foto harus berupa file yang valid.',
+        ]);
+        $path = ImageProcessor::store($request->file('file'), 'posts', 3072, 1600, minWidth: 1, minHeight: 1);
         try {
             $post = $this->changeCover($request, $id, $path, $oldPath);
         } catch (\Throwable $e) {

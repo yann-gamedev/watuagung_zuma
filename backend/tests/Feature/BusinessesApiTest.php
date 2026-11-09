@@ -289,19 +289,53 @@ class BusinessesApiTest extends TestCase
         $this->assertSame(['business.updated', 'business.updated', 'business.updated'], $this->auditActions($business->id));
     }
 
+    public static function smallPhotos(): array
+    {
+        return [[519, 385], [599, 400], [600, 399], [1, 1]];
+    }
+
+    #[DataProvider('smallPhotos')]
+    public function test_small_photo_is_not_upscaled_and_exposes_public_url(int $width, int $height): void
+    {
+        $this->act();
+        $business = $this->make(['slug' => 'foto-kecil']);
+        Storage::fake('public', ['url' => 'https://desa.example/media']);
+        $response = $this->post("/api/v1/staff/businesses/{$business->id}/photo", ['file' => $this->image($width, $height)], ['Accept' => 'application/json'])
+            ->assertOk()->assertJsonMissingPath('photo_path');
+        $path = $business->fresh()->photo_path;
+        $this->assertSame([$width, $height], array_slice(getimagesizefromstring(Storage::disk('public')->get($path)), 0, 2));
+        $url = 'https://desa.example/media/'.$path;
+        $response->assertJsonPath('photo_url', $url);
+        $this->getJson('/api/v1/businesses/foto-kecil')->assertOk()->assertJsonPath('photo_url', $url)->assertJsonMissingPath('photo_path');
+        $this->getJson('/api/v1/businesses')->assertJsonPath('data.0.photo_url', $url)->assertJsonMissingPath('data.0.photo_path');
+    }
+
+    public function test_photo_size_and_dimension_boundaries_are_accepted(): void
+    {
+        $this->act();
+        $business = $this->make();
+        foreach ([$this->image(6000, 400)->size(3072), $this->image(600, 6000)] as $file) {
+            $this->post("/api/v1/staff/businesses/{$business->id}/photo", ['file' => $file], ['Accept' => 'application/json'])->assertOk();
+        }
+    }
+
     public function test_photo_rejects_invalid_files_without_changing_photo(): void
     {
         $this->act();
         $business = $this->make();
-        $this->postJson("/api/v1/staff/businesses/{$business->id}/photo", [])->assertUnprocessable()->assertJsonValidationErrors('file');
+        $url = "/api/v1/staff/businesses/{$business->id}/photo";
+        $this->postJson($url, [])->assertUnprocessable()->assertJsonPath('errors.file.0', 'Pilih foto yang akan diunggah.');
+        $this->postJson($url, ['file' => 'bukan file'])->assertUnprocessable()->assertJsonPath('errors.file.0', 'Foto harus berupa file yang valid.');
         foreach ([
-            UploadedFile::fake()->create('dokumen.pdf', 10, 'application/pdf'),
-            UploadedFile::fake()->createWithContent('palsu.jpg', 'bukan gambar'),
-            $this->image(500, 300),
-            UploadedFile::fake()->image('besar.jpg', 1000, 800)->size(3073),
-        ] as $file) {
-            $this->post("/api/v1/staff/businesses/{$business->id}/photo", ['file' => $file], ['Accept' => 'application/json'])
-                ->assertUnprocessable()->assertJsonValidationErrors('file');
+            [UploadedFile::fake()->create('dokumen.pdf', 10, 'application/pdf'), 'Format foto harus JPG, JPEG, PNG, atau WebP.'],
+            [UploadedFile::fake()->createWithContent('palsu.jpg', 'bukan gambar'), 'Lebar foto harus 1–6000 piksel dan tinggi 1–6000 piksel.'],
+            [UploadedFile::fake()->image('foto.gif', 600, 400), 'Format foto harus JPG, JPEG, PNG, atau WebP.'],
+            [$this->image(6001, 400), 'Lebar foto harus 1–6000 piksel dan tinggi 1–6000 piksel.'],
+            [$this->image(600, 6001), 'Lebar foto harus 1–6000 piksel dan tinggi 1–6000 piksel.'],
+            [$this->image()->size(3073), 'Ukuran foto maksimal 3072 KiB.'],
+        ] as [$file, $message]) {
+            $this->post($url, ['file' => $file], ['Accept' => 'application/json'])
+                ->assertUnprocessable()->assertJsonValidationErrors('file')->assertJsonPath('errors.file.0', $message);
         }
         $this->post('/api/v1/staff/businesses/999/photo', ['file' => $this->image()], ['Accept' => 'application/json'])->assertNotFound();
         $this->assertNull($business->fresh()->photo_path);
