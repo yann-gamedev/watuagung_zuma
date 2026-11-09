@@ -1,0 +1,3 @@
+# Skrip Bash dan crontab harus tetap LF, termasuk checkout dari Windows.
+*.sh text eol=lf
+crontab.txt text eol=lf

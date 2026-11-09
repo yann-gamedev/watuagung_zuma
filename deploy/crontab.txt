@@ -1,0 +1,3 @@
+# Pasang dengan crontab -e milik user deploy, bukan menimpa seluruh crontab.
+# Ganti <APP_DIR> dengan path absolut repo; gunakan PHP CLI yang sama dengan PHP-FPM.
+* * * * * cd <APP_DIR>/backend && php artisan schedule:run >> /dev/null 2>&1
