@@ -13,6 +13,7 @@ Dokumentasi aktif tetap berada pada lokasi yang dirujuk aturan proyek. Catatan p
 | [AGENTS.md](../AGENTS.md) | Aturan kerja dan kontribusi repositori |
 | [README backend](../backend/README.md) | Setup Laravel, akun/peran, endpoint, keamanan, dan persiapan produksi |
 | [Integrasi](integrasi.md) | Kontrak frontend–API, mode demo/API, sesi, dan alur surat |
+| [Panduan tambah pengguna](panduan-tambah-pengguna.md) | Membuat dan mengelola akun petugas panel, termasuk admin pertama |
 
 Status proyek terkini dirangkum di roadmap. Jika panduan dan kode berbeda, periksa implementasi serta keputusan terbaru sebelum mengubah perilaku; jangan menganggap catatan historis sebagai spesifikasi baru.
 
