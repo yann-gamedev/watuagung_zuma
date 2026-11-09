@@ -1,6 +1,7 @@
 import { PublicShell, PageHeading, StatisticCard } from "@/components/site";
 import { UsersRound, House, MapPinned, Map as MapIcon } from "lucide-react";
 import { statistics as s } from "@/lib/data";
+import { ProfileLinks } from "@/components/profile-links";
 export const metadata = { title: "Statistik Desa" };
 const n = (value: number) => value.toLocaleString("id-ID");
 export default function Page() {
@@ -84,6 +85,7 @@ export default function Page() {
             </p>
           </div>
         </div>
+        <ProfileLinks current="statistik" />
       </section>
     </PublicShell>
   );

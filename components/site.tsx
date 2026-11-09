@@ -10,6 +10,7 @@ import { NewsCover } from "@/components/news-cover";
 import { newsHref, type NewsItem } from "@/services/posts";
 import type { ServiceCode, Status } from "@/types/pelayanan";
 import { SiteHeader, normalizePath } from "@/components/site-header";
+import { BackLink, NavHistoryTracker } from "@/components/back-link";
 import { complaintFormUrl, complaintNote, externalLinkProps } from "@/lib/complaint";
 export function Footer() {
   const contact = useContact();
@@ -94,6 +95,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
   const isHome = normalizePath(usePathname()) === "/";
   return (
     <ContactProvider>
+      <NavHistoryTracker />
       <SiteHeader />
       {/* Beranda: ruang header diberikan oleh .hero; halaman lain 72px. */}
       <main id="main" className={isHome ? undefined : "main-offset"}>
@@ -223,6 +225,8 @@ export function PageHeading({
     <div className={editorial ? "page-heading page-heading-editorial" : "page-heading"}>
       <div className="container">
         <div className="breadcrumb">
+          <BackLink fallbackHref={parent?.href ?? "/"} />
+          <span className="breadcrumb-divider" aria-hidden="true" />
           <Link href="/">Beranda</Link>
           <span>/</span>
           {parent && (

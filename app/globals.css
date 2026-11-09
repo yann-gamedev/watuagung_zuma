@@ -1712,6 +1712,22 @@ p {
   text-decoration: underline;
   text-underline-offset: 4px;
 }
+/* Tombol Kembali di awal breadcrumb: kembali ke halaman asal, atau induk bila dibuka langsung. */
+.breadcrumb a.back-link {
+  gap: 6px;
+  color: var(--forest);
+  font-weight: 600;
+  text-decoration: none;
+}
+.breadcrumb a.back-link:hover {
+  text-decoration: underline;
+}
+.breadcrumb-divider {
+  align-self: center;
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+}
 .page-heading h1 {
   font-size: 40px;
   font-weight: 800;

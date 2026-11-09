@@ -7,6 +7,7 @@ import { OfficeContact } from "@/components/office-contact";
 import { SiteTextPage } from "@/components/site-text-page";
 import { TransparencyPage } from "@/components/transparency-page";
 import { StructurePage } from "@/components/structure-page";
+import { ProfileLinks } from "@/components/profile-links";
 
 export function generateStaticParams() {
   return Object.keys(pages).map((slug) => ({ slug }));
@@ -91,6 +92,7 @@ export default async function Page({
                 <p>{page.visionMission.theme.text}</p>
               </div>
             </article>
+            <ProfileLinks current="visi-misi" />
           </div>
         ) : slug === "kontak" ? (
           <div className="info-contact">
