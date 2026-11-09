@@ -94,31 +94,33 @@ Daftar lengkap ada di `ROADMAP.md` § "Data yang harus diminta ke desa". Yang me
 
 ## Fase 3 — Infrastruktur (dikerjakan manusia, agent menyiapkan berkas)
 
-Agent membuat folder `deploy/` berisi: `nginx/watuagung.conf`, `deploy.sh`, `backup.sh`, `restore.md`, `crontab.txt`, dan `server-setup.md`.
+Berkas tersedia di `deploy/` (9 November 2026): `nginx/watuagung.conf` + `nginx/watuagung-headers.conf`, `deploy.sh`, `backup.sh`, `restore.md`, `crontab.txt`, `server-setup.md`. Langkah server mengikuti **`deploy/server-setup.md`**; butir di bawah dicentang setelah manusia menjalankannya di VPS.
 
 - [ ] VPS: Ubuntu 24.04 LTS, minimal 2 vCPU / 2 GB RAM / 40 GB SSD, lokasi data center Indonesia bila memungkinkan.
-- [ ] Paket: Nginx, PHP 8.3+ FPM dengan ekstensi `pgsql`, `mbstring`, `xml`, `dom`, `gd`, `zip`, `intl`, `bcmath`; Composer; PostgreSQL 16+; Node 22.13+ (hanya untuk build, boleh di mesin lain). `php-gd` wajib mendukung JPEG, PNG, dan WebP untuk sampul berita C2; cek `gd_info()` pada CLI dan FPM. WebP tidak tersedia memakai JPEG fallback; GD tidak tersedia unggah menjawab 503. Set `upload_max_filesize` ≥ 5M dan `post_max_size` > 6M agar batas aplikasi foto 3 MB/PDF 5 MB tetap dapat divalidasi.
-- [ ] Keamanan server: login SSH hanya kunci (password dan root login dimatikan), user deploy terpisah, `ufw` hanya 22/80/443, `fail2ban`, `unattended-upgrades`.
-- [ ] PostgreSQL: user dan database khusus aplikasi dengan kata sandi kuat, `listen_addresses = 'localhost'`.
-- [ ] DNS: A record domain (dan `www`) ke IP VPS. HTTPS dengan Let's Encrypt (certbot) dan perpanjangan otomatis.
+- [ ] Paket (`server-setup.md` §1): Nginx, PHP 8.3 FPM (`composer.json` `^8.3`) dengan `pgsql`, `mbstring`, `xml`/`dom`, `gd`, `intl`, `bcmath`, `zip`, `curl`; Composer; PostgreSQL 16; certbot; Node 24.x hanya bila build di VPS. `php-gd` wajib JPEG/PNG/WebP (cek CLI dan FPM). PHP `upload_max_filesize`/`post_max_size` 12M, `memory_limit` 256M, `expose_php Off` (§5).
+- [ ] Keamanan server (§2–3): login SSH hanya kunci (password dan root login dimatikan), user deploy terpisah, `ufw` hanya 22/80/443, `fail2ban`, `unattended-upgrades`, zona waktu Asia/Jakarta.
+- [ ] PostgreSQL (§4): user dan database khusus aplikasi dengan kata sandi kuat, `listen_addresses = 'localhost'`.
+- [ ] DNS: A record domain (dan `www`) ke IP VPS. HTTPS Let's Encrypt (`certbot certonly --nginx`, §6) dan `certbot renew --dry-run` lulus.
 - [ ] `APP_KEY` produksi dibuat **sekali** di server (`php artisan key:generate`), langsung disalin ke penyimpanan kunci desa (password manager), terpisah dari backup database.
 
-### Konfigurasi Nginx (isi `deploy/nginx/watuagung.conf`)
-- [ ] Root = hasil `out/` Next.js; `location /api/` → `backend/public/index.php` via PHP-FPM. Tidak ada akses langsung ke `backend/` selain `public/`.
-- [ ] Tolak `/.env`, `/.git`, file tersembunyi, dan `storage/`.
-- [ ] Media berita C2/F12b: `/media/posts/` dipetakan langsung ke `backend/storage/app/public/posts/` (bagian `/media/` lain 404). Hanya file UUID `.webp`/`.jpg` hasil encode ulang; tanpa directory listing, tanpa eksekusi PHP atau fallback PHP-FPM, `X-Content-Type-Options: nosniff`, dan `Cache-Control: public, max-age=31536000, immutable`. Isi `MEDIA_URL=https://[DOMAIN]/media` sesuai origin `APP_URL`; tanpa env memakai bawaan Laravel `${APP_URL}/storage` (untuk lokal, bukan konfigurasi Nginx produksi yang menolak `/storage/`). Uji file ada 200, hilang 404, ekstensi lain/PHP ditolak; tidak membuka storage privat.
-- [ ] Redirect HTTP → HTTPS; header: `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `X-Frame-Options: DENY`, `Content-Security-Policy` yang diuji terhadap build.
-- [ ] CSP untuk peta kontak: tambahkan `frame-src https://www.google.com`; uji embed Balai Desa dari objek `contact` di `lib/data.ts` pada beranda dan `/kontak`. Ini mengizinkan iframe Google di situs, bukan mengubah `X-Frame-Options: DENY` untuk situs sendiri. Nomor dan URL peta masih menunggu Tech Lead.
-- [ ] CSP untuk video YouTube R8: tambahkan `frame-src https://www.youtube-nocookie.com` (digabung dengan `https://www.google.com` untuk peta) dan `img-src https://i.ytimg.com` (gambar mini). Iframe hanya dimuat setelah tombol **Putar video** diklik. Iframe membawa `referrerpolicy="strict-origin-when-cross-origin"` sehingga `Referrer-Policy: same-origin` situs tidak membuat pemutar YouTube gagal; jangan hapus atribut itu. Uji di beranda, `/profil/`, `/pelayanan/` dengan video terisi: gambar mini tampil, video berputar, konsol tanpa pelanggaran CSP.
-- [ ] `client_max_body_size 11m` (R6 APBDes PDF ≤ 10 MiB + multipart). PHP-FPM `upload_max_filesize` ≥ 10M dan `post_max_size` > 11M (mis. 12M). Batas aplikasi PDF surat tetap 5 MB; berita tetap 3 MB; gambar bagan structure R7 5 MiB.
-- [ ] Media foto UMKM: sajikan `/media/businesses/` dari `backend/storage/app/public/businesses/` dengan aturan sama seperti `/media/posts/` (hanya UUID `.webp`/`.jpg`, tanpa listing/eksekusi PHP, `nosniff`, cache immutable). Folder persisten dan ikut backup.
-- [ ] Media bagan R7: sajikan `/media/site/structure/` dari `backend/storage/app/public/site/structure/`, hanya nama UUID `.webp`/`.jpg`, MIME gambar dan `X-Content-Type-Options: nosniff`; tanpa listing/eksekusi PHP/fallback FPM. Folder persisten dan ikut backup; cocokkan `site_sections.structure.data.chartImagePath` dengan file. Uji upload 5 MiB, >5 MiB, gambar lebar >2400 diperkecil; PUT ganti/hapus membersihkan file lama setelah commit. Jangan unggah data pribadi. `MEDIA_URL` tetap prefix `/media`.
-- [ ] Media APBDes R6: Nginx `/media/site/documents/` memakai alias langsung `backend/storage/app/public/site/documents/`, hanya nama UUID `.pdf`; tanpa listing, eksekusi PHP, atau fallback PHP-FPM. `X-Content-Type-Options: nosniff`, `Content-Type: application/pdf`, idealnya `Content-Disposition: attachment`. Pertahankan `/media/` lain 404 kecuali `/media/posts/` di atas; jangan membuka storage privat. Folder persisten antar-rilis, PHP-FPM menulis/Nginx membaca. Uji 200 PDF ada, 404 hilang, nama/ekstensi lain ditolak; uji unggah tepat 10 MiB dan >10 MiB. `MEDIA_URL` tetap prefix `/media`.
-- [ ] Format access log tanpa query string untuk `/api/` (parameter `q` berisi nama; lihat `backend/README.md`).
+### Konfigurasi Nginx (`deploy/nginx/watuagung.conf`)
+
+Berkas disiapkan 9 November 2026. `nginx -t` lulus pada Nginx 1.30.6 resmi (build Windows) dengan sertifikat dummy; Docker tidak tersedia. Uji perilaku lokal di port 8080/8443 dengan `out/` asli dan php-cgi + `index.php` tiruan lulus (lihat `docs/progres-2026-11-09-deploy.md`). Belum diuji pada Nginx 1.24 Ubuntu 24.04 atau PHP-FPM sungguhan; butir dicentang setelah uji di VPS.
+
+Keputusan 9 November 2026 mengganti rencana lama prefix `/media/<folder>/`: `MEDIA_URL` kosong (URL Laravel `APP_URL/storage/...`) dan Nginx menyajikan **seluruh** `backend/storage/app/public/` di `/storage/` sebagai file statis. Folder ini hanya berisi media publik (sampul berita, foto UMKM, bagan struktur, PDF APBDes); PDF surat ada di `storage/app/private` dan tidak terjangkau. Filter nama UUID/ekstensi per folder dihapus karena hanya kode aplikasi yang menulis folder itu dan `.php` tetap ditolak.
+
+- [ ] Root = `WEB_ROOT` (`out/`), `try_files $uri $uri/ $uri.html =404`, `error_page 404 /404.html`. `^~ /api/` → `SCRIPT_FILENAME` tetap `backend/public/index.php` via PHP-FPM; tidak ada file lain dari `backend/` yang dapat disajikan atau dieksekusi.
+- [ ] Tolak file tersembunyi (`/.env`, `/.git`) kecuali `/.well-known/acme-challenge/`.
+- [ ] `^~ /storage/` → alias `backend/storage/app/public/`: `autoindex off`, `.php` dan dotfile ditolak, `Cache-Control: public, max-age=604800`, `nosniff`. Uji di VPS: file ada 200, hilang 404, `.php` 403, traversal ke `app/private` tidak 200, `MEDIA_URL` kosong. HTML pakai `no-cache`; `/_next/static/` `immutable` 1 tahun.
+- [ ] Redirect HTTP → HTTPS 301. Header di `watuagung-headers.conf` (di-include ulang per location karena aturan pewarisan `add_header`): HSTS `max-age=31536000`, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` (menggantikan `same-origin`), `X-Frame-Options: DENY`, `Permissions-Policy` kamera/mikrofon/geolokasi mati.
+- [ ] CSP ditulis lengkap sebagai **`Content-Security-Policy-Report-Only`**: `frame-src https://www.google.com https://maps.google.com https://www.youtube-nocookie.com`, `img-src 'self' data: blob: https://i.ytimg.com`, `script-src`/`style-src` `'self' 'unsafe-inline'` (static export memuat ±140 `<script>` inline dan atribut `style`; alasan di berkas). Uji di VPS: peta beranda/`/kontak/`/`/profil/`, video YouTube R8 diputar, panel admin (pratinjau foto, PDF surat) tanpa pelanggaran di console. **Ubah ke enforce setelah seminggu tanpa laporan pelanggaran.**
+- [ ] `client_max_body_size 12m` (PDF APBDes ≤ 10 MB + multipart), PHP 12M. Uji unggah tepat 10 MiB dan >10 MiB di VPS.
+- [ ] Access log format `watuagung_noquery` (`$uri`, tanpa query string dan Referer) untuk seluruh server: `?q=` pencarian petugas, `?id=` cek status, dan `?kode=` verifikasi tidak tercatat. Uji lokal: `?q=Budi` tidak muncul di log.
+- [ ] gzip untuk text/css/js/json/svg.
 
 ## Fase 4 — Prosedur deploy (`deploy/deploy.sh`)
 
-Urutan setiap rilis:
+Skrip, bootstrap pertama dan cron tersedia: `deploy/deploy.sh`, `deploy/first-deploy.md`, `deploy/crontab.txt`, panduan `deploy/README.md`. Urutan setiap rilis:
 1. `git pull` pada tag rilis.
 2. `composer install --no-dev --optimize-autoloader` di `backend/`.
 3. `php artisan migrate --force`.
@@ -128,13 +130,15 @@ Urutan setiap rilis:
 
 - [ ] Cron: `* * * * * php /path/backend/artisan schedule:run` (prune token Sanctum + retensi). Queue worker tidak diperlukan saat ini karena tidak ada job yang di-dispatch; tinjau ulang bila ada.
 - [ ] Hak akses: `storage/` dan `bootstrap/cache/` hanya dapat ditulis user PHP-FPM.
-- [ ] Deploy C2/F12b: pertahankan folder persisten `backend/storage/app/public/posts` antar-rilis, buat bila belum ada; PHP-FPM dapat menulis, Nginx hanya membaca. Gunakan alias path langsung `/media/posts/` di atas; `php artisan storage:link` hanya alternatif lokal untuk prefix `/storage`, tidak diperlukan untuk alias produksi.
+- [ ] Deploy media: seluruh `backend/storage/app/public` (berita, UMKM, bagan, APBDes) persisten antar-rilis; PHP-FPM menulis, Nginx hanya membaca. Disajikan lewat alias `/storage/` di `deploy/nginx/watuagung.conf`; symlink `storage:link` dari `deploy.sh` tidak dipakai Nginx produksi.
 
 ## Fase 5 — Backup dan pemulihan
 
-- [ ] `backup.sh` harian: `pg_dump` terkompresi + arsip `backend/storage/app/private` (PDF surat) **serta `backend/storage/app/public/posts` (sampul berita C2/F12b) dan `backend/storage/app/public/site/documents` (PDF APBDes R6)**, dienkripsi sebelum dikirim ke penyimpanan di luar VPS. Simpan 14 harian + 8 mingguan. Uji pemulihan juga mencocokkan `posts.cover_path` dengan file dan memastikan URL `/media/posts/…` dapat dibaca. Soft delete berita mempertahankan file; jangan mengecualikannya dari backup. Cocokkan juga `site_sections.transparency.data.budgets[].documentPath` dengan PDF dan uji URL `/media/site/documents/…`; PUT yang mengganti/melepas dokumen menghapus file lama setelah commit.
-- [ ] `APP_KEY` **tidak** ikut dalam arsip backup yang sama.
-- [ ] **(BLOKIR)** Uji pemulihan ke server/VM kosong: restore database + file + `APP_KEY`, lalu pastikan NIK pada satu permohonan uji dapat didekripsi dan PDF dapat diunduh. Catat langkahnya di `deploy/restore.md`.
+Berkas: `deploy/backup.sh` (cron 02.00 WIB di `deploy/crontab.txt`), `deploy/restore.md`. `bash deploy/test-scripts.sh` menguji backup dengan gpg/tar asli dan `pg_dump` tiruan (9 November 2026): arsip terenkripsi, dapat dibuka, berisi dump + storage private/public, tanpa `.env`, rotasi 14/8, menolak passphrase mode longgar dan `pg_dump` gagal. Belum dijalankan terhadap PostgreSQL sungguhan.
+
+- [ ] `backup.sh` harian: `pg_dump -Fc` + tar **seluruh** `backend/storage/app` (`private`: PDF surat terenkripsi; `public`: sampul berita, foto UMKM, bagan, PDF APBDes; soft delete tetap ikut), digabung lalu `gpg --symmetric` AES256 dengan passphrase dari berkas `PASSPHRASE_FILE` (mode 600/400, di luar repo). Uji dekripsi setiap selesai. 14 harian + 8 mingguan di `BACKUP_DIR`. Salinan ke luar VPS lewat `rclone sync` (masih dikomentari) **wajib diaktifkan sebelum go-live**. Uji pemulihan juga mencocokkan `posts.cover_path`, `businesses.photo_path`, `chartImagePath` dan `budgets[].documentPath` dengan file di `/storage/…`.
+- [ ] `APP_KEY` dan `.env` **tidak** ikut dalam arsip; passphrase backup dan `APP_KEY` disimpan terpisah di password manager desa.
+- [ ] **(BLOKIR)** Uji pemulihan ke VM kosong mengikuti `deploy/restore.md`: restore database + file + `APP_KEY`, buka satu permohonan fiktif di panel (NIK terbaca = `APP_KEY` benar) dan unduh satu PDF surat. Catat hasil di `docs/progres-*.md`.
 
 ## Fase 6 — Uji pra-rilis di server (data fiktif)
 

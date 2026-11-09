@@ -88,4 +88,34 @@ if grep -q 'UNEXPECTED COMMAND' "$tmp/log"; then
     cat "$tmp/log"
     exit 1
 fi
-printf 'LULUS: smoke sukses + 9 kegagalan, validasi domain, deploy berhenti saat fetch gagal.\n'
+
+# backup.sh: gpg/tar asli, pg_dump dan flock stub. Isi terenkripsi, bisa dibuka, rotasi, tanpa .env.
+mkdir -p "$tmp/app/backend/storage/app/private/letters" "$tmp/app/backend/storage/app/public/posts"
+printf 'pdf-fiktif' > "$tmp/app/backend/storage/app/private/letters/1-generated.pdf"
+printf 'foto' > "$tmp/app/backend/storage/app/public/posts/a.webp"
+printf 'APP_KEY=base64:rahasia\n' > "$tmp/app/backend/.env"
+printf '#!/usr/bin/env bash\nwhile [[ $1 != -f ]]; do shift; done; printf "dump-fiktif" > "$2"\n' > "$tmp/bin/pg_dump"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$tmp/bin/flock"
+# Stub stat: mode file Windows/Git Bash tidak bisa 600; uji logika pemeriksaan mode saja.
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "${STUB_MODE:-600}"\n' > "$tmp/bin/stat"
+chmod +x "$tmp/bin/pg_dump" "$tmp/bin/flock" "$tmp/bin/stat"
+printf 'passphrase-uji\n' > "$tmp/pass"
+run_backup() { PATH="$tmp/bin:$PATH" APP_DIR="$tmp/app" BACKUP_DIR="$tmp/bk" PASSPHRASE_FILE="$tmp/pass" "$@" bash "$root/deploy/backup.sh" > "$tmp/log" 2>&1; }
+run_backup env || { cat "$tmp/log"; exit 1; }
+file=$(ls "$tmp/bk/daily"/watuagung-*.tar.gpg)
+if tar -tf "$file" > /dev/null 2>&1; then printf 'GAGAL backup tidak terenkripsi\n' >&2; exit 1; fi
+mkdir "$tmp/out"
+gpg --batch --quiet --pinentry-mode loopback --passphrase-file "$tmp/pass" --decrypt "$file" | tar -C "$tmp/out" -xf -
+[[ $(cat "$tmp/out/db.dump") == dump-fiktif ]]
+tar -tf "$tmp/out/storage.tar" | grep -qx 'app/private/letters/1-generated.pdf'
+tar -tf "$tmp/out/storage.tar" | grep -qx 'app/public/posts/a.webp'
+if grep -rq 'rahasia' "$tmp/out"; then printf 'GAGAL backup memuat .env\n' >&2; exit 1; fi
+for i in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15; do : > "$tmp/bk/daily/watuagung-200001$i-000000.tar.gpg"; done
+for i in 01 02 03 04 05 06 07 08 09; do : > "$tmp/bk/weekly/watuagung-200001$i-000000.tar.gpg"; done
+run_backup env || { cat "$tmp/log"; exit 1; }
+[[ $(ls "$tmp/bk/daily" | wc -l) -eq 14 && $(ls "$tmp/bk/weekly" | wc -l) -eq 8 ]] || { printf 'GAGAL rotasi 14/8\n' >&2; exit 1; }
+ls "$tmp/bk/daily" | grep -qv '^watuagung-2000' || { printf 'GAGAL rotasi menghapus backup terbaru\n' >&2; exit 1; }
+if run_backup env STUB_MODE=644; then printf 'GAGAL backup menerima passphrase mode 644\n' >&2; exit 1; fi
+printf '#!/usr/bin/env bash\nexit 3\n' > "$tmp/bin/pg_dump"
+if run_backup env; then printf 'GAGAL backup mengabaikan pg_dump gagal\n' >&2; exit 1; fi
+printf 'LULUS: smoke sukses + 9 kegagalan, validasi domain, deploy berhenti saat fetch gagal, backup terenkripsi/rotasi/tolak passphrase longgar/pg_dump gagal.\n'
