@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Award, FileText, Layers, MapPin, Users, Landmark, ShieldCheck } from "lucide-react";
 import { PageHeading } from "@/components/site";
+import { ProfileLinks } from "@/components/profile-links";
 import { getSiteEnvelope, type SiteEnvelope } from "@/services/site";
 import type { SiteStructure } from "@/types/site";
 
@@ -309,18 +309,7 @@ export function StructurePage({
             {data.source && (
               <p className="structure-source">{data.source}</p>
             )}
-            <div className="button-row mt-8">
-              {[
-                ["Profil Desa", "profil"],
-                ["Sejarah Desa", "sejarah"],
-                ["Visi dan Misi", "visi-misi"],
-                ["Statistik Desa", "statistik"],
-              ].map(([title, target]) => (
-                <Link className="btn btn-secondary" href={"/" + target} key={target}>
-                  {title}
-                </Link>
-              ))}
-            </div>
+            <ProfileLinks current="struktur-pemerintahan" />
           </div>
         </div>
       </section>

@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ExternalLink, Sprout, MapPin, Landmark, Wheat, House, HandHeart, ScrollText } from "lucide-react";
 import { PageHeading } from "@/components/site";
+import { ProfileLinks } from "@/components/profile-links";
 import { ProfileInstitutionChips } from "@/components/profile-institution-chips";
 import { SiteVideo } from "@/components/site-video";
 import { getSiteSection } from "@/services/site";
@@ -312,20 +312,7 @@ export function SiteTextPage({ sectionKey, initialPage }: {
           </div>
         )}
         {(sectionKey === "profile" || sectionKey === "history") && (
-          <div className="button-row mt-8">
-            {[
-              sectionKey === "profile"
-                ? ["Sejarah Desa", "sejarah"]
-                : ["Profil Desa", "profil"],
-              ["Visi dan Misi", "visi-misi"],
-              ["Struktur Pemerintahan", "struktur-pemerintahan"],
-              ["Statistik Desa", "statistik"],
-            ].map(([title, target]) => (
-              <Link className="btn btn-secondary" href={"/" + target} key={target}>
-                {title}
-              </Link>
-            ))}
-          </div>
+          <ProfileLinks current={sectionKey === "profile" ? "profil" : "sejarah"} />
         )}
       </section>
     </>
