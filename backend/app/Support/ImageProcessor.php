@@ -12,7 +12,13 @@ class ImageProcessor {
         Validator::make(['file'=>$file], ['file'=>[
             'bail', 'required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:'.$maxSizeKiB,
             "dimensions:min_width={$minWidth},min_height={$minHeight},max_width={$maxInputWidth},max_height={$maxInputHeight}",
-        ]])->validate();
+        ]], [
+            'file.required'=>'Pilih foto yang akan diunggah.',
+            'file.file'=>'Foto harus berupa file yang valid.',
+            'file.mimes'=>'Format foto harus JPG, JPEG, PNG, atau WebP.',
+            'file.max'=>"Ukuran foto maksimal {$maxSizeKiB} KiB.",
+            'file.dimensions'=>"Lebar foto harus {$minWidth}–{$maxInputWidth} piksel dan tinggi {$minHeight}–{$maxInputHeight} piksel.",
+        ])->validate();
         abort_unless(extension_loaded('gd'), 503, 'Pengolah foto belum tersedia. Hubungi administrator.');
         $bytes = file_get_contents($file->getRealPath());
         abort_if($bytes === false, 500, 'Foto gagal dibaca.');

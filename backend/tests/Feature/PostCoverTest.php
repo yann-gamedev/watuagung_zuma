@@ -105,21 +105,27 @@ class PostCoverTest extends TestCase
         $this->assertSame(['id', 'user_id', 'action', 'subject_type', 'subject_id', 'created_at'], array_keys($audit));
     }
 
-    public function test_small_image_is_not_upscaled_and_storage_url_is_supported(): void
+    public static function smallImages(): array
+    {
+        return [[519, 385], [599, 400], [600, 399], [1, 1], [600, 400]];
+    }
+
+    #[DataProvider('smallImages')]
+    public function test_small_image_is_not_upscaled_and_storage_url_is_supported(int $width, int $height): void
     {
         $this->act();
         $post = $this->makePost();
         config(['filesystems.disks.public.url'=>'https://desa.example/storage']);
         Storage::fake('public', ['url'=>config('filesystems.disks.public.url')]);
-        $this->upload($post, $this->image())->assertOk();
+        $this->upload($post, $this->image('jpg', $width, $height))->assertOk()->assertJsonMissingPath('cover_path');
         $path = $post->refresh()->cover_path;
-        $this->assertSame([600, 400], array_slice(getimagesizefromstring(Storage::disk('public')->get($path)), 0, 2));
+        $this->assertSame([$width, $height], array_slice(getimagesizefromstring(Storage::disk('public')->get($path)), 0, 2));
         $this->getJson('/api/v1/posts/berita-fiktif')->assertJsonPath('cover_url', 'https://desa.example/storage/'.$path);
     }
 
     public static function invalidFiles(): array
     {
-        return [['text'], ['gif'], ['large'], ['narrow'], ['short'], ['wide'], ['tall'], ['corrupt']];
+        return [['text'], ['gif'], ['large'], ['wide'], ['tall'], ['corrupt']];
     }
 
     #[DataProvider('invalidFiles')]
@@ -133,13 +139,16 @@ class PostCoverTest extends TestCase
             'text'=>UploadedFile::fake()->createWithContent('fake.jpg', '<?php echo "not an image";'),
             'gif'=>$this->image('gif'),
             'large'=>$this->image()->size(3073),
-            'narrow'=>$this->image('jpg', 599, 400),
-            'short'=>$this->image('jpg', 600, 399),
             'wide'=>$this->image('jpg', 6001, 400),
             'tall'=>$this->image('jpg', 600, 6001),
             'corrupt'=>UploadedFile::fake()->createWithContent('broken.jpg', "\xff\xd8\xff\xe0".str_repeat("\0", 100)),
         };
-        $this->upload($post, $file)->assertUnprocessable()->assertJsonValidationErrors('file');
+        $message = match ($case) {
+            'large'=>'Ukuran foto maksimal 3072 KiB.',
+            'text', 'wide', 'tall', 'corrupt'=>'Lebar foto harus 1–6000 piksel dan tinggi 1–6000 piksel.',
+            default=>'Format foto harus JPG, JPEG, PNG, atau WebP.',
+        };
+        $this->upload($post, $file)->assertUnprocessable()->assertJsonValidationErrors('file')->assertJsonPath('errors.file.0', $message);
         $this->assertSame('posts/old.jpg', $post->refresh()->cover_path);
         $this->assertSame(['posts/old.jpg'], Storage::disk('public')->allFiles('posts'));
         $this->assertSame(0, DB::table('audit_logs')->count());
@@ -149,7 +158,9 @@ class PostCoverTest extends TestCase
     {
         $this->act();
         $post = $this->makePost();
-        $this->postJson("/api/v1/staff/posts/{$post->id}/cover")->assertUnprocessable()->assertJsonValidationErrors('file');
+        $url = "/api/v1/staff/posts/{$post->id}/cover";
+        $this->postJson($url)->assertUnprocessable()->assertJsonPath('errors.file.0', 'Pilih foto yang akan diunggah.');
+        $this->postJson($url, ['file'=>'bukan file'])->assertUnprocessable()->assertJsonPath('errors.file.0', 'Foto harus berupa file yang valid.');
     }
 
     public function test_size_and_dimension_boundaries_are_accepted(): void
