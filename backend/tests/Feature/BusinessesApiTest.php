@@ -63,6 +63,7 @@ class BusinessesApiTest extends TestCase
     private function image(int $width = 2000, int $height = 1200): UploadedFile
     {
         if (! extension_loaded('gd')) $this->markTestSkipped('php-gd diperlukan untuk tes foto UMKM.');
+        if (! function_exists('imagejpeg')) $this->markTestSkipped('GD tanpa JPEG; fallback JPEG butuh php-gd dengan JPEG.');
         return UploadedFile::fake()->image('foto.png', $width, $height);
     }
 

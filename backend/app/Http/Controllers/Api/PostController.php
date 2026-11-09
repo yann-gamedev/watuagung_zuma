@@ -123,6 +123,7 @@ class PostController extends Controller {
         $request->validate(['file'=>['bail', 'required', 'file']], [
             'file.required'=>'Pilih foto yang akan diunggah.',
             'file.file'=>'Foto harus berupa file yang valid.',
+            'file.uploaded'=>ImageProcessor::UPLOAD_FAILED,
         ]);
         $path = ImageProcessor::store($request->file('file'), 'posts', 3072, 1600, minWidth: 1, minHeight: 1);
         try {

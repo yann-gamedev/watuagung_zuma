@@ -83,6 +83,7 @@ class SiteSectionsApiTest extends TestCase
     private function image(string $format = 'png', int $width = 600, int $height = 400): UploadedFile
     {
         if (! extension_loaded('gd')) $this->markTestSkipped('php-gd diperlukan untuk tes gambar struktur.');
+        if (! function_exists('imagejpeg')) $this->markTestSkipped('GD tanpa JPEG; fixture dan fallback JPEG butuh php-gd dengan JPEG.');
         if ($format !== 'webp') return UploadedFile::fake()->image('bagan.'.$format, $width, $height);
         if (! function_exists('imagewebp') || ! (imagetypes() & IMG_WEBP)) $this->markTestSkipped('GD tanpa WebP.');
         $image = imagecreatetruecolor($width, $height);

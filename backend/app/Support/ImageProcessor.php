@@ -8,6 +8,9 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ImageProcessor {
+    // PHP menolak file sebelum Laravel (mis. melebihi upload_max_filesize/post_max_size): bukan salah format.
+    public const UPLOAD_FAILED = 'Foto gagal diterima server. Ukuran file mungkin melebihi batas unggah server; coba file lebih kecil atau hubungi administrator.';
+
     public static function store(UploadedFile $file, string $directory, int $maxSizeKiB, int $maxWidth, int $minWidth = 600, int $minHeight = 400, int $maxInputWidth = 6000, int $maxInputHeight = 6000): string {
         Validator::make(['file'=>$file], ['file'=>[
             'bail', 'required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:'.$maxSizeKiB,
@@ -20,6 +23,10 @@ class ImageProcessor {
             'file.dimensions'=>"Lebar foto harus {$minWidth}–{$maxInputWidth} piksel dan tinggi {$minHeight}–{$maxInputHeight} piksel.",
         ])->validate();
         abort_unless(extension_loaded('gd'), 503, 'Pengolah foto belum tersedia. Hubungi administrator.');
+        // GD tanpa dukungan JPEG/WebP gagal membaca file valid; jangan salahkan format foto pengguna.
+        $read = [IMAGETYPE_JPEG=>IMG_JPG, IMAGETYPE_PNG=>IMG_PNG, IMAGETYPE_WEBP=>IMG_WEBP][(@getimagesize($file->getRealPath()) ?: [])[2] ?? 0] ?? 0;
+        abort_unless(function_exists('imagejpeg') || function_exists('imagewebp'), 503, 'Pengolah foto server belum mendukung penyimpanan JPG/WebP. Hubungi administrator.');
+        abort_if($read && !(imagetypes() & $read), 503, 'Pengolah foto server belum mendukung format ini. Hubungi administrator.');
         $bytes = file_get_contents($file->getRealPath());
         abort_if($bytes === false, 500, 'Foto gagal dibaca.');
         $source = @imagecreatefromstring($bytes);

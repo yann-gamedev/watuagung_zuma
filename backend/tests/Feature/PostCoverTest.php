@@ -47,6 +47,7 @@ class PostCoverTest extends TestCase
     private function image(string $extension = 'jpg', int $width = 600, int $height = 400): UploadedFile
     {
         $this->requireGd();
+        if (! function_exists('imagejpeg')) $this->markTestSkipped('GD tanpa JPEG; fixture dan fallback JPEG butuh php-gd dengan JPEG.');
         if ($extension !== 'webp') return UploadedFile::fake()->image('foto.'.$extension, $width, $height);
         if (! function_exists('imagewebp') || ! (imagetypes() & IMG_WEBP)) {
             $this->markTestSkipped('GD tanpa WebP; aktifkan dukungan WebP pada php-gd untuk tes input/output WebP.');
@@ -161,6 +162,20 @@ class PostCoverTest extends TestCase
         $url = "/api/v1/staff/posts/{$post->id}/cover";
         $this->postJson($url)->assertUnprocessable()->assertJsonPath('errors.file.0', 'Pilih foto yang akan diunggah.');
         $this->postJson($url, ['file'=>'bukan file'])->assertUnprocessable()->assertJsonPath('errors.file.0', 'Foto harus berupa file yang valid.');
+        $tooBig = new UploadedFile(UploadedFile::fake()->create('besar.jpg')->getRealPath(), 'besar.jpg', 'image/jpeg', UPLOAD_ERR_INI_SIZE, true);
+        $this->upload($post, $tooBig)->assertUnprocessable()->assertJsonPath('errors.file.0', \App\Support\ImageProcessor::UPLOAD_FAILED);
+    }
+
+    public function test_valid_jpeg_is_never_reported_as_wrong_format(): void
+    {
+        $this->requireGd();
+        $this->act();
+        $post = $this->makePost();
+        // JPEG 2×2 dibuat tanpa GD agar tes juga berjalan pada GD tanpa dukungan JPEG.
+        $jpeg = UploadedFile::fake()->createWithContent('foto.jpeg', base64_decode('/9j/4AAQSkZJRgABAQEAYABgAAD//gA7Q1JFQVRPUjogZ2QtanBlZyB2MS4wICh1c2luZyBJSkcgSlBFRyB2ODApLCBxdWFsaXR5ID0gNTAK/9sAQwAQCwwODAoQDg0OEhEQExgoGhgWFhgxIyUdKDozPTw5Mzg3QEhcTkBEV0U3OFBtUVdfYmdoZz5NcXlwZHhcZWdj/9sAQwEREhIYFRgvGhovY0I4QmNjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2Nj/8AAEQgAAgACAwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYSQVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/aAAwDAQACEQMRAD8A8/ooooA//9k='));
+        $response = $this->upload($post, $jpeg);
+        $supported = (imagetypes() & IMG_JPG) && (function_exists('imagejpeg') || function_exists('imagewebp'));
+        $supported ? $response->assertOk() : $response->assertStatus(503)->assertJsonPath('message', fn (string $m) => str_starts_with($m, 'Pengolah foto server belum mendukung'));
     }
 
     public function test_size_and_dimension_boundaries_are_accepted(): void
