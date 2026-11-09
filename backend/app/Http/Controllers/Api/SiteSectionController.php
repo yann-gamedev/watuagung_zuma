@@ -103,7 +103,7 @@ class SiteSectionController extends Controller
         abort_unless($request->user()->canManageContent(), 403, 'Akses ditolak.');
         $section = $this->key($key);
         if (! $section->allowsImages()) throw ValidationException::withMessages(['file' => 'Bagian ini tidak mengizinkan gambar.']);
-        $request->validate(['file' => ['required', 'file']]);
+        $request->validate(['file' => ['required', 'file']], ['file.uploaded' => ImageProcessor::UPLOAD_FAILED]);
         // ponytail: unggahan tanpa PUT tetap di disk; tambah pembersihan berkala bila menumpuk.
         $path = ImageProcessor::store($request->file('file'), 'site/'.$section->value, 5120, 2400);
         return response()->json(['path' => $path, 'url' => Storage::disk('public')->url($path)])->header('Cache-Control', 'private, no-store');

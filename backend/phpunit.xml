@@ -18,6 +18,8 @@
         </include>
     </source>
     <php>
+        <!-- Suite penuh memproses gambar besar berulang kali; 128M bawaan habis di tengah jalan. -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

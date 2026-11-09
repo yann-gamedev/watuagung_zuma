@@ -71,7 +71,8 @@ async function send(path: string, token: string, options: RequestInit): Promise<
       if (response.status === 404) throw new AdminSiteNotFoundError("Bagian situs belum diisi.");
       if (response.status === 403) throw new Error("Akun ini tidak memiliki akses untuk tindakan tersebut.");
       if (response.status === 422 && body.errors) throw new AdminValidationError(body.errors);
-      throw new Error("Bagian situs gagal diproses. Coba lagi nanti.");
+      // 503: pengolah foto server belum lengkap; pesan server lebih jelas daripada pesan umum.
+      throw new Error(response.status === 503 && body.message ? body.message : "Bagian situs gagal diproses. Coba lagi nanti.");
     }
     // Berita memakai pesan server apa adanya, termasuk validasi foto dan 404.
     if (/^\/staff\/posts(?:[/?]|$)/.test(path)) throw new Error(body.errors ? Object.values(body.errors).flat().join(" ") : body.message || "Berita gagal diproses. Coba lagi nanti.");
