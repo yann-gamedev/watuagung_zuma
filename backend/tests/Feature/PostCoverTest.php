@@ -238,18 +238,28 @@ class PostCoverTest extends TestCase
         $this->deleteJson("/api/v1/staff/posts/{$post->id}/cover")->assertOk()->assertJsonPath('cover_url', null);
     }
 
-    public function test_soft_delete_keeps_file_and_restore_keeps_cover(): void
+    public function test_delete_post_removes_cover_file(): void
     {
         $this->act();
         $post = $this->makePost();
         $this->upload($post, $this->image())->assertOk();
         $path = $post->refresh()->cover_path;
-        $this->deleteJson("/api/v1/staff/posts/{$post->id}")->assertOk();
-        Storage::disk('public')->assertExists($path);
+        $this->deleteJson("/api/v1/staff/posts/{$post->id}")->assertOk()->assertJsonPath('success', true);
+        Storage::disk('public')->assertMissing($path);
+        $this->assertSoftDeleted('posts', ['id'=>$post->id, 'cover_path'=>null]);
         $this->upload($post, $this->image())->assertNotFound();
         $this->deleteJson("/api/v1/staff/posts/{$post->id}/cover")->assertNotFound();
+        // Pemulihan lewat database menghasilkan berita tanpa sampul, bukan URL file yang hilang.
         $post->refresh()->restore();
-        $this->getJson('/api/v1/posts/berita-fiktif')->assertOk()->assertJsonPath('cover_url', Storage::disk('public')->url($path));
+        $this->getJson('/api/v1/posts/berita-fiktif')->assertOk()->assertJsonPath('cover_url', null);
+    }
+
+    public function test_delete_post_without_cover_succeeds(): void
+    {
+        $this->act();
+        $post = $this->makePost();
+        $this->deleteJson("/api/v1/staff/posts/{$post->id}")->assertOk();
+        $this->assertSoftDeleted('posts', ['id'=>$post->id]);
     }
 
     public static function forbiddenRoles(): array
