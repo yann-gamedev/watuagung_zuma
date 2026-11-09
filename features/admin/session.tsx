@@ -2,21 +2,26 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { apiBase, apiRequest } from "@/services/pelayanan";
-import type { StaffLoginRequest, StaffLoginResponse, StaffProfile } from "@/types/pelayanan";
+import type { StaffAbility, StaffLoginRequest, StaffLoginResponse, StaffProfile } from "@/types/pelayanan";
 import { adminFetch, adminRequest, AdminUnauthorizedError, SESSION_EXPIRED_MESSAGE } from "./api";
 
 /** sessionStorage: hilang saat tab ditutup. Jangan pindahkan ke localStorage atau URL. */
 const STORAGE_KEY = "watuagung-staff-token";
 
 const profileSchema = z.object({
+  abilities: z.array(z.enum(["panel", "applications:manage", "media:manage", "site:manage"])),
   features: z.object({ neighborhood_approval: z.boolean() }),
   name: z.string(),
   username: z.string().nullable(),
-  role: z.enum(["staff", "village_head", "admin", "rt_head", "rw_head"]),
+  role: z.enum(["staff", "village_head", "admin", "rt_head", "rw_head", "kim"]),
   rt: z.string().nullable(),
   rw: z.string().nullable(),
   must_change_password: z.boolean(),
 });
+
+export function can(user: StaffProfile | null, ability: StaffAbility) {
+  return user?.abilities.includes(ability) ?? false;
+}
 
 export type AdminSessionStatus = "checking" | "signed-out" | "signed-in" | "unreachable";
 

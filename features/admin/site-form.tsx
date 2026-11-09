@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { getStaffSiteSection, putStaffSiteSection, siteInputSchemas, type SiteEnvelope } from "@/services/site";
 import type { EditableSiteSectionKey, SiteSectionData, SiteSectionInput } from "@/types/site";
 import { AdminSiteNotFoundError, AdminUnauthorizedError, AdminValidationError } from "./api";
-import { useAdminSession } from "./session";
+import { can, useAdminSession } from "./session";
 import { useUnsavedChanges } from "./use-unsaved-changes";
 import styles from "./news.module.css";
 
@@ -89,7 +89,7 @@ export function SiteForm<K extends EditableSiteSectionKey>({ section, name, publ
   children: (value: SiteSectionInput[K], setValue: (value: SiteSectionInput[K]) => void) => ReactNode;
 }) {
   const { request, user } = useAdminSession();
-  const allowed = !!user && ["admin", "staff"].includes(user.role);
+  const allowed = can(user, "site:manage");
   const [value, setValue] = useState(initial);
   const [saved, setSaved] = useState(initial);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);

@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { forwardRef } from "react";
 import { ClipboardList, FileCheck2, FileText, LayoutDashboard, Newspaper, Store, Users, X } from "lucide-react";
 import { normalizePath } from "@/components/site-header";
-import { useAdminSession } from "@/features/admin/session";
+import { can, useAdminSession } from "@/features/admin/session";
+import type { StaffProfile } from "@/types/pelayanan";
 
 /** Hanya menu yang sudah berfungsi. Modul lain ditambahkan saat dikerjakan. */
 export const adminLinks = [
@@ -42,23 +43,30 @@ function isActive(path: string, href: string) {
   return path === href || (["/admin/permohonan", "/admin/berita", "/admin/umkm"].includes(href) && path.startsWith(`${href}/`));
 }
 
+export function canAccessAdminPath(user: StaffProfile | null, path: string) {
+  path = normalizePath(path);
+  if (!can(user, "panel")) return false;
+  if (path === "/admin/berita" || path.startsWith("/admin/berita/") || path === "/admin/umkm" || path.startsWith("/admin/umkm/")) return can(user, "media:manage");
+  if (path === "/admin/konten" || path.startsWith("/admin/konten/")) return can(user, "site:manage");
+  if (path === "/admin/akun") return user?.role === "admin";
+  if (!can(user, "applications:manage")) return false;
+  const queue = user?.role === "rt_head" ? "/admin/antrean-rt" : user?.role === "rw_head" ? "/admin/antrean-rw" : null;
+  if (queue) return path === "/admin" || (!!user?.features.neighborhood_approval && (path === queue || path === "/admin/permohonan/detail"));
+  if (path === "/admin/antrean-rt" || path === "/admin/antrean-rw") return false;
+  if (path === "/admin/persetujuan") return user?.role === "village_head";
+  return ["/admin", "/admin/permohonan", "/admin/permohonan/detail", "/admin/surat", "/admin/register"].includes(path);
+}
+
 type Props = { open: boolean; onClose: () => void };
 
 export const AdminSidebar = forwardRef<HTMLElement, Props>(function AdminSidebar({ open, onClose }, ref) {
   const path = normalizePath(usePathname());
   const { user } = useAdminSession();
-  const queue = user?.role === "rt_head" ? "/admin/antrean-rt" : user?.role === "rw_head" ? "/admin/antrean-rw" : null;
-  const links = adminLinks.filter((link) => {
-    if (queue) return link.href === "/admin" || (user?.features.neighborhood_approval && link.href === queue);
-    if (link.href === "/admin/antrean-rt" || link.href === "/admin/antrean-rw") return false;
-    if (link.href === "/admin/akun") return user?.role === "admin";
-    if (link.href === "/admin/berita" || link.href === "/admin/umkm" || link.href.startsWith("/admin/konten")) return user?.role === "admin" || user?.role === "staff";
-    return link.href !== "/admin/persetujuan" || user?.role === "village_head";
-  });
+  const links = adminLinks.filter((link) => canAccessAdminPath(user, link.href));
   return (
     <aside ref={ref} id="admin-sidebar" className="admin-sidebar" data-open={open} aria-label="Menu petugas">
       <div className="admin-sidebar-top">
-        <Link href="/admin" className="admin-brand">
+        <Link href={user?.role === "kim" ? "/admin/berita/" : "/admin/"} className="admin-brand">
           <Image
             className="admin-brand-logo"
             src="/brand/logo-watuagung-128.png"

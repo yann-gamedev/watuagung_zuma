@@ -6,7 +6,7 @@ import { getStaffSiteSection } from "@/services/site";
 import type { EditableSiteSectionKey } from "@/types/site";
 import { AdminSiteNotFoundError, AdminUnauthorizedError } from "./api";
 import { formatUpdatedAt } from "./site-form";
-import { useAdminSession } from "./session";
+import { can, useAdminSession } from "./session";
 import styles from "./applications.module.css";
 
 export const sitePages: { key: EditableSiteSectionKey; title: string; description: string; href: string }[] = [
@@ -22,7 +22,7 @@ type State = Record<EditableSiteSectionKey, string | null | "error" | undefined>
 
 export function SiteContentList() {
   const { request, user } = useAdminSession();
-  const allowed = !!user && ["admin", "staff"].includes(user.role);
+  const allowed = can(user, "site:manage");
   const [state, setState] = useState<Partial<State>>({});
 
   useEffect(() => {

@@ -132,12 +132,13 @@ Jika konfigurasi akan diganti pada database yang sudah berisi data, ikuti prosed
 
 Jalankan `php artisan migrate` terlebih dahulu untuk menambahkan kolom username unik. Akun lama tetap tersimpan dengan username null dan login email melalui API masih didukung. Form admin sekarang menggunakan username; tetapkan username unik pada akun lama sebelum memakainya. Format: 1–64 karakter huruf kecil/angka, `_`, atau `-`, diawali huruf kecil/angka. Tidak ada akun/kata sandi bawaan.
 
-Tidak ada endpoint pendaftaran publik. Panel bawaan menerima `staff` (petugas), `village_head` (kepala desa), dan `admin`. Peran `rt_head` (ketua RT) dan `rw_head` (ketua RW) tetap ada, tetapi hanya dapat dibuat/dipakai saat fitur RT/RW aktif. Buat akun lokal dengan perintah berikut; kata sandi (minimal 12 karakter) diminta dua kali secara tersembunyi, jadi tidak tersimpan di riwayat terminal maupun repositori:
+Tidak ada endpoint pendaftaran publik. Enam peran dikenal. Panel bawaan menerima `staff` (petugas), `village_head` (kepala desa), `admin`, dan `kim` (**KIM (Media Informasi)**). KIM hanya mengelola berita/UMKM termasuk foto, bukan pemohon/pengajuan, dashboard/ringkasan, buku registrasi, PDF/QR surat, buat ulang kode akses, pengguna, atau konten situs. Field pemilik UMKM tetap tersedia pada detail panel yang diizinkan untuk pengelolaan; izin publik menentukan apakah kontak tampil kepada pengunjung. Peran `rt_head` (ketua RT) dan `rw_head` (ketua RW) tetap ada, tetapi hanya dapat dibuat/dipakai saat fitur RT/RW aktif. Buat akun lokal dengan perintah berikut; kata sandi (minimal 12 karakter) diminta dua kali secara tersembunyi, jadi tidak tersimpan di riwayat terminal maupun repositori:
 
 ```powershell
 php artisan staff:create petugas-lokal --role=staff --name="Petugas Lokal"
 php artisan staff:create kades-lokal --role=village_head --name="Kepala Desa Lokal"
 php artisan staff:create admin-lokal --role=admin --name="Admin Lokal"
+php artisan staff:create kim-lokal --role=kim --name="Media Informasi Lokal"
 ```
 
 Hanya setelah `LETTER_NEIGHBORHOOD_APPROVAL=true` diterapkan sesuai prosedur di atas:
@@ -152,6 +153,19 @@ Saat fitur mati, login RT/RW mendapat 401 generik `Kredensial tidak valid.`; tok
 `--email` opsional (bawaan `<username>@example.test`). `rt_head` wajib `--rt` dan `--rw`; `rw_head` wajib `--rw`; isinya 1–3 digit dan disimpan sebagai 3 digit (`1` → `001`). Kolom `rt`/`rw` pada `users` nullable untuk peran lain. Ketua RT/RW tanpa wilayah lengkap tidak bisa masuk panel. Nama, username, dan nomor wilayah di atas hanya contoh, **bukan** akun bawaan. Buat admin pertama melalui CLI; untuk pengelolaan berikutnya gunakan panel **Akun** (`/admin/akun`) agar validasi wilayah, perlindungan admin, dan audit diterapkan.
 
 Sejak migration `2026_10_22_000000_add_staff_account_fields_to_users_table`, admin dapat mengelola akun dari panel **Akun**. Email menjadi nullable; akun baru wajib memakai username. Kolom baru: `is_active` (default true), `must_change_password` (default false), dan `last_login_at`. Kata sandi sementara dari panel minimal 10 karakter (CLI tetap 12) dan wajib diganti saat login pertama. Akun nonaktif ditolak dengan pesan yang sama seperti kredensial salah; menonaktifkan akun mencabut semua tokennya. Satu wilayah hanya boleh punya satu `rt_head` aktif (RT+RW) dan satu `rw_head` aktif (RW); nonaktifkan ketua lama sebelum membuat pengganti. Admin tidak dapat menonaktifkan atau menurunkan perannya sendiri, dan sistem selalu menyisakan minimal satu admin aktif. Audit mencatat `user.created`, `user.updated`, dan `user.password_reset` di `audit_logs`.
+
+### Ability panel dan pencabutan token lama
+
+| Ability | Peran aktif yang berwenang |
+|---|---|
+| `panel` | Semua peran yang boleh masuk panel; RT/RW hanya saat fitur aktif |
+| `applications:manage` | staff, admin, village_head; rt_head/rw_head saat fitur aktif dan sesuai wilayah |
+| `media:manage` | admin, staff, kim; berita/UMKM termasuk foto memakai `User::canManageMedia()` |
+| `site:manage` | admin, staff; konten situs termasuk unggah gambar/dokumen memakai `User::canManageContent()` |
+
+`GET /staff/me` mengembalikan array `abilities` bersama field profil dan `features` yang sudah ada. Logout, `/me`, dan ganti kata sandi sendiri memakai grup `panel`. Seluruh `/staff/users…` tetap memakai grup `applications:manage`, tetapi controller membatasi manajemen akun hanya untuk admin. Ability bukan pengganti pemeriksaan peran, akun aktif, wilayah, atau batas endpoint pelayanan.
+
+Migration `2026_11_08_000001_revoke_staff_tokens_for_abilities` menghapus **seluruh baris `personal_access_tokens`**, bukan data akun/pengajuan. Semua sesi harus login ulang agar memperoleh ability sesuai peran. `down()` tidak dapat memulihkan token yang dihapus; rollback tetap memerlukan login ulang. Jadwalkan pembaruan dan beri tahu pengguna sebelum menjalankan migration.
 
 ### Diagnosis login dan pemulihan akun
 
@@ -182,7 +196,7 @@ Akun tersimpan di tabel `users` pada **database aktif Laravel**. Git push/pull t
 | 429 | Batas login 5 percobaan/menit. Hentikan percobaan, tunggu sampai batas pulih; jangan mengakali rate limit. |
 | Sesi berakhir | Token kedaluwarsa/dicabut; masuk ulang. Sesi disimpan per tab/origin, bukan bukti akun terhapus. |
 | Diminta ganti kata sandi | Login berhasil, akun memakai kata sandi sementara. Selesaikan penggantian sebelum memakai fitur lain. |
-| 403 setelah login | Periksa peran/akun aktif/ability dan konfigurasi RT/RW. Admin/staff boleh mengelola konten, Kepala Desa tidak. |
+| 403 setelah login | Periksa peran/akun aktif/ability dan konfigurasi RT/RW. Admin/staff boleh mengelola media dan konten situs; KIM hanya berita/UMKM termasuk foto; Kepala Desa tidak boleh mengelola keduanya. |
 
 #### Lupa kata sandi atau akun nonaktif
 
@@ -206,31 +220,37 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | POST | `/applications/status` | Publik, 10 permintaan/menit; 5 kode salah per nomor → 429 selama 15 menit | Body: `request_id` dan `lookup_secret`; mengembalikan `jenis_surat`, `requires_neighborhood_approval: boolean` dari `LetterType`, status, dan catatan (penolakan RT/RW historis tetap diberi awalan "Ditolak oleh Ketua RT/RW") |
 | POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `username` dan `password` (atau `email` untuk klien lama); mengembalikan bearer token |
 | POST | `/staff/logout` | Token petugas | Mencabut token aktif |
-| GET | `/staff/me` | Token petugas | Mengembalikan `{ name, username, role, rt, rw, must_change_password, features: { neighborhood_approval: boolean } }`; `username`, `rt`, `rw` bisa `null`. Peran di luar lima peran panel, akun nonaktif, ketua RT/RW tanpa wilayah lengkap, atau token RT/RW saat fitur mati mendapat 403 |
+| GET | `/staff/me` | Token petugas | Mengembalikan `{ name, username, role, rt, rw, must_change_password, features: { neighborhood_approval: boolean }, abilities: string[] }`; `username`, `rt`, `rw` bisa `null`. Peran di luar enam peran panel, akun nonaktif, ketua RT/RW tanpa wilayah lengkap, atau token RT/RW saat fitur mati mendapat 403 |
 | GET | `/staff/users` | Admin | Daftar akun `{ id, name, username, role, rt, rw, is_active, must_change_password, last_login_at }` dan `warnings` wilayah tanpa ketua aktif (selalu `[]` saat fitur RT/RW mati) |
 | POST | `/staff/users` | Admin | Body `name`, `username`, `role`, `password` (min. 10); `rt` wajib untuk `rt_head`, `rw` wajib untuk `rt_head`/`rw_head`. Akun baru aktif dan wajib ganti kata sandi |
 | PATCH | `/staff/users/{id}` | Admin | Body `name`, `role`, `is_active`, `rt`, `rw`; menonaktifkan akun mencabut semua tokennya |
 | POST | `/staff/users/{id}/reset-password` | Admin | Body `password` (min. 10); menandai wajib ganti kata sandi dan mencabut semua token akun itu |
 | POST | `/staff/me/password` | Token petugas | Body `old_password` dan `password` (min. 10); token lain dicabut, token aktif tetap |
 | GET | `/staff/letter-register` | Staff, admin, village_head aktif | Register nomor terbit/batal; filter `year`, `jenis_surat`, `page`; 20 per halaman |
-| GET | `/staff/summary` | Token lima peran, ability `applications:manage` | Hitungan per status, antrean tindakan peran, masuk hari ini, lima antrean tertua; scope sama dengan daftar |
-| GET | `/staff/applications` | Token petugas | Daftar paginasi 20 per halaman, dibatasi wilayah untuk ketua RT/RW; filter `status` atau `statuses[]`, `q`, `jenis_surat`, dan `sort` (kontrak di bawah) |
+| GET | `/staff/summary` | Lima peran pelayanan, `applications:manage` (bukan kim) | Hitungan per status, antrean tindakan peran, masuk hari ini, lima antrean tertua; scope sama dengan daftar |
+| GET | `/staff/applications` | `applications:manage` (bukan kim) | Daftar paginasi 20 per halaman, dibatasi wilayah untuk ketua RT/RW; filter `status` atau `statuses[]`, `q`, `jenis_surat`, dan `sort` (kontrak di bawah) |
 | POST | `/staff/applications/{request_id}/lookup-secret` | Staff, admin, rt_head, rw_head (10/menit) | Membuat ulang kode akses; hanya untuk status non-COMPLETED. Kode lama langsung tidak berlaku. Kode baru hanya ada di respons ini. |
-| GET | `/staff/applications/{request_id}` | Token lima peran panel | Detail data pemohon, `allowed_transitions`, dan `history`; ketua RT/RW hanya wilayahnya dengan field terbatas; setiap akses berhasil dicatat di `audit_logs` |
+| GET | `/staff/applications/{request_id}` | Lima peran pelayanan, `applications:manage` (bukan kim) | Detail data pemohon, `allowed_transitions`, dan `history`; ketua RT/RW hanya wilayahnya dengan field terbatas; setiap akses berhasil dicatat di `audit_logs` |
 | PATCH | `/staff/applications/{request_id}/isi-keterangan` | Staff, admin (30/menit) | Body `isi_keterangan` (2–500); hanya UMUM sebelum `WAITING_APPROVAL`; riwayat `STATEMENT_EDITED`, audit `application.statement_edited` tanpa isi |
-| PATCH | `/staff/applications/{request_id}/status` | Token petugas | Body `status` dan `catatan` opsional; respons memuat `status`, `catatan`, dan `allowed_transitions` baru |
+| PATCH | `/staff/applications/{request_id}/status` | `applications:manage` (bukan kim) | Body `status` dan `catatan` opsional; respons memuat `status`, `catatan`, dan `allowed_transitions` baru |
 | GET | `/staff/applications/{request_id}/letter.pdf` | Staff, admin, village_head (30/menit) | Draf (PROCESSING/WAITING_APPROVAL) atau surat final (sejak APPROVED); diaudit |
 | POST | `/staff/applications/{request_id}/letter.pdf` | Staff, admin (10/menit) | Multipart `file` PDF ≤ 5 MB; mengganti PDF otomatis dengan surat hasil pindaian |
 | GET | `/staff/applications/{request_id}/letter-qr.png` | Staff, admin | Gambar QR verifikasi untuk ditempel pada surat manual |
 | GET | `/verify/{kode}` | Publik, 30 permintaan/menit | Metadata surat tersamar untuk halaman verifikasi QR |
 | GET | `/posts` | Publik, 60 permintaan/menit | Berita terbit, 10 per halaman, `Cache-Control: public, max-age=60` |
 | GET | `/posts/{slug}` | Publik, 60 permintaan/menit | Detail berita terbit + `body`; draf/terhapus 404 |
-| GET | `/staff/posts` | Admin, staff | Daftar berita semua status kecuali terhapus; filter `status`, `q` (judul), `page`; 20 per halaman |
-| POST | `/staff/posts` | Admin, staff | Body `title`, `category`, `summary`, `body`, `status`; 201 |
-| GET | `/staff/posts/{id}` | Admin, staff | Detail berita termasuk draf |
-| PATCH | `/staff/posts/{id}` | Admin, staff | Ubah sebagian field yang sama |
-| DELETE | `/staff/posts/{id}` | Admin, staff | Soft delete (baris dan sampul tetap ada, pemulihan lewat database) |
-| POST/DELETE | `/staff/posts/{id}/cover` | Admin, staff, berbagi 10/menit per akun | Multipart `file` / hapus sampul; 200 detail berita terbaru |
+| GET | `/staff/posts` | Admin, staff, kim (`media:manage`) | Daftar berita semua status kecuali terhapus; filter `status`, `q` (judul), `page`; 20 per halaman |
+| POST | `/staff/posts` | Admin, staff, kim (`media:manage`) | Body `title`, `category`, `summary`, `body`, `status`; 201 |
+| GET | `/staff/posts/{id}` | Admin, staff, kim (`media:manage`) | Detail berita termasuk draf |
+| PATCH | `/staff/posts/{id}` | Admin, staff, kim (`media:manage`) | Ubah sebagian field yang sama |
+| DELETE | `/staff/posts/{id}` | Admin, staff, kim (`media:manage`) | Soft delete (baris dan sampul tetap ada, pemulihan lewat database) |
+| POST/DELETE | `/staff/posts/{id}/cover` | Admin, staff, kim (`media:manage`), berbagi 10/menit per akun | Multipart `file` / hapus sampul; 200 detail berita terbaru |
+| GET/POST | `/staff/businesses` | Admin, staff, kim (`media:manage`) | Daftar / buat UMKM |
+| GET/PATCH/DELETE | `/staff/businesses/{id}` | Admin, staff, kim (`media:manage`) | Detail termasuk field pemilik, ubah, soft delete |
+| POST/DELETE | `/staff/businesses/{id}/photo` | Admin, staff, kim (`media:manage`), 10/menit | Unggah / hapus foto UMKM |
+| GET/PUT | `/staff/site/{key}` | Admin, staff (`site:manage`), bukan kim | Baca / ganti konten situs |
+| POST | `/staff/site/{key}/image` | Admin, staff (`site:manage`), 10/menit | Gambar struktur |
+| POST | `/staff/site/{key}/document` | Admin, staff (`site:manage`), 10/menit | Dokumen transparansi |
 
 Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Validasi yang gagal mengembalikan HTTP 422 dengan objek `errors` berisi pesan bahasa Indonesia.
 
@@ -247,7 +267,7 @@ Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Validasi yang g
 
 Frontend publik C4 (2 November 2026) membaca `/posts` dan `/posts/{slug}` langsung di browser lewat `services/posts.ts` (Zod, timeout 20 detik, no-store), tanpa perubahan kontrak API. Daftar `/berita/`, tiga berita beranda, dan detail `/berita/baca/?slug=...` tidak perlu build ulang setelah penerbitan/penghapusan; halaman yang sudah terbuka perlu dimuat ulang (tanpa polling). Draf tetap disaring server. Mode tanpa API memakai contoh sesuai flag F11, bukan fallback saat API gagal. Hosting frontend harus menyajikan `out/404.html` untuk redirect browser tautan lama `/berita/<slug>` yang tidak diekspor; detail baru memakai route query tetap. Lihat [integrasi C4](../docs/integrasi.md#berita-cms-c1c2).
 
-Kontrak lengkap di [docs/integrasi.md § Berita](../docs/integrasi.md). Hak kelola satu tempat: `User::canManageContent()` (`admin`/`staff` aktif); peran lain 403, tanpa token 401. Kategori di `App\Domain\PostCategory`. Isi teks biasa, HTML disimpan apa adanya dan tidak pernah dirender server. Slug tetap setelah terbit pertama. Audit `post.*` hanya aksi dan ID, tanpa judul/isi. `cover_url` berisi URL publik sampul atau `null`; `cover_path` tidak dikirim.
+Kontrak lengkap di [docs/integrasi.md § Berita](../docs/integrasi.md). Hak kelola satu tempat: `User::canManageMedia()` (`admin`/`staff`/`kim` aktif) + ability `media:manage`, termasuk sampul; peran lain 403, tanpa token 401. Kategori di `App\Domain\PostCategory`. Isi teks biasa, HTML disimpan apa adanya dan tidak pernah dirender server. Slug tetap setelah terbit pertama. Audit `post.*` hanya aksi dan ID, tanpa judul/isi. `cover_url` berisi URL publik sampul atau `null`; `cover_path` tidak dikirim.
 
 **Foto sampul (C2):** POST `/staff/posts/{id}/cover` memakai multipart field `file`; DELETE pada path yang sama menghapus sampul. Keduanya berbagi throttle 10/menit per akun, hak kelola sama dengan C1, respons 200 berupa detail berita terbaru (`cover_url` null setelah hapus), `Cache-Control: private, no-store`. Validasi 422: JPG/JPEG/PNG/WebP ≤ 3.072 KiB, lebar 600–6.000 px, tinggi 400–6.000 px; isi rusak ditolak. Klien FormData tidak menetapkan `Content-Type` sendiri agar boundary benar.
 
@@ -259,14 +279,14 @@ File baru disimpan sebelum transaksi penggantian dan audit `post.updated`; bila 
 
 ### UMKM warga
 
-`BusinessController` mengikuti pola berita: publik `GET /v1/businesses?category=&sort=&page=` (12 per halaman, `sort=name` bawaan atau `latest` untuk beranda) dan `GET /v1/businesses/{slug}` hanya untuk yang terbit; petugas `GET/POST /v1/staff/businesses`, `GET/PATCH/DELETE /v1/staff/businesses/{id}`, `POST/DELETE /v1/staff/businesses/{id}/photo` (`canManageContent()`, throttle foto 10/menit). Kategori di `App\Domain\BusinessCategory`, dusun di `Business::HAMLETS`. `owner_name` dan `whatsapp` cast `encrypted`, dikirim ke publik **hanya** bila `consent_public_contact` true dan tidak pernah di daftar petugas. Foto memakai `ImageProcessor` (3 MB, lebar 1.600 px) di `storage/app/public/businesses`. Audit `business.*` hanya aksi dan ID. Kontrak lengkap: [docs/integrasi.md § UMKM warga](../docs/integrasi.md). Tes: `tests/Feature/BusinessesApiTest.php`.
+`BusinessController` mengikuti pola berita: publik `GET /v1/businesses?category=&sort=&page=` (12 per halaman, `sort=name` bawaan atau `latest` untuk beranda) dan `GET /v1/businesses/{slug}` hanya untuk yang terbit; petugas `GET/POST /v1/staff/businesses`, `GET/PATCH/DELETE /v1/staff/businesses/{id}`, `POST/DELETE /v1/staff/businesses/{id}/photo` (`User::canManageMedia()`, admin/staff/kim aktif + `media:manage`, throttle foto 10/menit). Kategori di `App\Domain\BusinessCategory`, dusun di `Business::HAMLETS`. `owner_name` dan `whatsapp` cast `encrypted`, dikirim ke publik **hanya** bila `consent_public_contact` true dan tidak pernah di daftar petugas. Foto memakai `ImageProcessor` (3 MB, lebar 1.600 px) di `storage/app/public/businesses`. Audit `business.*` hanya aksi dan ID. Kontrak lengkap: [docs/integrasi.md § UMKM warga](../docs/integrasi.md). Tes: `tests/Feature/BusinessesApiTest.php`.
 
 ### Bagian situs — API konten R3 (3 November 2026)
 
 Satu tabel `site_sections` (`key` primary unik, `data` JSON, `updated_by` nullable FK users/nullOnDelete, timestamps). Enum `App\Domain\SiteSection` membatasi `profile`, `contact`, `history`, `statistics`, `transparency`, `structure`, `videos`. Visi-misi **tidak** masuk CMS: tetap statis di `lib/data.ts` sampai pergantian Kepala Desa. Sejak R4 (4 November 2026) `profile` menerima `profileDetails` opsional; batas per field ada di [kontrak integrasi](../docs/integrasi.md#bagian-situs-backend-r3-3-november-2026).
 
 - Publik `GET /api/v1/site/{key}`: 60/menit per IP, 200 `{ key, data, updated_at }`, `Cache-Control: public, max-age=60`; key belum diisi/tidak dikenal 404. Tidak mengirim ID pengguna atau field internal.
-- Petugas `GET`/`PUT /api/v1/staff/site/{key}`: `User::canManageContent()` (staff/admin aktif), ability `applications:manage`; 401 tanpa token, 403 peran/ability/akun salah sebelum key diperiksa, 404 key tak dikenal/belum diisi saat GET. PUT `{ data: {...} }` membuat atau mengganti **seluruh** objek, 200 format sama; tanpa merge/draf/versi. Semua respons petugas termasuk gagal `private, no-store`. CORS mengizinkan PUT dan DELETE (6 November 2026) hanya untuk `FRONTEND_ORIGINS`; preflight tidak menggantikan otorisasi.
+- Petugas `GET`/`PUT /api/v1/staff/site/{key}`: `User::canManageContent()` (staff/admin aktif), ability `site:manage`; KIM ditolak; 401 tanpa token, 403 peran/ability/akun salah sebelum key diperiksa, 404 key tak dikenal/belum diisi saat GET. PUT `{ data: {...} }` membuat atau mengganti **seluruh** objek, 200 format sama; tanpa merge/draf/versi. Semua respons petugas termasuk gagal `private, no-store`. CORS mengizinkan PUT dan DELETE (6 November 2026) hanya untuk `FRONTEND_ORIGINS`; preflight tidak menggantikan otorisasi.
 - Petugas `POST /api/v1/staff/site/{key}/image`: multipart `file`, 10/menit per akun. Hanya structure diizinkan sejak R7; sukses `{ path, url }`. Key lain tetap 422 `errors.file` tanpa menyimpan file. Kontrak R7 di bawah.
 - `SiteSectionRules` satu sumber validasi: `profile`/`history` memakai `intro` (1–2.000 karakter) dan `blocks` (list 1–20), tiap baris `title` (1–160), `text` (1–10.000). Hanya `profile` boleh menambah `profileDetails` opsional: `themes` (0–6 × 1–160), `stats` (0–6 `{value,label,detail?}`, 160/160/1.000), `location` (1–1.000), `boundaries` tepat 4 berurutan Utara/Timur/Selatan/Barat dengan `place` 1–1.000, `institutions` (0–20, `name` 1–160, `description` 1–2.000), `source` (1–1.000); semua wajib kecuali `detail`. `contact` tepat enam field dari objek `contact` frontend: `address` (1–1.000), `hours` (1–200), `contactName` (1–160), `phone` (maks.15), `mapsEmbedUrl`/`mapsLinkUrl` (maks.2.048). Tiga field terakhir wajib hadir tetapi boleh string kosong atau `[PLACEHOLDER]`. Nomor wajib `62` + 1–13 digit; URL wajib valid dan awalan Google sesuai [kontrak integrasi](../docs/integrasi.md#bagian-situs-backend-r3-3-november-2026).
 - `statistics` menolak **semua** payload PUT (422 `errors.data`), termasuk kosong, sampai skema R5 tersedia. `videos` (R8) menerima `{ profile: { url, title } | null, tutorial: { url, title } | null }`, lalu `SiteSectionRules::youtubeId()` mengekstrak ID 11 karakter dari youtube.com/watch?v=, youtu.be/, youtube.com/shorts/, youtube.com/embed/; yang disimpan/dikirim hanya `{ youtubeId, title }`. URL lain 422 `data.<slot>.url`. Tanpa nilai awal impor. Unknown fields ditolak di tiap tingkat. Semua teks trim; kontrol diperiksa sebelum trim. Pengecualian disetujui: CR/LF hanya di `blocks.*.text` dan `programs.*.text`; tab/NUL/DEL tetap ditolak. HTML teks biasa, renderer React wajib aman, bukan HTML mentah.
@@ -291,7 +311,7 @@ Command opt-in mengisi hanya key `profile`, `contact`, `history`, `transparency`
 
 **R7 (5 November 2026):** `structure` menerima `{ chartImagePath?, chartAlt?, blocks, source }`; blocks list 1–20 `{title 1–160, text 1–10.000}`, source 1–1.000. Deskripsi chartAlt maks.300, wajib bila ada gambar. Unknown fields/kontrol ditolak; CR/LF hanya teks blok. Path harus `site/structure/<uuid>.webp` atau `.jpg` yang ada di disk public, bukan URL/null/string kosong.
 
-- POST `/api/v1/staff/site/structure/image`: staff/admin aktif + ability, JPG/PNG/WebP ≤5.120 KiB (5 MiB), dimensi 600×400–6.000×6.000. ImageProcessor encode ulang tanpa metadata, lebar ≤2.400px (rasio tetap, tanpa memperbesar); output WebP 80 atau JPEG 82. Sukses `{ path, url }`, belum diterbitkan sampai PUT. Key lain tetap tidak mengizinkan gambar; tanpa token401/peran salah403/validasi422/GD hilang503.
+- POST `/api/v1/staff/site/structure/image`: staff/admin aktif + ability `site:manage` (`User::canManageContent()`), JPG/PNG/WebP ≤5.120 KiB (5 MiB), dimensi 600×400–6.000×6.000. ImageProcessor encode ulang tanpa metadata, lebar ≤2.400px (rasio tetap, tanpa memperbesar); output WebP 80 atau JPEG 82. Sukses `{ path, url }`, belum diterbitkan sampai PUT. Key lain tetap tidak mengizinkan gambar; tanpa token401/peran salah403/validasi422/GD hilang503.
 - GET/PUT structure menambah `image_url` publik atau null di luar data. PUT memakai lock per host dari validasi hingga commit dan cleanup; gambar lama dihapus setelah penggantian/penghapusan berhasil. Audit gagal mempertahankan gambar lama. Multi-host perlu lock bersama; unggahan belum tersimpan lewat PUT belum dibersihkan berkala.
 - Panel `/admin/konten/struktur/`: pratinjau, unggah/ganti/hapus, deskripsi pembaca layar, blok nama/jabatan dan sumber. Publik `/struktur-pemerintahan/` mengambil API di browser tanpa build ulang, statis lib/data.ts tampil dulu dan menjadi fallback demo/404/galat. Gambar opsional dengan Perbesar gambar di tab baru; nama/jabatan tetap teks di bawah. Bukan HTML mentah.
 
@@ -379,7 +399,7 @@ Dependensi: `barryvdh/laravel-dompdf` (PDF dari Blade) dan `bacon/bacon-qr-code`
 
 ### Detail pengajuan dan audit akses
 
-`GET /api/v1/staff/applications/{request_id}` memerlukan bearer token Sanctum dengan ability `applications:manage` **dan** peran panel aktif. Kelima peran boleh melihat detail; wewenang perubahan status tetap mengikuti tabel di bawah.
+`GET /api/v1/staff/applications/{request_id}` memerlukan bearer token Sanctum dengan ability `applications:manage` **dan** peran panel aktif. Lima peran pelayanan (staff/admin/village_head serta RT/RW saat fitur aktif) boleh melihat detail; KIM ditolak. Wewenang perubahan status tetap mengikuti tabel di bawah.
 
 **Batas wilayah ketua RT/RW** (`Application::forUser()` dan `isInTerritory()`): keduanya hanya melihat jenis surat dengan `requiresNeighborhoodApproval` (bukan SKU); `rt_head` hanya pengajuan dengan `rt` **dan** `rw` sama dengan akunnya; `rw_head` hanya pengajuan dengan `rw` sama. Daftar otomatis disaring; detail di luar wilayah → **404** (tidak membocorkan keberadaan); PATCH status di luar wilayah → **403**. Kode wilayah dibandingkan setelah dinormalkan ke 3 digit.
 
@@ -433,7 +453,7 @@ Baris berikutnya (`NEED_REVISION` dan seterusnya) sama dengan tabel umum.
 - Perpindahan yang ada di tabel tetapi bukan wewenang peran → **403** `Peran Anda tidak berwenang melakukan perubahan status ini.` Admin tidak dapat menyetujui. Pengajuan di luar wilayah ketua RT/RW → **403** `Akses ditolak.`
 - `NEED_REVISION` dan `REJECTED` wajib memakai `catatan` (422 dengan `errors.catatan`).
 - Status dibaca ulang dengan kunci baris di dalam transaksi, sehingga klien dengan data usang tidak bisa mengulang transisi. Setiap perubahan dicatat di `application_events` beserta `user_id`.
-- Semua peran memakai satu ability token `applications:manage`; peran diperiksa ulang pada setiap permintaan.
+- Endpoint pelayanan memakai `applications:manage` untuk staff/admin/village_head serta RT/RW saat fitur aktif; KIM tidak mendapat ability ini. Semua peran panel yang boleh masuk mendapat `panel`; media memakai `media:manage` (admin/staff/kim), situs memakai `site:manage` (admin/staff). Peran diperiksa ulang pada setiap permintaan.
 
 `APPROVED` mencatat persetujuan Kepala Desa dan membuat PDF final ber-QR (lihat bagian Surat PDF); `READY_FOR_PICKUP` ditandai petugas setelah surat fisik siap. `RT_APPROVED`/`RW_APPROVED` hanya catatan persetujuan di sistem: tidak ada PDF pengantar, TTE, stempel digital, atau notifikasi.
 
@@ -443,7 +463,7 @@ Migration `2026_10_20_000000_add_neighborhood_territories` menambah kolom `rt`/`
 
 - `lookup_secret` diberikan sekali setelah pengajuan dengan format `WAD-XXXX-XXXX` (8 angka acak, `App\Domain\AccessCode`). Input diterima tanpa tanda hubung, dengan spasi, atau huruf kecil. Hash memakai HMAC-SHA256 dengan `APP_KEY`, jadi **mengganti `APP_KEY` membatalkan semua kode akses**. Kode lama (48 karakter, SHA-256 polos) tetap berlaku.
 - Cek status dikunci per nomor pengajuan setelah 5 kode salah selama 15 menit (HTTP 429), di samping batas 10 permintaan/menit per IP. Kode benar membuka kunci.
-- **Buat ulang kode akses:** `POST /staff/applications/{request_id}/lookup-secret` oleh staff, admin, rt_head, rw_head (bukan village_head). Permohonan di luar wilayah RT/RW = 404. Status `COMPLETED` = 422. Kode lama langsung tidak berlaku. Kunci salah coba dibuka. Respons hanya berisi kode sekali; tidak ada di log. Entri riwayat dengan `action: ACCESS_CODE_RESET` dan catatan audit `application.access_code_reset`.
+- **Buat ulang kode akses:** `POST /staff/applications/{request_id}/lookup-secret` oleh staff, admin, rt_head, rw_head (bukan village_head atau kim), dengan `applications:manage`; RT/RW hanya saat fitur aktif. Permohonan di luar wilayah RT/RW = 404. Status `COMPLETED` = 422. Kode lama langsung tidak berlaku. Kunci salah coba dibuka. Respons hanya berisi kode sekali; tidak ada di log. Entri riwayat dengan `action: ACCESS_CODE_RESET` dan catatan audit `application.access_code_reset`.
 - NIK, nomor KK, telepon, alamat, tempat lahir, tanggal lahir (string `Y-m-d`), agama, dan status perkawinan disimpan terenkripsi memakai `APP_KEY`; kolomnya tidak dapat difilter/diurutkan di SQL. Migration `2026_10_25_000000_encrypt_application_birth_data` mengenkripsi baris lama, dan `down()` mendekripsinya kembali; keduanya butuh `APP_KEY` yang sama. Endpoint publik hanya mengembalikan metadata status; daftar petugas tidak menampilkan field sensitif itu.
 - Token petugas berlaku `SANCTUM_EXPIRATION` menit sejak login (bawaan 480 menit = 8 jam kerja; atur di `.env`, lalu `php artisan config:clear` bila konfigurasi di-cache). Token kedaluwarsa atau dicabut menghasilkan 401.
 - Frontend menyimpan token di `sessionStorage` tab dan memvalidasinya lewat `/staff/me`; menutup tab menghapus sesi. Jangan simpan token dalam URL atau localStorage.

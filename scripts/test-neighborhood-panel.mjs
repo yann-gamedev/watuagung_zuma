@@ -7,7 +7,7 @@ import ts from "typescript";
 // Compile actual source in memory, like test-admin-news.mjs; no generated files.
 const dataUrl = (code) => `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`;
 const react = JSON.stringify(import.meta.resolve("react"));
-const session = dataUrl("export const useAdminSession = () => globalThis.__adminSession;");
+const session = dataUrl("export const useAdminSession = () => globalThis.__adminSession; export const can = (user, ability) => user?.abilities.includes(ability) ?? false;");
 const stubs = {
   "next/image": dataUrl(`import { createElement } from ${react}; export default ({ src, alt }) => createElement("img", { src, alt });`),
   "next/link": dataUrl(`import { createElement } from ${react}; export default ({ href, children, ...rest }) => createElement("a", { href, ...rest }, children);`),
@@ -33,6 +33,7 @@ function load(path, extraExports = "") {
 }
 
 const user = (role, neighborhood_approval) => ({
+  abilities: ["panel", ...(role === "kim" ? [] : ["applications:manage"]), ...(["staff", "admin", "kim"].includes(role) ? ["media:manage"] : []), ...(["staff", "admin"].includes(role) ? ["site:manage"] : [])],
   features: { neighborhood_approval }, name: "Petugas Contoh", username: "contoh", role,
   rt: role === "rt_head" ? "001" : null, rw: role === "rt_head" || role === "rw_head" ? "002" : null, must_change_password: false,
 });
@@ -48,7 +49,7 @@ for (const features of [undefined, {}, { neighborhood_approval: "false" }, { nei
 }
 
 // Sidebar: RT/RW queue only when flag true; office roles never see queues.
-const { AdminSidebar } = await load("components/admin-sidebar.tsx");
+const { AdminSidebar, canAccessAdminPath, adminLinks } = await load("components/admin-sidebar.tsx");
 const sidebar = (role, flag) => { as(role, flag); return hrefs(renderToStaticMarkup(createElement(AdminSidebar, { open: false, onClose() {} }))).slice(1); };
 assert.deepEqual(sidebar("rt_head", false), ["/admin"]);
 assert.deepEqual(sidebar("rt_head", true), ["/admin", "/admin/antrean-rt"]);
@@ -60,9 +61,19 @@ for (const role of ["staff", "village_head", "admin"]) for (const flag of [false
   assert.equal(links.includes("/admin/akun"), role === "admin");
 }
 
+// KIM: only media menus/routes; returned abilities, not role names, grant access.
+assert.deepEqual(sidebar("kim", false), ["/admin/berita", "/admin/umkm"]);
+for (const { href } of adminLinks) assert.equal(canAccessAdminPath(user("kim", false), href), ["/admin/berita", "/admin/umkm"].includes(href), href);
+for (const path of ["/admin/berita/tulis/", "/admin/berita/ubah/", "/admin/umkm/tambah/", "/admin/umkm/ubah/"]) assert.ok(canAccessAdminPath(user("kim", false), path), path);
+assert.equal(canAccessAdminPath(user("kim", false), "/admin/permohonan/detail/"), false);
+assert.equal(canAccessAdminPath({ ...user("admin", false), abilities: ["panel"] }, "/admin/berita/"), false);
+assert.equal(canAccessAdminPath(user("village_head", false), "/admin/konten/"), false);
+assert.equal(profileSchema.safeParse({ ...user("kim", false), abilities: undefined }).success, false);
+assert.equal(profileSchema.safeParse({ ...user("kim", false), abilities: ["unknown"] }).success, false);
+
 // Accounts: role choices follow flag in filter and create/edit forms.
-const office = ["staff", "village_head", "admin"];
-const all = ["staff", "village_head", "admin", "rt_head", "rw_head"];
+const office = ["staff", "village_head", "admin", "kim"];
+const all = ["staff", "village_head", "admin", "kim", "rt_head", "rw_head"];
 const { AccountsManager, AccountForm } = await load("features/admin/accounts.tsx", "\nexport { AccountForm };");
 for (const [flag, expected] of [[false, office], [true, all]]) {
   as("admin", flag);
@@ -80,4 +91,4 @@ for (const [flag, expected] of [[false, office], [true, all]]) {
 }
 as("staff", true);
 assert.ok(renderToStaticMarkup(createElement(AccountsManager)).includes("Halaman ini tidak tersedia untuk peran Anda."));
-console.log("PASS: profile flag mandatory boolean, sidebar RT/RW queues gated by flag, account role choices 3 (off) vs 5 (on) in filter/create/edit.");
+console.log("PASS: profile abilities/flag required, KIM media-only menus/routes, RT/RW queues gated, account role choices 4 (off) vs 6 (on).");

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CircleCheck, FilePenLine } from "lucide-react";
 import type { PostStatus, StaffPostsPage } from "@/types/posts";
 import { AdminUnauthorizedError } from "./api";
-import { useAdminSession } from "./session";
+import { can, useAdminSession } from "./session";
 import { postDate, postsPageSchema } from "./news-data";
 import styles from "./applications.module.css";
 
@@ -30,7 +30,7 @@ export function NewsList() {
     setFilters({ q: String(data.get("q") ?? "").trim(), status: String(data.get("status") ?? ""), page: 1 });
     setAttempt((n) => n + 1);
   }
-  if (!user || !["admin", "staff"].includes(user.role)) return <NewsResults query={query} onPage={() => {}} />;
+  if (!can(user, "media:manage")) return <p role="alert">Halaman ini tidak tersedia untuk peran Anda.</p>;
   return <div className={styles.list}>
     <div className={styles.intro}><p>Kelola draf dan berita terbit. Waktu ditampilkan dalam WIB.</p><Link className="btn" href="/admin/berita/tulis/">Tulis berita</Link></div>
     <section className={styles.panel} aria-labelledby="news-heading">
@@ -51,6 +51,7 @@ function NewsResults({ query, onPage }: { query: string; onPage: (page: number) 
   const [error, setError] = useState("");
   const summary = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
+    if (!can(user, "media:manage")) return;
     let cancelled = false;
     void request<unknown>(`/staff/posts?${query}`).then((value) => {
       const parsed = postsPageSchema.safeParse(value);
@@ -60,11 +61,11 @@ function NewsResults({ query, onPage }: { query: string; onPage: (page: number) 
       if (!cancelled && !(cause instanceof AdminUnauthorizedError)) setError(cause instanceof Error ? cause.message : "Gagal memuat berita.");
     });
     return () => { cancelled = true; };
-  }, [query, request]);
+  }, [query, request, user]);
   useEffect(() => { if (result || error) summary.current?.focus(); }, [result, error]);
   if (error) return <p ref={summary} tabIndex={-1} className={styles.error} role="alert">{error} Gunakan Muat ulang untuk mencoba lagi.</p>;
   if (!result) return <p role="status" className={styles.message}>Memuat berita…</p>;
-  if (!user || !["admin", "staff"].includes(user.role)) return <p role="alert">Halaman ini tidak tersedia untuk peran Anda.</p>;
+  if (!can(user, "media:manage")) return <p role="alert">Halaman ini tidak tersedia untuk peran Anda.</p>;
   return <>
     <p ref={summary} tabIndex={-1} role="status" className={styles.summary}>{result.total} berita ditemukan.</p>
     {!result.data.length ? <p className={styles.message}>Tidak ada berita pada halaman ini. Ubah filter atau kembali ke halaman sebelumnya.</p> : <>

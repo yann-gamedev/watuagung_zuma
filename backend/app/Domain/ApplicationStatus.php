@@ -20,8 +20,8 @@ enum ApplicationStatus: string
     case Rejected = 'REJECTED';
     case NeedRevision = 'NEED_REVISION';
 
-    /** Peran yang boleh masuk panel petugas. */
-    public const PANEL_ROLES = ['staff', 'village_head', 'admin', 'rt_head', 'rw_head'];
+    /** Peran yang boleh masuk panel petugas. `kim` hanya media (berita/UMKM), tanpa transisi status. */
+    public const PANEL_ROLES = ['staff', 'village_head', 'admin', 'rt_head', 'rw_head', 'kim'];
 
     private const OFFICE = ['staff', 'admin'];
     private const HEAD = ['village_head'];

@@ -47,7 +47,7 @@ class PostController extends Controller {
     }
 
     public function staffIndex(Request $request): JsonResponse {
-        if (! $request->user()->canManageContent()) return $this->forbidden();
+        if (! $request->user()->canManageMedia()) return $this->forbidden();
         $data = $request->validate([
             'status'=>['sometimes', Rule::in(['draft', 'published'])],
             'q'=>['sometimes', 'nullable', 'string', 'max:100'],
@@ -65,13 +65,13 @@ class PostController extends Controller {
     }
 
     public function staffShow(Request $request, int $id): JsonResponse {
-        if (! $request->user()->canManageContent()) return $this->forbidden();
+        if (! $request->user()->canManageMedia()) return $this->forbidden();
         return response()->json($this->staffDetail(Post::findOrFail($id)))->header('Cache-Control', 'private, no-store');
     }
 
     public function store(Request $request): JsonResponse {
         $user = $request->user();
-        if (! $user->canManageContent()) return $this->forbidden();
+        if (! $user->canManageMedia()) return $this->forbidden();
         $data = $request->validate($this->rules(true));
         $post = DB::transaction(function () use ($data, $user) {
             $post = new Post($data + ['created_by'=>$user->id, 'updated_by'=>$user->id]);
@@ -87,7 +87,7 @@ class PostController extends Controller {
 
     public function update(Request $request, int $id): JsonResponse {
         $user = $request->user();
-        if (! $user->canManageContent()) return $this->forbidden();
+        if (! $user->canManageMedia()) return $this->forbidden();
         $data = $request->validate($this->rules(false));
         $post = DB::transaction(function () use ($data, $user, $id) {
             $post = Post::lockForUpdate()->findOrFail($id);
@@ -107,7 +107,7 @@ class PostController extends Controller {
 
     public function destroy(Request $request, int $id): JsonResponse {
         $user = $request->user();
-        if (! $user->canManageContent()) return $this->forbidden();
+        if (! $user->canManageMedia()) return $this->forbidden();
         DB::transaction(function () use ($user, $id) {
             $post = Post::lockForUpdate()->findOrFail($id);
             $post->forceFill(['updated_by'=>$user->id])->save();
@@ -118,7 +118,7 @@ class PostController extends Controller {
     }
 
     public function uploadCover(Request $request, int $id): JsonResponse {
-        if (! $request->user()->canManageContent()) return $this->forbidden();
+        if (! $request->user()->canManageMedia()) return $this->forbidden();
         Post::findOrFail($id);
         $request->validate(['file'=>['bail', 'required', 'file']]);
         $path = ImageProcessor::store($request->file('file'), 'posts', 3072, 1600);
@@ -134,7 +134,7 @@ class PostController extends Controller {
     }
 
     public function deleteCover(Request $request, int $id): JsonResponse {
-        if (! $request->user()->canManageContent()) return $this->forbidden();
+        if (! $request->user()->canManageMedia()) return $this->forbidden();
         $post = $this->changeCover($request, $id, null, $oldPath);
         $this->removeCoverFile($oldPath);
         return response()->json($this->staffDetail($post))->header('Cache-Control', 'private, no-store');

@@ -73,7 +73,7 @@ class BusinessController extends Controller {
     }
 
     public function staffIndex(Request $request): JsonResponse {
-        if (! $request->user()->canManageContent()) return $this->forbidden();
+        if (! $request->user()->canManageMedia()) return $this->forbidden();
         $data = $request->validate([
             'status'=>['sometimes', Rule::in(['draft', 'published'])],
             'category'=>['sometimes', Rule::enum(BusinessCategory::class)],
@@ -93,13 +93,13 @@ class BusinessController extends Controller {
     }
 
     public function staffShow(Request $request, int $id): JsonResponse {
-        if (! $request->user()->canManageContent()) return $this->forbidden();
+        if (! $request->user()->canManageMedia()) return $this->forbidden();
         return response()->json($this->staffDetail(Business::findOrFail($id)))->header('Cache-Control', self::PRIVATE_CACHE);
     }
 
     public function store(Request $request): JsonResponse {
         $user = $request->user();
-        if (! $user->canManageContent()) return $this->forbidden();
+        if (! $user->canManageMedia()) return $this->forbidden();
         $data = $request->validate($this->rules(true));
         $business = DB::transaction(function () use ($data, $user) {
             $business = new Business($data + ['created_by'=>$user->id, 'updated_by'=>$user->id]);
@@ -115,7 +115,7 @@ class BusinessController extends Controller {
 
     public function update(Request $request, int $id): JsonResponse {
         $user = $request->user();
-        if (! $user->canManageContent()) return $this->forbidden();
+        if (! $user->canManageMedia()) return $this->forbidden();
         $data = $request->validate($this->rules(false));
         $business = DB::transaction(function () use ($data, $user, $id) {
             $business = Business::lockForUpdate()->findOrFail($id);
@@ -134,7 +134,7 @@ class BusinessController extends Controller {
 
     public function destroy(Request $request, int $id): JsonResponse {
         $user = $request->user();
-        if (! $user->canManageContent()) return $this->forbidden();
+        if (! $user->canManageMedia()) return $this->forbidden();
         DB::transaction(function () use ($user, $id) {
             $business = Business::lockForUpdate()->findOrFail($id);
             $business->forceFill(['updated_by'=>$user->id])->save();
@@ -145,7 +145,7 @@ class BusinessController extends Controller {
     }
 
     public function uploadPhoto(Request $request, int $id): JsonResponse {
-        if (! $request->user()->canManageContent()) return $this->forbidden();
+        if (! $request->user()->canManageMedia()) return $this->forbidden();
         Business::findOrFail($id);
         $request->validate(['file'=>['bail', 'required', 'file']]);
         $path = ImageProcessor::store($request->file('file'), 'businesses', 3072, 1600);
@@ -161,7 +161,7 @@ class BusinessController extends Controller {
     }
 
     public function deletePhoto(Request $request, int $id): JsonResponse {
-        if (! $request->user()->canManageContent()) return $this->forbidden();
+        if (! $request->user()->canManageMedia()) return $this->forbidden();
         $business = $this->changePhoto($request, $id, null, $oldPath);
         $this->removePhotoFile($oldPath);
         return response()->json($this->staffDetail($business))->header('Cache-Control', self::PRIVATE_CACHE);

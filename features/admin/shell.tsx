@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUpRight, KeyRound, LogOut, Menu } from "lucide-react";
 import { apiBase } from "@/services/pelayanan";
-import { AdminSidebar, adminPageTitle } from "@/components/admin-sidebar";
+import { AdminSidebar, adminPageTitle, canAccessAdminPath } from "@/components/admin-sidebar";
 import { normalizePath } from "@/components/site-header";
 import { AdminLoginForm } from "./login-form";
 import { ChangePasswordForm } from "./change-password";
@@ -12,7 +12,7 @@ import { useAdminSession } from "./session";
 import styles from "./neighborhood.module.css";
 import shellStyles from "./shell.module.css";
 
-const roleLabels = { staff: "Petugas", village_head: "Kepala Desa", admin: "Admin", rt_head: "Ketua RT", rw_head: "Ketua RW" } as const;
+const roleLabels = { staff: "Petugas", village_head: "Kepala Desa", admin: "Admin", kim: "KIM (Media Informasi)", rt_head: "Ketua RT", rw_head: "Ketua RW" } as const;
 const MOBILE_QUERY = "(max-width: 900px)";
 
 function focusables(container: HTMLElement | null) {
@@ -75,6 +75,12 @@ function ForcedPasswordChange() {
 function AdminFrame({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAdminSession();
   const path = normalizePath(usePathname());
+  const router = useRouter();
+  const allowed = canAccessAdminPath(user, path);
+  const kimHome = user?.role === "kim" && path === "/admin";
+  useEffect(() => {
+    if (kimHome) router.replace("/admin/berita/");
+  }, [kimHome, router]);
   const [open, setOpen] = useState(false);
   const [prevPath, setPrevPath] = useState(path);
   const [leaving, setLeaving] = useState(false);
@@ -185,7 +191,7 @@ function AdminFrame({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <main id="main" className="admin-main">{children}</main>
+        <main id="main" className="admin-main">{allowed ? children : kimHome ? <p role="status">Membuka berita…</p> : <div><p className="error-box" role="alert">Halaman ini tidak tersedia untuk peran Anda.</p><Link className="btn btn-secondary" href={user?.role === "kim" ? "/admin/berita/" : user?.role === "rt_head" ? "/admin/antrean-rt/" : user?.role === "rw_head" ? "/admin/antrean-rw/" : "/admin/"}>{user?.role === "kim" ? "Ke Berita" : "Kembali ke panel Anda"}</Link></div>}</main>
       </div>
       <dialog ref={passwordDialogRef} className={shellStyles.dialog} aria-labelledby="admin-password-title" onClose={() => setPasswordOpen(false)}>
         <h2 id="admin-password-title">Ganti kata sandi</h2>

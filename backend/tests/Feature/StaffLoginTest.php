@@ -30,7 +30,7 @@ class StaffLoginTest extends TestCase
             'username' => $user->username, 'password' => 'test-password-only',
         ])->assertOk()->assertJsonPath('user.role', 'staff');
         $this->assertArrayNotHasKey('password', $response->json('user'));
-        $this->assertSame(['applications:manage'], $user->tokens()->first()->abilities);
+        $this->assertSame(['panel', 'applications:manage', 'media:manage', 'site:manage'], $user->tokens()->first()->abilities);
         $token = $response->json('token');
         $this->withToken($token)->getJson('/api/v1/staff/applications')->assertOk();
         $this->withToken($token)->postJson('/api/v1/staff/logout')->assertOk();

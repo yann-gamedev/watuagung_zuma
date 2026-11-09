@@ -22,7 +22,7 @@ const blocks = [
   },
   {
     title: "Siapa yang dapat melihat",
-    text: "Petugas desa, kepala desa, dan admin dapat melihat data untuk menangani permohonan. Semua jenis surat diverifikasi petugas desa lalu disetujui kepala desa. Setiap pembukaan data dicatat.",
+    text: "Petugas desa, kepala desa, dan admin dapat melihat data untuk menangani permohonan. Semua jenis surat diverifikasi petugas desa lalu disetujui kepala desa. Setiap pembukaan data permohonan dicatat.\nKIM (Media Informasi) hanya mengelola berita dan UMKM, termasuk foto, dan tidak dapat mengakses data pemohon atau pengajuan surat. Untuk mengelola UMKM, KIM dapat melihat nama dan nomor WhatsApp pemilik pada detail panel yang diizinkan. Nama dan nomor tersebut hanya ditampilkan kepada publik bila pemilik sudah mengizinkan.",
   },
   {
     title: "Keamanan data",
