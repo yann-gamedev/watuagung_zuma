@@ -1,0 +1,62 @@
+# public_html Desa Watuagung — Hostinger Web Hosting (LiteSpeed, kompatibel Apache 2.4).
+# Dipasang oleh deploy/hostinger-deploy.sh; jangan diedit langsung di server (tertimpa saat deploy).
+# Padanan deploy/nginx/watuagung.conf + watuagung-headers.conf untuk hosting tanpa Nginx.
+#
+# Isi public_html: hasil static export (out/), berkas ini, laravel.php (penghubung /api/),
+# dan symlink storage → backend/storage/app/public (media publik saja).
+# Kode Laravel, .env, storage/app/private dan log berada DI LUAR public_html.
+
+Options -Indexes -MultiViews +SymLinksIfOwnerMatch
+DirectoryIndex index.html
+ErrorDocument 404 /404.html
+ErrorDocument 403 /404.html
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # HTTPS saja. Jangan aktifkan juga "Force HTTPS" di hPanel agar tidak dobel redirect.
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+    # Validasi SSL Let's Encrypt dari hPanel.
+    RewriteRule ^\.well-known/acme-challenge/ - [L]
+
+    # File tersembunyi (.env, .git, .htaccess, .user.ini, dsb.).
+    RewriteRule (^|/)\. - [F]
+
+    # PHP tidak boleh dipanggil langsung, termasuk di /storage/. Hanya rewrite internal ke
+    # laravel.php di bawah yang lolos (REDIRECT_STATUS terisi setelah rewrite).
+    RewriteCond %{ENV:REDIRECT_STATUS} ^$
+    RewriteRule \.(php[0-9]?|phtml|phar|phps)(/|$) - [F,NC]
+
+    # /api/* → Laravel. Path tetap /api/v1/... di Laravel (REQUEST_URI tidak berubah).
+    RewriteRule ^api/ laravel.php [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    # Sama dengan deploy/nginx/watuagung-headers.conf. "always" agar ikut pada 404/galat API.
+    Header always set Strict-Transport-Security "max-age=31536000"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set X-Frame-Options "DENY"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    # Report-Only: ubah ke Content-Security-Policy setelah seminggu tanpa pelanggaran di console.
+    # Alasan 'unsafe-inline' ada di deploy/nginx/watuagung-headers.conf.
+    Header always set Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://i.ytimg.com; font-src 'self'; connect-src 'self'; frame-src https://www.google.com https://maps.google.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    Header always unset X-Powered-By
+
+    # Cache: HTML selalu dicek ulang (deploy menghapus chunk lama), aset build berhash 1 tahun,
+    # media publik 7 hari. API diatur Laravel sendiri.
+    SetEnvIf Request_URI "^/_next/static/" WA_IMMUTABLE
+    SetEnvIf Request_URI "^/storage/" WA_MEDIA
+    <FilesMatch "\.html$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+    Header set Cache-Control "public, max-age=31536000, immutable" env=WA_IMMUTABLE
+    Header set Cache-Control "public, max-age=604800" env=WA_MEDIA
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript text/javascript application/json image/svg+xml
+</IfModule>
