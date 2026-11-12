@@ -54,7 +54,7 @@ php artisan config:clear
 
 ### Tes SQLite dan PostgreSQL
 
-`phpunit.xml` tetap memakai SQLite `:memory:`. Produksi kini memakai MySQL/MariaDB Hostinger (12 November 2026, belum diuji; lihat "Sebelum produksi"). PostgreSQL 16+ tetap didukung untuk VPS; verifikasi lokal terakhir memakai PostgreSQL 18.6 (179 tes / 1.858 assertions) dan SQLite (179 tes / 1.856 assertions), lihat [catatan progres](../docs/progres-2026-10-24.md).
+`phpunit.xml` tetap memakai SQLite `:memory:`. Produksi kini memakai MySQL/MariaDB Hostinger (12 November 2026; lihat § Tes MySQL/MariaDB). PostgreSQL 16+ tetap didukung untuk VPS; verifikasi lokal terakhir memakai PostgreSQL 18.6 (179 tes / 1.858 assertions) dan SQLite (179 tes / 1.856 assertions), lihat [catatan progres](../docs/progres-2026-10-24.md).
 
 **Hanya gunakan database lokal khusus `watuagung_test`: `migrate:fresh` dan suite tes menghapus seluruh isinya.** Buat database kosong tersebut dengan user lokal yang sudah disiapkan, misalnya `createdb -h 127.0.0.1 -p 5432 -U <user-lokal> -W watuagung_test`. Jangan memakai database pengembangan/produksi berisi data yang perlu disimpan.
 
@@ -110,6 +110,23 @@ foreach ($run in 1..3) {
 - Tanggal fiktif dibekukan ke 24 Oktober 2026 pukul 12.00 WIB pada semua proses agar tidak melintasi tahun. Memeriksa 30 nomor unik, urutan tepat 1..30, satu counter tahun 2026 bernilai 30, satu nomor per permohonan, serta 30 status dan event beserta petugas penerbitnya.
 - Batas waktu barrier 45 detik, SQL/lock 60 detik, dan proses anak 90 detik. Gagal/timeout → exit 1; output exception/worker tidak dicetak agar SQL, data sensitif, dan rahasia tidak bocor. Schema dibersihkan dalam `finally`, juga saat gagal. Bila proses induk dihentikan paksa, schema sementara mungkin tertinggal; periksa secara manual, jangan menghapus schema lain.
 - Tiga hasil PASS adalah bukti skenario lokal tersebut, bukan pembuktian matematis untuk semua beban, uji server produksi, atau uji HTTP end-to-end. Jika satu jalan gagal, hentikan rangkaian dan laporkan sebelum mengubah `LetterNumber`.
+
+### Tes MySQL/MariaDB (produksi Hostinger)
+
+Sama dengan PostgreSQL di atas, tetapi memakai `.env.testing.mysql` (salin dari `.env.testing.mysql.example`) dan database lokal khusus `watuagung_test` dengan versi server yang sama dengan Hostinger. **Isinya dihapus oleh tes.** `APP_KEY` lewat environment proses; untuk database uji kosong boleh memakai kunci acak sementara yang tidak ditulis ke file mana pun:
+
+```powershell
+$env:APP_KEY = 'base64:' + (php -r 'echo base64_encode(random_bytes(32));')
+try {
+    php artisan migrate:fresh --env=testing.mysql --force
+    php artisan test --env=testing.mysql
+    php tests/Concurrency/letter-number-mysql.php   # ulangi 3×; menghapus isi watuagung_test
+} finally { Remove-Item Env:APP_KEY }
+```
+
+DDL (`DROP TABLE`, `CREATE TRIGGER`) di MySQL meng-commit transaksi `RefreshDatabase`, sehingga tes kegagalan audit/event memakai `failInsertsInto()` di `tests/TestCase.php` (melempar `QueryException` sebelum `INSERT`) khusus MySQL; SQLite/PostgreSQL tetap memakai DROP/trigger. SQL yang dibandingkan tes dinormalisasi (backtick → kutip ganda). `letter-number-mysql.php` memakai `LOCK TABLES … WRITE` sebagai penghalang dan `information_schema.processlist` untuk memastikan 30 sesi tertahan bersamaan.
+
+Hasil 13 November 2026, MariaDB 11.4.8 lokal: 411 tes / 6.704 assertions lulus; rollback seluruh migration dan migrate ulang lulus; uji penomoran 3× PASS (30 nomor unik 1..30, satu counter = 30). SQLite pada perubahan yang sama: 411 tes / 6.702 assertions.
 
 ### Konfigurasi persetujuan RT/RW — keputusan 2 November 2026
 
@@ -479,7 +496,7 @@ Migration `2026_10_20_000000_add_neighborhood_territories` menambah kolom `rt`/`
 
 ## Sebelum produksi
 
-Belum siap menerima data warga nyata. Hosting produksi: **Hostinger Web Hosting Premium** (keputusan 12 November 2026) dengan MySQL/MariaDB, LiteSpeed `.htaccess`, tanpa root; panduan [deploy/hostinger.md](../deploy/hostinger.md). Suite tes dan uji penomoran multiproses **belum** dijalankan pada MySQL/MariaDB; wajib lulus sebelum go-live. Siapkan HTTPS, `APP_DEBUG=false`, backup dan uji pemulihan, kebijakan privasi/retensi, scheduler, serta pengelolaan `APP_KEY` yang aman. Demo Vercel tidak menjalankan Laravel.
+Belum siap menerima data warga nyata. Hosting produksi: **Hostinger Web Hosting Premium** (keputusan 12 November 2026) dengan MySQL/MariaDB, LiteSpeed `.htaccess`, tanpa root; panduan [deploy/hostinger.md](../deploy/hostinger.md). Suite tes dan uji penomoran multiproses lulus pada MariaDB 11.4.8 lokal (13 November 2026, § Tes MySQL/MariaDB); ulangi bila versi server Hostinger berbeda. Siapkan HTTPS, `APP_DEBUG=false`, backup dan uji pemulihan, kebijakan privasi/retensi, scheduler, serta pengelolaan `APP_KEY` yang aman. Demo Vercel tidak menjalankan Laravel.
 
 Atur `APP_URL`, `FRONTEND_ORIGINS`, dan `LETTER_VERIFY_URL` ke alamat lingkungan target; jalankan migration dan uji alur lengkap beserta pembatasan peran/wilayah. PDF dan bantuan buat ulang kode akses sudah diimplementasikan, tetapi template/nomor resmi, prosedur pemeriksaan identitas, uji browser Laravel, dan pemindaian QR masih perlu dituntaskan. Autentikasi saat ini memakai bearer token dan `sessionStorage`; perubahan ke cookie HttpOnly bukan fitur yang sudah tersedia atau keputusan arsitektur yang telah ditetapkan.
 

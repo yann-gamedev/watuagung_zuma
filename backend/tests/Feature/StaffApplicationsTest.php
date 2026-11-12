@@ -172,7 +172,7 @@ class StaffApplicationsTest extends TestCase
         $application = $this->application();
         $this->act();
         config(['app.debug' => false]);
-        Schema::drop('audit_logs');
+        $this->usesMysql() ? $this->failInsertsInto('audit_logs') : Schema::drop('audit_logs');
         $this->getJson($this->url($application))->assertStatus(500)->assertJsonMissingPath('nik')->assertJsonMissingPath('nama');
     }
 

@@ -22,7 +22,7 @@
 | K3 | Database | **MySQL/MariaDB** dari Hostinger (driver Laravel `mysql`), karena Web Hosting tidak menyediakan PostgreSQL. SQLite tetap untuk pengembangan; PostgreSQL tetap didukung kode. | Diubah 12 November 2026 mengikuti K2 (keputusan PostgreSQL 24 Oktober tidak berlaku untuk produksi). **Belum diuji pada MySQL/MariaDB** |
 | K4 | Pengelola konten desa | Nama orang/jabatan di desa | Belum |
 | K6 | Lingkup rilis pertama | Lihat "Lingkup rilis 1" | Usulan, tunggu persetujuan |
-| K7 | Domain | Domain `.id` umum (tanpa dokumen) atas nama/email desa; `.desa.id` dibatalkan karena waktu | Belum dibeli |
+| K7 | Domain | Domain `.id` umum (tanpa dokumen) atas nama/email desa; `.desa.id` dibatalkan karena waktu | 12 November 2026: onboarding Hostinger memakai `desawatuagung.com`; pengguna dapat menggantinya nanti (prosedur `deploy/hostinger.md` § M). Pemilik domain harus kontak resmi desa |
 | K8 | Pembiayaan dan pemilik akun | Siapa membayar VPS + domain setelah kepanitiaan selesai; akun penyedia memakai email desa | Belum |
 
 ### Alasan K3 — PostgreSQL, bukan SQLite atau MySQL
@@ -96,7 +96,8 @@ Daftar lengkap ada di `ROADMAP.md` § "Data yang harus diminta ke desa". Yang me
 
 Berkas tersedia di `deploy/` (9 November 2026): `nginx/watuagung.conf` + `nginx/watuagung-headers.conf`, `deploy.sh`, `backup.sh`, `restore.md`, `crontab.txt`, `server-setup.md`. Langkah server mengikuti **`deploy/hostinger.md`** (sejak 12 November 2026 produksi memakai Hostinger Web Hosting Premium). Butir VPS/Nginx di bawah hanya berlaku bila kelak pindah ke VPS; padanan Hostinger ada di daftar periksa `deploy/hostinger.md`.
 
-- [ ] **(BLOKIR)** Hostinger: `php artisan test` dan uji penomoran multiproses M3a lulus pada MySQL/MariaDB versi yang sama dengan Hostinger. Belum dijalankan (12 November 2026: menjalankan MariaDB lokal belum diizinkan di sesi).
+- [ ] **(BLOKIR)** Hostinger: `php artisan test` dan uji penomoran multiproses M3a lulus pada MySQL/MariaDB versi yang sama dengan Hostinger.
+  - [x] MariaDB 11.4.8 lokal (13 November 2026): 411 tes / 6.704 assertions; rollback + migrate ulang seluruh migration lulus; `tests/Concurrency/letter-number-mysql.php` 3× PASS (30 proses/sesi tertahan bersamaan, nomor 1..30 tanpa celah, counter = 30). SQLite 411 / 6.702. `docs/progres-2026-11-13.md`. Butir induk menunggu versi server Hostinger; ulangi bila berbeda.
 - [ ] Hostinger: akun email desa + 2FA, Premium, lokasi Indonesia, PHP 8.3 + ekstensi, database khusus, SSH kunci, cron (UTC), daftar periksa `deploy/hostinger.md` lengkap.
 - [ ] Hostinger: keputusan query string di access log (`deploy/hostinger.md` § K).
 - [ ] `.htaccess` diuji di LiteSpeed Hostinger: header, `/api/`, `/storage/` (symlink `SymLinksIfOwnerMatch`), penolakan dotfile/PHP. Uji lokal Apache 2.4.58 lulus 12 November 2026 (`docs/progres-2026-11-12.md`).

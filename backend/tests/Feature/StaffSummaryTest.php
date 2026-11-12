@@ -115,7 +115,7 @@ class StaffSummaryTest extends TestCase
         try {
             $response = $this->getJson('/api/v1/staff/summary')->assertOk()->assertJsonCount(5, 'oldest')
                 ->assertJsonPath('my_queue', 8)->assertJsonPath('today', 7)->assertJsonPath('by_status.SUBMITTED', 9);
-            $queries = array_values(array_filter(array_column(DB::getQueryLog(), 'query'), fn ($sql) => str_contains($sql, 'from "applications"')));
+            $queries = array_values(array_filter(array_map(self::normalizeSql(...), array_column(DB::getQueryLog(), 'query')), fn ($sql) => str_contains($sql, 'from "applications"')));
         } finally {
             DB::disableQueryLog();
         }

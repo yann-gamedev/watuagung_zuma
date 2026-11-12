@@ -262,7 +262,7 @@ class SiteSectionsApiTest extends TestCase
         $second = $this->uploadImage()->assertOk()->json('path');
         $data = $this->structure() + ['chartImagePath' => $first, 'chartAlt' => 'Bagan fiktif'];
         $this->putJson('/api/v1/staff/site/structure', ['data' => $data])->assertOk();
-        DB::statement('DROP TABLE audit_logs');
+        $this->usesMysql() ? $this->failInsertsInto('audit_logs') : DB::statement('DROP TABLE audit_logs');
         foreach ([$this->structure(), array_replace($data, ['chartImagePath' => $second])] as $replacement) {
             $this->putJson('/api/v1/staff/site/structure', ['data' => $replacement])->assertStatus(500);
             Storage::disk('public')->assertExists([$first, $second]);
@@ -418,7 +418,7 @@ class SiteSectionsApiTest extends TestCase
         $path = $this->upload();
         $data = $this->transparency([$this->budget() + ['documentPath' => $path]]);
         $this->putJson('/api/v1/staff/site/transparency', ['data' => $data])->assertOk();
-        DB::statement('DROP TABLE audit_logs');
+        $this->usesMysql() ? $this->failInsertsInto('audit_logs') : DB::statement('DROP TABLE audit_logs');
         $this->putJson('/api/v1/staff/site/transparency', ['data' => $this->transparency()])->assertStatus(500);
         Storage::disk('public')->assertExists($path);
         $this->assertSame($data, SiteSection::find('transparency')->data);
@@ -808,7 +808,7 @@ class SiteSectionsApiTest extends TestCase
     {
         $this->act();
         SiteSection::create(['key' => 'profile', 'data' => $this->text()]);
-        DB::statement('DROP TABLE audit_logs');
+        $this->usesMysql() ? $this->failInsertsInto('audit_logs') : DB::statement('DROP TABLE audit_logs');
         $this->putJson('/api/v1/staff/site/history', ['data' => $this->text()])->assertStatus(500);
         $this->putJson('/api/v1/staff/site/profile', ['data' => ['intro' => 'Nanti', 'blocks' => $this->text()['blocks']]])->assertStatus(500);
         $this->assertNull(SiteSection::find('history'));
