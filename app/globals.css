@@ -603,7 +603,7 @@ p {
       rgba(14, 32, 14, 0.62) 45%,
       rgba(14, 32, 14, 0.15) 100%
     ),
-    url("/village.jpg") center 48% / cover;
+    url("/hero-watuagung.jpg") center 60% / cover;
 }
 .hero .hero-content,
 .container.home-tasks,
@@ -913,7 +913,7 @@ p {
         rgba(14, 32, 14, 0.62) 45%,
         rgba(14, 32, 14, 0.15) 100%
       ),
-      url("/village.jpg");
+      url("/hero-watuagung.jpg");
   }
   .hero-content {
     padding-top: 48px;
