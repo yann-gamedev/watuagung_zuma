@@ -13,6 +13,7 @@ export default function Page() {
         intro="Pilih layanan administrasi yang Anda butuhkan. Siapkan data dan ikuti langkah pengajuannya."
       />
       <section className="section container service-page">
+        <SiteVideo slot="tutorial" heading="Video tutorial pengajuan surat" className="site-video-centered" />
         <ServiceList fullRequirements />
         <section className="service-steps" aria-labelledby="service-steps-title">
           <h2 id="service-steps-title">Cara mengajukan surat</h2>
@@ -30,7 +31,6 @@ export default function Page() {
           </ol>
           <p className="service-steps-note"><strong>Alur pemeriksaan:</strong> Semua jenis surat diverifikasi petugas desa, lalu disetujui Kepala Desa. Surat fisik diambil di kantor desa setelah berstatus siap diambil.</p>
         </section>
-        <SiteVideo slot="tutorial" heading="Video tutorial pengajuan surat" />
         <div className="status-strip">
           <div>
             <strong>Sudah punya nomor pengajuan?</strong>

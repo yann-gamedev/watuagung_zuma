@@ -10,7 +10,7 @@ import styles from "./news.module.css";
 const empty: SiteVideoInput = { url: "", title: "" };
 const slots = [
   { slot: "profile", title: "Video profil desa", place: "beranda (di atas Kabar desa) dan halaman Profil Desa" },
-  { slot: "tutorial", title: "Video tutorial pengajuan surat", place: "halaman Pelayanan Desa, di bawah Cara mengajukan surat" },
+  { slot: "tutorial", title: "Video tutorial pengajuan surat", place: "halaman Pelayanan Desa, di atas Layanan surat yang tersedia" },
 ] as const;
 const labels = { profile: "Video profil desa", tutorial: "Video tutorial pengajuan surat", url: "Link YouTube", title: "Judul video" };
 
