@@ -27,7 +27,8 @@ json_valid() {
 }
 no_leak() {
     # Normalisasi slash JSON sebelum mencari path Unix/Windows dan stack trace.
-    "$PHP_BIN" -r '$s = str_replace("\\/", "/", file_get_contents($argv[1])); exit(preg_match("~Stack\\s*trace|[A-Z]:[\\\\/]|/(?:var|srv|home|usr|opt|app|mnt|tmp|etc|run|data|www|private|Users)/|(?:vendor|bootstrap|storage)[/\\\\]|\\.(?:php|blade\\.php):[0-9]+~i", $s) ? 1 : 0);' "$tmp/body"
+    # Huruf drive tidak boleh didahului huruf: `http://` di halaman 404 statis bukan path `C:\`.
+    "$PHP_BIN" -r '$s = str_replace("\\/", "/", file_get_contents($argv[1])); exit(preg_match("~Stack\\s*trace|(?<![a-z])[A-Z]:[\\\\/]|/(?:var|srv|home|usr|opt|app|mnt|tmp|etc|run|data|www|private|Users)/|(?:vendor|bootstrap|storage)[/\\\\]|\\.(?:php|blade\\.php):[0-9]+~i", $s) ? 1 : 0);' "$tmp/body"
 }
 request() {
     local path=$1 expected=$2 json=$3
