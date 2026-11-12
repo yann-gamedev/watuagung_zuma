@@ -31,7 +31,7 @@ Semua langkah server dikerjakan manusia. Nama menu hPanel bisa berubah; cari men
 
 1. hPanel → Websites → tambah website **kosong** untuk domain desa (jangan pasang WordPress atau builder). Domain `.id` boleh dibeli di Hostinger atau registrar lain; pemiliknya akun desa (K7).
 2. Domain di registrar lain: arahkan nameserver ke Hostinger, atau buat record A `@` dan `www` ke IP hosting dari hPanel.
-3. hPanel → Security → SSL: pasang SSL gratis untuk `example.id` dan `www.example.id`. **Jangan** aktifkan "Force HTTPS" hPanel; `.htaccess` sudah me-redirect HTTPS (agar tidak dobel).
+3. hPanel → Security → SSL: pasang SSL untuk `example.id` dan `www.example.id`. Website baru Hostinger sudah memakai SSL lifetime dengan redirect HTTPS platform menyala (12 November 2026); biarkan menyala, aman berdampingan dengan redirect `.htaccess`. Platform juga menambah header `Content-Security-Policy: upgrade-insecure-requests`.
 4. Bila ada CDN Hostinger, biarkan mati dulu sampai seluruh uji § J lulus (cache CDN dapat menyimpan respons API atau HTML lama).
 
 ## C. PHP
@@ -108,7 +108,14 @@ Tidak ada file `backend/` lain di `public_html`. `storage/app/private` (PDF sura
 Hanya untuk instalasi baru. Jangan menerima data warga selama bootstrap.
 
 1. **Kode.** Repo publik: `git clone https://github.com/<pemilik>/<repo>.git ~/watuagung`. Repo privat: buat deploy key **read-only** di GitHub untuk server ini. Checkout tag rilis: `cd ~/watuagung && git checkout --detach <tag>`.
-2. **Composer.** `cd ~/watuagung/backend && composer install --no-dev --optimize-autoloader --no-interaction` (PHP CLI 8.3, § C).
+2. **Composer.** Composer butuh `proc_open`, yang dimatikan `disable_functions` Hostinger. Buat pembungkus yang mengaktifkannya **hanya untuk CLI** (PHP web tetap dibatasi), lalu pasang dependensi:
+
+   ```bash
+   mkdir -p ~/bin
+   printf '#!/bin/sh\nexec php -d disable_functions= /usr/local/bin/composer "$@"\n' > ~/bin/composer-cli
+   chmod 700 ~/bin/composer-cli
+   cd ~/watuagung/backend && ~/bin/composer-cli install --no-dev --optimize-autoloader --no-interaction
+   ```
 3. **`.env`.** `cp .env.production.example .env` hanya bila `.env` belum ada. Isi domain dan kredensial database (§ D) dengan `nano`. `chmod 600 .env`. Jangan menyalin `.env` dari laptop.
 4. **Izin.** PHP berjalan sebagai user hosting yang sama, jadi tidak perlu grup bersama:
 
@@ -157,10 +164,11 @@ hPanel → Advanced → Cron Jobs → Custom. **Jadwal cron Hostinger memakai UT
 
 | Tugas | Jadwal (UTC) | Perintah |
 |---|---|---|
-| Scheduler Laravel | `* * * * *` | `cd /home/u123456789/watuagung/backend && /opt/alt/php83/usr/bin/php artisan schedule:run >/dev/null 2>&1` |
-| Backup 02.00 WIB | `0 19 * * *` | lihat di bawah |
+| Prune token 00.00 WIB | `0 17 * * *` | `cd /home/u123456789/watuagung/backend && /opt/alt/php83/usr/bin/php artisan sanctum:prune-expired --hours=24 >/dev/null 2>&1` |
+| Retensi 00.05 WIB | `5 17 * * *` | `cd /home/u123456789/watuagung/backend && /opt/alt/php83/usr/bin/php artisan applications:purge >/dev/null 2>&1` |
+| Backup 02.00 WIB | `0 19 * * *` | `/home/u123456789/bin/watuagung-backup.sh >> /home/u123456789/backups/watuagung/backup.log 2>&1` |
 
-Scheduler hanya menjalankan tugas harian (prune token Sanctum, retensi permohonan) pada 00.00 WIB, karena Laravel memakai `APP_TIMEZONE=Asia/Jakarta`, bukan jam cron. Bila hPanel tidak mengizinkan cron tiap menit, pakai `*/5` atau `*/15`; menit ke-0 tetap tercakup.
+**Jangan pakai `schedule:run`.** Hostinger mematikan `proc_open` (juga di PHP CLI) dan scheduler Laravel menjalankan tiap tugas sebagai proses anak, sehingga tugas terjadwal gagal. Dua tugas harian di `routes/console.php` dipasang langsung sebagai cron di atas; bila menambah `Schedule::` baru, tambahkan juga cron-nya. `applications:purge` tidak mengubah apa pun selama `RETENTION_APPLICATION_DAYS` kosong. Perintah cron dibatasi **255 karakter**, sehingga backup memakai skrip pembungkus.
 
 Backup:
 
@@ -169,13 +177,18 @@ mkdir -p ~/backups/watuagung ~/.config/watuagung && chmod 700 ~/backups ~/.confi
 (umask 077; openssl rand -base64 48 > ~/.config/watuagung/backup-passphrase)
 ```
 
-Salin passphrase ke password manager desa (terpisah dari `APP_KEY`). Perintah cron (satu baris):
+Salin passphrase ke password manager desa (terpisah dari `APP_KEY`). Skrip pembungkus `~/bin/watuagung-backup.sh` (mode 700), dipanggil cron:
 
-```bash
-APP_DIR=/home/u123456789/watuagung BACKUP_DIR=/home/u123456789/backups/watuagung PASSPHRASE_FILE=/home/u123456789/.config/watuagung/backup-passphrase DB_DRIVER=mysql DB_NAME=u123456789_watuagung bash /home/u123456789/watuagung/deploy/backup.sh >> /home/u123456789/backups/watuagung/backup.log 2>&1
+```sh
+#!/bin/sh
+export APP_DIR=/home/u123456789/watuagung
+export BACKUP_DIR=/home/u123456789/backups/watuagung
+export PASSPHRASE_FILE=/home/u123456789/.config/watuagung/backup-passphrase
+export DB_DRIVER=mysql DB_NAME=u123456789_watuagung
+exec bash "$APP_DIR/deploy/backup.sh"
 ```
 
-Tambahkan `ENCRYPTOR=openssl` bila `gpg` tidak tersedia. Jalankan sekali manual lewat SSH sebelum memasang cron. Backup: `mysqldump --single-transaction` + seluruh `storage/app` (private dan public), dienkripsi, diuji dekripsi, rotasi 14 harian dan 8 mingguan. `.env`/`APP_KEY` tidak ikut.
+`~/.my.cnf` (§ D) dapat dibuat tanpa menampilkan kata sandi dengan menyalin dari konfigurasi Laravel di server: `umask 077; php artisan tinker --execute='$c = config("database.connections.mysql"); file_put_contents(getenv("HOME")."/.my.cnf", "[client]\nuser={$c["username"]}\npassword=\"{$c["password"]}\"\nhost=localhost\n");'`. Tambahkan `ENCRYPTOR=openssl` bila `gpg` tidak tersedia. Jalankan sekali manual lewat SSH sebelum memasang cron. Backup: `mysqldump --single-transaction` + seluruh `storage/app` (private dan public), dienkripsi, diuji dekripsi, rotasi 14 harian dan 8 mingguan. `.env`/`APP_KEY` tidak ikut.
 
 **Salinan ke luar Hostinger wajib sebelum go-live.** Backup di akun yang sama hilang bersama akun. Pilih salah satu:
 
@@ -191,7 +204,7 @@ Sebelum tiap rilis: jalankan backup manual, tinjau migration, jadwalkan di luar 
 ```bash
 cd ~/watuagung
 APP_DIR=$HOME/watuagung PUBLIC_HTML=$HOME/domains/example.id/public_html \
-PHP_BIN=/opt/alt/php83/usr/bin/php COMPOSER_BIN=composer \
+PHP_BIN=/opt/alt/php83/usr/bin/php COMPOSER_BIN=$HOME/bin/composer-cli \
 bash deploy/hostinger-deploy.sh v1.0.0 --frontend ~/watuagung-web.tar.gz
 ```
 
@@ -268,7 +281,7 @@ Domain awal `desawatuagung.com` (dipilih di onboarding hPanel 12 November 2026) 
 ## Daftar periksa
 
 - [ ] Akun Hostinger email desa, 2FA, Premium, lokasi Indonesia, harga perpanjangan disetujui desa.
-- [ ] Website kosong, domain, SSL; Force HTTPS hPanel mati; CDN mati.
+- [ ] Website kosong, domain, SSL; CDN mati sampai uji § J lulus.
 - [ ] PHP 8.3 web dan CLI, ekstensi dan opsi § C, GD JPEG/WebP.
 - [ ] Database dan user khusus, Remote MySQL mati, versi tercatat.
 - [ ] **Tes backend dan uji penomoran lulus pada MySQL/MariaDB versi Hostinger** (lulus di MariaDB 11.4.8 lokal 13 November 2026; versi Hostinger belum dicocokkan).
