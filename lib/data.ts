@@ -14,9 +14,13 @@ export const contact = {
   mapsLinkUrl: "[PLACEHOLDER]",
 };
 
-// Video YouTube (R8): diatur di /admin/konten/video/. Cadangan demo/API mati/belum disimpan: tanpa
-// video, jadi bagian video tidak dirender. Isi hanya ID 11 karakter video resmi desa, jangan video rekaan.
-export const videos: import("@/types/site").SiteVideos = { profile: null, tutorial: null };
+// Video YouTube (R8): diatur di /admin/konten/video/. Cadangan demo/API mati/belum disimpan; slot null
+// berarti bagian video tidak dirender. Isi hanya ID 11 karakter video resmi, jangan video rekaan.
+// Tutorial: video Kepanitiaan Fasilkom Zuma dari pengguna (13 November 2026).
+export const videos: import("@/types/site").SiteVideos = {
+  profile: null,
+  tutorial: { youtubeId: "A6kL8-C8OBU", title: "Tutorial Pelayanan Surat Online" },
+};
 
 export function getContactLinks(values = contact) {
   return {

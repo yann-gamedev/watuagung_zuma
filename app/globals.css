@@ -4436,6 +4436,24 @@ td {
   margin-top: 0;
   padding-top: 48px;
 }
+/* Pelayanan: video tutorial di atas daftar layanan, rata tengah. */
+.site-video.site-video-centered {
+  justify-items: center;
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 64px;
+}
+.site-video-centered h2,
+.site-video-centered .site-video-title {
+  text-align: center;
+}
+.site-video-centered .youtube-embed {
+  margin-inline: auto;
+}
+/* Padding atas 96px desktop dirancang untuk judul daftar; dengan video di atasnya cukup 48px. */
+.container.service-page:has(> .site-video-centered:first-child) {
+  padding-top: 48px;
+}
 .info-page > .site-video:first-child {
   margin-top: 0;
   margin-bottom: 48px;
