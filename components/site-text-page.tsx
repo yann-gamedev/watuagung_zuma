@@ -274,7 +274,6 @@ export function SiteTextPage({ sectionKey, initialPage }: {
                 />
               </div>
               <a className="profile-map-link" href="https://www.google.com/maps/search/?api=1&query=Desa%20Watuagung%2C%20Prigen%2C%20Pasuruan%2C%20Jawa%20Timur" target="_blank" rel="noopener noreferrer">Buka peta lebih besar <ExternalLink size={15} aria-hidden="true" /><span className="sr-only"> (dibuka di tab baru)</span></a>
-              <dl className="profile-area-row"><div><dt>Luas wilayah</dt><dd>Sedang dikonfirmasi</dd></div></dl>
               <dl className="profile-key-figures">
                 {details.stats.map((stat, index) => <div key={`${index}-${stat.label}`}><dt>{stat.label}</dt><dd>{stat.value}</dd></div>)}
               </dl>

@@ -110,7 +110,7 @@ Identitas teks "WATUAGUNG" memakai berat 800 dan letter-spacing `.08em`. Judul l
 | B. Solid | `scrollY ≥ 80`, atau halaman tanpa hero foto | Latar `rgba(250,246,236,.92)` + `backdrop-filter: blur(10px)`, garis bawah `--line`, bayangan tipis, tinggi 72px; teks `--ink`; tombol "Ajukan Surat" `--leaf`; link aktif digaris bawah 3px |
 | C. Menu terbuka | Tombol "Menu" ditekan | Panel penuh layar berlatar `--forest`. Desktop: 3 kolom grup + kotak kontak kantor. Ponsel: tombol "Ajukan Surat" paling atas, lalu daftar link setinggi 56px |
 
-- Desktop menampilkan: logo + identitas, 3 link (Profil Desa, Layanan Surat, Berita), tombol "Ajukan Surat", tombol "Menu". Di bawah 900px link disembunyikan; yang tersisa hanya logo, "Ajukan Surat" (disembunyikan pada lebar ≤480px sesuai keputusan pengguna), dan "Menu".
+- Desktop menampilkan: logo + identitas, 3 link (Profil Desa, UMKM, Berita), tombol "Ajukan Surat", tombol "Menu". "UMKM" menggantikan "Layanan Surat" (13 November 2026); layanan surat tetap lewat tombol "Ajukan Surat" dan panel menu. Di bawah 900px link disembunyikan; yang tersisa hanya logo, "Ajukan Surat" (disembunyikan pada lebar ≤480px sesuai keputusan pengguna), dan "Menu".
 - Transisi warna dan tinggi 200ms ease. Hormati `prefers-reduced-motion`.
 - Header `position: fixed`. Hero diberi ruang atas agar konten tidak tertutup. Halaman tanpa hero langsung memakai keadaan B dan mendapat `padding-top: 72px`.
 - Aksesibilitas panel menu: `aria-expanded` di tombol, fokus masuk ke panel, Esc menutup, fokus kembali ke tombol Menu, dan body tidak bisa di-scroll selama panel terbuka.
