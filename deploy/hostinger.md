@@ -18,7 +18,7 @@ Perbedaan dengan rencana VPS:
 
 Semua langkah server dikerjakan manusia. Nama menu hPanel bisa berubah; cari menu dengan fungsi yang sama. Contoh memakai `example.id`, user hosting `u123456789`, dan port SSH `65002`; ganti dengan nilai di hPanel.
 
-> **Pemblokir sebelum go-live:** suite `php artisan test` dan uji penomoran multiproses ([tests/Concurrency/letter-number.php](../backend/tests/Concurrency/letter-number.php)) **belum pernah dijalankan pada MySQL/MariaDB**. Selama belum lulus, situs boleh dipasang untuk uji dengan data fiktif saja.
+> **Status MySQL (13 November 2026):** suite `php artisan test` (411 tes) dan uji penomoran multiproses ([tests/Concurrency/letter-number-mysql.php](../backend/tests/Concurrency/letter-number-mysql.php), 3× lulus) **lulus pada MariaDB 11.4.8 lokal**. Versi server Hostinger belum diketahui: bila berbeda jenis/versi mayor (mis. MySQL 8 atau MariaDB 10.x), ulangi kedua uji dengan versi itu sebelum menerima data warga. Cara menjalankan: `backend/README.md` § Tes MySQL/MariaDB.
 
 ## A. Akun dan paket
 
@@ -224,7 +224,7 @@ Butuh keputusan Tech Lead sebelum go-live:
 2. **Satu user untuk PHP dan kode.** Celah di aplikasi bisa mengubah kode di `~/watuagung`. Tidak ada pemisahan seperti user deploy/PHP-FPM di VPS.
 3. **Sumber daya bersama.** Batas CPU/proses shared hosting dapat memperlambat pembuatan PDF dan olah foto saat ramai. Pantau di hPanel → Resource usage.
 4. **Tanpa kontrol firewall/fail2ban.** Perlindungan login bergantung pada rate limit Laravel.
-5. **MySQL belum diuji** (pemblokir di atas).
+5. **MySQL diuji di MariaDB 11.4.8 lokal saja**; cocokkan dengan versi Hostinger (status di atas).
 
 ## L. Pemulihan
 
@@ -246,13 +246,32 @@ Ke website/database **kosong** (uji wajib: subdomain uji di akun yang sama, misa
 6. Uji wajib dari [restore.md](restore.md) § Uji wajib: NIK permohonan fiktif terbaca, PDF surat terbuka, media publik tampil, smoke test lulus. Catat di `docs/progres-*.md` tanpa data pribadi.
 7. `rm -rf ~/restore` (berisi dump tidak terenkripsi). Hapus subdomain dan database uji.
 
+## M. Mengganti domain
+
+Domain awal `desawatuagung.com` (dipilih di onboarding hPanel 12 November 2026) boleh diganti, misalnya ke `.id`. Ganti **sebelum** surat pertama diterbitkan bila bisa: QR di PDF yang sudah terbit menunjuk domain lama untuk selamanya.
+
+1. **hPanel:** tambahkan domain baru ke website yang sama (atau ganti domain utama), pasang SSL untuk domain baru dan `www`. Catat folder `public_html` barunya, biasanya `~/domains/<domain-baru>/public_html`.
+2. **Domain lama tetap aktif** dan dialihkan 301 ke domain baru, termasuk path dan query string, agar QR lama (`/verifikasi/?kode=…`) tetap jalan. Jangan biarkan domain lama kedaluwarsa selama masih ada surat yang beredar.
+3. **`backend/.env` di server** (edit dengan `nano`, lalu `php artisan config:clear`):
+
+   | Kunci | Nilai baru |
+   |---|---|
+   | `APP_URL` | `https://<domain-baru>` |
+   | `FRONTEND_ORIGINS` | `https://<domain-baru>` |
+   | `LETTER_VERIFY_URL` | `https://<domain-baru>/verifikasi/` |
+
+4. **Frontend di laptop:** build ulang dengan `NEXT_PUBLIC_API_URL=https://<domain-baru>/api/v1` (§ G langkah 7), lalu buat arsip baru. URL API dibekukan di arsip, jadi arsip lama tidak bisa dipakai.
+5. **Deploy:** `PUBLIC_HTML=$HOME/domains/<domain-baru>/public_html bash deploy/hostinger-deploy.sh <tag> --frontend <arsip-baru>`. Skrip membaca domain smoke test dari `APP_URL`.
+6. **Yang tidak berubah:** `.htaccess`, `laravel.php`, cron (path repo), backup, database, `APP_KEY`. **Jangan** menjalankan `key:generate`.
+7. Catat domain baru di `docs/deploy-plan.md` (K7) dan dokumen serah terima, lalu jalankan uji § J untuk domain baru.
+
 ## Daftar periksa
 
 - [ ] Akun Hostinger email desa, 2FA, Premium, lokasi Indonesia, harga perpanjangan disetujui desa.
 - [ ] Website kosong, domain, SSL; Force HTTPS hPanel mati; CDN mati.
 - [ ] PHP 8.3 web dan CLI, ekstensi dan opsi § C, GD JPEG/WebP.
 - [ ] Database dan user khusus, Remote MySQL mati, versi tercatat.
-- [ ] **Tes backend dan uji penomoran lulus pada MySQL/MariaDB versi Hostinger.**
+- [ ] **Tes backend dan uji penomoran lulus pada MySQL/MariaDB versi Hostinger** (lulus di MariaDB 11.4.8 lokal 13 November 2026; versi Hostinger belum dicocokkan).
 - [ ] SSH dengan kunci; `rsync`, `git`, `composer`, `mysqldump`, `gpg`/`openssl` tersedia.
 - [ ] Bootstrap § G; `APP_KEY` di password manager.
 - [ ] Deploy § I dan uji § J lulus.

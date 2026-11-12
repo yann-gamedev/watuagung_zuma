@@ -291,24 +291,28 @@ class LetterRegisterTest extends TestCase
         $this->act();
         config(['app.debug' => false]);
         $pgsql = DB::getDriverName() === 'pgsql';
+        $mysql = $this->usesMysql();
         if ($pgsql) {
             DB::unprepared("CREATE FUNCTION pg_temp.fail_letter_event() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Test failure'; END; $$");
         }
         $createTrigger = $pgsql
             ? 'CREATE TRIGGER fail_letter_event BEFORE INSERT ON application_events FOR EACH ROW EXECUTE FUNCTION pg_temp.fail_letter_event()'
             : "CREATE TRIGGER fail_letter_event BEFORE INSERT ON application_events BEGIN SELECT RAISE(ABORT, 'Test failure'); END";
-        DB::unprepared($createTrigger);
+        $breakEvents = fn () => $mysql ? $this->failInsertsInto('application_events') : DB::unprepared($createTrigger);
+        $breakEvents();
         $this->change($application, 'WAITING_APPROVAL')->assertStatus(500);
         $this->assertSame('PROCESSING', $application->fresh()->status);
         $this->assertDatabaseCount('letter_numbers', 0);
         $this->assertDatabaseCount('letter_number_counters', 0);
         $this->assertDatabaseCount('application_events', 0);
-        DB::unprepared('DROP TRIGGER fail_letter_event'.($pgsql ? ' ON application_events' : ''));
+        $mysql
+            ? $this->restoreInsertsInto('application_events')
+            : DB::unprepared('DROP TRIGGER fail_letter_event'.($pgsql ? ' ON application_events' : ''));
         $this->change($application, 'WAITING_APPROVAL')->assertOk();
         $this->assertDatabaseHas('letter_numbers', ['sequence' => 1]);
 
         $this->act('village_head');
-        DB::unprepared($createTrigger);
+        $breakEvents();
         $this->change($application, 'REJECTED', 'Alasan fiktif')->assertStatus(500);
         $this->assertSame('WAITING_APPROVAL', $application->fresh()->status);
         $this->assertDatabaseHas('letter_numbers', ['status' => 'issued', 'void_reason' => null]);
@@ -358,7 +362,7 @@ class LetterRegisterTest extends TestCase
         $this->change($this->application(), 'WAITING_APPROVAL')->assertOk();
         $application = $this->application();
         $queries = [];
-        DB::listen(function ($query) use (&$queries) { $queries[] = $query->sql; });
+        DB::listen(function ($query) use (&$queries) { $queries[] = self::normalizeSql($query->sql); });
         $this->change($application, 'WAITING_APPROVAL')->assertOk();
         if (DB::getDriverName() === 'sqlite') {
             $lock = array_search('update "letter_number_counters" set "year" = ? where "year" = ?', $queries);
