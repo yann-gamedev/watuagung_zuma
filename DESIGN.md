@@ -94,7 +94,7 @@ Identitas teks "WATUAGUNG" memakai berat 800 dan letter-spacing `.08em`. Judul l
 ## 5. Ikon dan gambar
 
 - Ikon dari `lucide-react` (sudah terpasang), stroke 2, ukuran 22–26px. Ikon selalu didampingi teks, kecuali tombol tutup yang tetap punya `aria-label`.
-- Foto hero `/village.jpg` dengan caption "foto ilustrasi" dan atribusi di footer.
+- Foto hero `/village.jpg` dengan atribusi di footer. Caption hero dihapus (keputusan 13 November 2026).
 - Foto yang belum ada diganti kotak placeholder berlabel jelas `[FOTO KEGIATAN]`, berlatar `#E7E1CF`. Jangan pakai foto stok dan jangan pakai ilustrasi generik.
 - **Pengecualian berita publik (2 November 2026, disetujui pengguna):** sampul memakai `<img>` native, `alt` judul, `loading="lazy"`, rasio 16:9. Tanpa sampul memakai pola visual berita yang sudah ada (`.news-art`), tanpa teks `[FOTO KEGIATAN]`; pola foto ilustrasi bukan dokumentasi kegiatan. Kartu dan tata letak lama dipertahankan, teks penting mengikuti minimum §3.
   - **Pembaruan 6 November 2026:** gambar kartu di `/berita` dan `/umkm` setinggi tetap 154px (140px ≤640px, `object-fit: cover`), mengikuti redesain berita `4f53046`. Gambar di halaman detail tetap 16:9. Kartu Kabar desa di beranda tidak berubah.

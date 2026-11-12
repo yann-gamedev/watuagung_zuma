@@ -13,10 +13,6 @@ export default function Page() {
         intro="Pilih layanan administrasi yang Anda butuhkan. Siapkan data dan ikuti langkah pengajuannya."
       />
       <section className="section container service-page">
-        <div className="notice">
-          Prototipe layanan. Persyaratan sementara dan waktu pelayanan menunggu konfirmasi desa.
-          Gunakan data fiktif.
-        </div>
         <ServiceList fullRequirements />
         <section className="service-steps" aria-labelledby="service-steps-title">
           <h2 id="service-steps-title">Cara mengajukan surat</h2>
