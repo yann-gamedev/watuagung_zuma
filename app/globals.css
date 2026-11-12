@@ -667,23 +667,6 @@ p {
 .hero :focus-visible {
   outline-color: var(--gold);
 }
-.hero-caption {
-  position: absolute;
-  bottom: 112px;
-  right: max(16px, calc((100% - 1200px) / 2));
-  max-width: calc(100% - 32px);
-  padding: 4px 8px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--forest) 88%, transparent);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--white);
-}
-.hero-caption svg {
-  flex-shrink: 0;
-}
 .container.home-tasks {
   position: relative;
   margin-top: -88px;
@@ -943,11 +926,6 @@ p {
   }
   .hero p {
     font-size: 20px;
-  }
-  .hero-caption {
-    bottom: 120px;
-    right: max(32px, calc((100% - 1200px) / 2));
-    font-size: 14px;
   }
   .container.home-tasks {
     margin-top: -96px;

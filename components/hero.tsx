@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, MapPin } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export function Hero() {
   return (
@@ -20,9 +20,6 @@ export function Hero() {
             Lihat Syarat Surat
           </Link>
         </div>
-      </div>
-      <div className="hero-caption">
-        <MapPin size={14} aria-hidden="true" /> Persawahan di Jawa · foto ilustrasi
       </div>
     </section>
   );

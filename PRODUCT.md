@@ -116,7 +116,7 @@ Arahan berikut sudah dikonfirmasi pengguna:
 - **[BARU] Judul bagian berisi informasi, bukan slogan.** Tulis "Layanan surat yang tersedia", bukan "Urus keperluan, lebih mudah." Hindari pola berulang label kecil kapital + slogan di setiap bagian.
 - Hindari gaya promosi startup, jargon, superlatif tanpa bukti, klaim layanan yang belum ada, dan dekorasi yang tidak membantu pengunjung.
 - Pertahankan arah warna hijau tua, krem/putih, dan aksen emas. Token pastinya ada di `DESIGN.md`.
-- Pertahankan foto `/village.jpg` sebagai latar hero. Caption "foto ilustrasi" dan atribusi di footer **wajib tetap ada**; atribusi adalah kewajiban lisensi CC BY-SA 4.0.
+- Pertahankan foto `/village.jpg` sebagai latar hero. Atribusi di footer **wajib tetap ada**; atribusi adalah kewajiban lisensi CC BY-SA 4.0. **[BARU]** Caption hero "Persawahan di Jawa · foto ilustrasi" dihapus atas keputusan pengguna 13 November 2026; jangan menulis teks yang menyebut foto itu sebagai Watuagung.
 - **[BARU] CTA hero [SEMENTARA]:** **Ajukan Surat** (utama) dan **Lihat Syarat Surat** (kedua). Menggantikan "Ajukan Layanan / Jelajahi Desa".
 - **[BARU] Navigasi:** header mengikuti scroll (sticky) dengan tiga keadaan: transparan di atas foto, krem solid setelah scroll, dan panel menu penuh. Di desktop, 3 link utama + tombol "Ajukan Surat" + tombol "Menu" tetap terlihat. Di ponsel, tombol "Menu" saja ditambah panel menu. Detailnya ada di `DESIGN.md`.
 - Panel empat statistik tepat setelah hero tetap dihapus. Angka statistik hanya muncul di bagian profil dan halaman `/statistik`, sebagai placeholder sampai ada data resmi.
