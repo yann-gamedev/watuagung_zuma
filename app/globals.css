@@ -1559,6 +1559,42 @@ p {
   font-weight: 700;
   white-space: nowrap;
 }
+/* Kredit pengembang: mengikuti tipografi kolom link footer, tanpa bingkai tambahan. */
+.footer-credit {
+  margin-top: 32px;
+}
+.footer-credit h3 {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+.footer-credit-body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.footer-credit-logos {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.footer-credit-logos img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+.footer-credit p {
+  color: var(--on-dark-muted);
+  font-size: 15px;
+  line-height: 1.55;
+  max-width: 36rem;
+}
+.footer-credit strong {
+  color: var(--cream);
+  font-size: 16px;
+  font-weight: 700;
+}
 .footer-bottom {
   border-top: 1px solid color-mix(in srgb, var(--on-dark-muted) 20%, transparent);
   margin-top: 48px;
