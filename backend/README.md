@@ -54,7 +54,7 @@ php artisan config:clear
 
 ### Tes SQLite dan PostgreSQL
 
-`phpunit.xml` tetap memakai SQLite `:memory:`. PostgreSQL 16+ dipilih untuk produksi; verifikasi lokal terakhir memakai PostgreSQL 18.6 (179 tes / 1.858 assertions) dan SQLite (179 tes / 1.856 assertions), lihat [catatan progres](../docs/progres-2026-10-24.md).
+`phpunit.xml` tetap memakai SQLite `:memory:`. Produksi kini memakai MySQL/MariaDB Hostinger (12 November 2026, belum diuji; lihat "Sebelum produksi"). PostgreSQL 16+ tetap didukung untuk VPS; verifikasi lokal terakhir memakai PostgreSQL 18.6 (179 tes / 1.858 assertions) dan SQLite (179 tes / 1.856 assertions), lihat [catatan progres](../docs/progres-2026-10-24.md).
 
 **Hanya gunakan database lokal khusus `watuagung_test`: `migrate:fresh` dan suite tes menghapus seluruh isinya.** Buat database kosong tersebut dengan user lokal yang sudah disiapkan, misalnya `createdb -h 127.0.0.1 -p 5432 -U <user-lokal> -W watuagung_test`. Jangan memakai database pengembangan/produksi berisi data yang perlu disimpan.
 
@@ -341,7 +341,7 @@ Tipe baru `types/site.ts`, re-export `types/pelayanan.ts`; dokumentasi lengkap d
 | `page` | Bilangan bulat ≥ 1; 20 item per halaman |
 | `my_queue`, `today` | Boolean opsional (`0`/`1`); antrean tindakan peran dan/atau permohonan masuk hari ini; digabung AND |
 
-Nama pencarian di parameter `q` adalah pengecualian URL yang disetujui pengguna (18 Oktober 2026). Jangan memasukkan NIK/KK/telepon/alamat ke pencarian. Query URL dapat tersimpan di riwayat browser/access log server; sebelum produksi, redaksi query pada log proxy/web server perlu dikonfigurasi. Audit aplikasi tidak merekam pencarian.
+Nama pencarian di parameter `q` adalah pengecualian URL yang disetujui pengguna (18 Oktober 2026). Jangan memasukkan NIK/KK/telepon/alamat ke pencarian. Query URL dapat tersimpan di riwayat browser/access log server; sebelum produksi, redaksi query pada log proxy/web server perlu dikonfigurasi. Hostinger Web Hosting tidak mengizinkan format access log diubah, jadi `q` ikut tercatat di log hosting; keputusan terbuka (terima risiko, atau ubah pencarian ke body POST) dicatat di `deploy/hostinger.md`. Audit aplikasi tidak merekam pencarian.
 
 Filter digabung dengan AND; pasangan pencarian nomor/nama dikelompokkan dengan OR. Respons tetap objek paginator Laravel (`data`, `current_page`, `last_page`, `per_page`, `total`, metadata/tautan pagination). Setiap item `data` **hanya** berisi `request_id`, `nama`, `jenis_surat`, `status`, `created_at`, `allowed_transitions`. **Perubahan kontrak:** `catatan` tidak lagi dikirim dalam daftar karena teks bebas dapat memuat data pribadi; baca catatan melalui endpoint detail. NIK, KK, alamat, telepon, data usaha, keperluan, hash kode akses, dan ID internal tidak disertakan. Daftar tidak mencatat audit akses detail.
 
@@ -479,7 +479,7 @@ Migration `2026_10_20_000000_add_neighborhood_territories` menambah kolom `rt`/`
 
 ## Sebelum produksi
 
-Belum siap menerima data warga nyata. Putuskan hosting/database sesuai K2/K3 pada [roadmap](../ROADMAP.md), lalu siapkan HTTPS, `APP_DEBUG=false`, backup dan uji pemulihan, kebijakan privasi/retensi, scheduler, serta pengelolaan `APP_KEY` yang aman. Demo Vercel tidak menjalankan Laravel.
+Belum siap menerima data warga nyata. Hosting produksi: **Hostinger Web Hosting Premium** (keputusan 12 November 2026) dengan MySQL/MariaDB, LiteSpeed `.htaccess`, tanpa root; panduan [deploy/hostinger.md](../deploy/hostinger.md). Suite tes dan uji penomoran multiproses **belum** dijalankan pada MySQL/MariaDB; wajib lulus sebelum go-live. Siapkan HTTPS, `APP_DEBUG=false`, backup dan uji pemulihan, kebijakan privasi/retensi, scheduler, serta pengelolaan `APP_KEY` yang aman. Demo Vercel tidak menjalankan Laravel.
 
 Atur `APP_URL`, `FRONTEND_ORIGINS`, dan `LETTER_VERIFY_URL` ke alamat lingkungan target; jalankan migration dan uji alur lengkap beserta pembatasan peran/wilayah. PDF dan bantuan buat ulang kode akses sudah diimplementasikan, tetapi template/nomor resmi, prosedur pemeriksaan identitas, uji browser Laravel, dan pemindaian QR masih perlu dituntaskan. Autentikasi saat ini memakai bearer token dan `sessionStorage`; perubahan ke cookie HttpOnly bukan fitur yang sudah tersedia atau keputusan arsitektur yang telah ditetapkan.
 

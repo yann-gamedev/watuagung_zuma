@@ -118,4 +118,68 @@ ls "$tmp/bk/daily" | grep -qv '^watuagung-2000' || { printf 'GAGAL rotasi mengha
 if run_backup env STUB_MODE=644; then printf 'GAGAL backup menerima passphrase mode 644\n' >&2; exit 1; fi
 printf '#!/usr/bin/env bash\nexit 3\n' > "$tmp/bin/pg_dump"
 if run_backup env; then printf 'GAGAL backup mengabaikan pg_dump gagal\n' >&2; exit 1; fi
-printf 'LULUS: smoke sukses + 9 kegagalan, validasi domain, deploy berhenti saat fetch gagal, backup terenkripsi/rotasi/tolak passphrase longgar/pg_dump gagal.\n'
+
+# backup.sh Hostinger: mysqldump stub, gpg dan openssl asli.
+printf '#!/usr/bin/env bash\nfor a; do [[ $a == --result-file=* ]] && printf "%%s" "-- dump-mysql-fiktif" > "${a#--result-file=}"; done\n[[ " $* " == *" --single-transaction "* && " $* " == *" --no-tablespaces "* ]]\n' > "$tmp/bin/mysqldump"
+chmod +x "$tmp/bin/mysqldump"
+# OpenSSL mingw (Git Bash Windows) tidak menerjemahkan path MSYS di argumen file:.
+pass_native=$(cygpath -m "$tmp/pass" 2>/dev/null || printf '%s' "$tmp/pass")
+for enc in gpg openssl; do
+    rm -rf "$tmp/bk" "$tmp/out"
+    run_backup env DB_DRIVER=mysql ENCRYPTOR="$enc" PASSPHRASE_FILE="$pass_native" || { cat "$tmp/log"; exit 1; }
+    ext=gpg; [[ $enc == openssl ]] && ext=enc
+    file=$(ls "$tmp/bk/daily"/watuagung-*.tar."$ext")
+    if tar -tf "$file" > /dev/null 2>&1; then printf 'GAGAL backup %s tidak terenkripsi\n' "$enc" >&2; exit 1; fi
+    mkdir "$tmp/out"
+    if [[ $enc == gpg ]]; then
+        gpg --batch --quiet --pinentry-mode loopback --passphrase-file "$tmp/pass" --decrypt "$file"
+    else
+        openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass "file:$pass_native" -in "$file"
+    fi | tar -C "$tmp/out" -xf -
+    [[ $(cat "$tmp/out/db.sql") == '-- dump-mysql-fiktif' ]] || { printf 'GAGAL isi dump mysql (%s)\n' "$enc" >&2; exit 1; }
+    tar -tf "$tmp/out/storage.tar" | grep -qx 'app/private/letters/1-generated.pdf'
+    if grep -rq 'rahasia' "$tmp/out"; then printf 'GAGAL backup memuat .env\n' >&2; exit 1; fi
+done
+if run_backup env DB_DRIVER=oracle; then printf 'GAGAL DB_DRIVER tidak dikenal diterima\n' >&2; exit 1; fi
+printf '#!/usr/bin/env bash\nexit 2\n' > "$tmp/bin/mysqldump"
+if run_backup env DB_DRIVER=mysql; then printf 'GAGAL backup mengabaikan mysqldump gagal\n' >&2; exit 1; fi
+printf '#!/usr/bin/env bash\nexit 0\n' > "$tmp/bin/mysqldump"
+if run_backup env DB_DRIVER=mysql; then printf 'GAGAL backup menerima dump kosong\n' >&2; exit 1; fi
+
+# hostinger-deploy.sh: tolak repo di dalam public_html, arsip frontend salah, dan berhenti saat fetch gagal.
+mkdir -p "$tmp/home/public_html" "$tmp/home/repo/backend"
+touch "$tmp/home/repo/backend/.env"
+for cmd in composer rsync; do
+    printf '#!/usr/bin/env bash\nprintf "UNEXPECTED COMMAND\\n" >&2\nexit 99\n' > "$tmp/bin/$cmd"
+done
+chmod +x "$tmp/bin/composer" "$tmp/bin/rsync"
+run_hdeploy() { PATH="$tmp/bin:$PATH" PHP_BIN="$php_path" "$@" > "$tmp/log" 2>&1; }
+if run_hdeploy env APP_DIR="$tmp/home/public_html" PUBLIC_HTML="$tmp/home/public_html" bash "$root/deploy/hostinger-deploy.sh" release; then
+    printf 'GAGAL hostinger-deploy menerima repo di public_html\n' >&2; exit 1
+fi
+grep -q 'di luar public_html' "$tmp/log" || { cat "$tmp/log"; exit 1; }
+mkdir -p "$tmp/web-bad/out" && printf x > "$tmp/web-bad/out/index.html"
+tar -C "$tmp/web-bad" -czf "$tmp/bad.tar.gz" out
+if run_hdeploy env APP_DIR="$tmp/home/repo" PUBLIC_HTML="$tmp/home/public_html" bash "$root/deploy/hostinger-deploy.sh" release --frontend "$tmp/bad.tar.gz"; then
+    printf 'GAGAL hostinger-deploy menerima arsip berisi folder out/\n' >&2; exit 1
+fi
+grep -q 'ISI out/' "$tmp/log" || { cat "$tmp/log"; exit 1; }
+mkdir -p "$tmp/web-local/pelayanan" "$tmp/web-local/_next/static"
+printf x | tee "$tmp/web-local/index.html" "$tmp/web-local/404.html" "$tmp/web-local/pelayanan/index.html" > /dev/null
+printf 'fetch("http://127.0.0.1:8000/api/v1")' > "$tmp/web-local/_next/static/a.js"
+tar -C "$tmp/web-local" -czf "$tmp/local.tar.gz" .
+if run_hdeploy env APP_DIR="$tmp/home/repo" PUBLIC_HTML="$tmp/home/public_html" bash "$root/deploy/hostinger-deploy.sh" release --frontend "$tmp/local.tar.gz"; then
+    printf 'GAGAL hostinger-deploy menerima build API localhost\n' >&2; exit 1
+fi
+grep -q 'API localhost' "$tmp/log" || { cat "$tmp/log"; exit 1; }
+if run_hdeploy env APP_DIR="$tmp/home/repo" PUBLIC_HTML="$tmp/home/public_html" bash "$root/deploy/hostinger-deploy.sh" release; then
+    printf 'GAGAL hostinger-deploy mengabaikan fetch gagal\n' >&2; exit 1
+else
+    code=$?
+    [[ $code -eq 42 ]] || { cat "$tmp/log"; exit 1; }
+fi
+grep -q 'GAGAL \[fetch dan checkout rilis\]' "$tmp/log"
+if grep -q 'UNEXPECTED COMMAND' "$tmp/log"; then cat "$tmp/log"; exit 1; fi
+[[ -z $(ls -A "$tmp/home/public_html") ]] || { printf 'GAGAL public_html berubah sebelum deploy berhasil\n' >&2; exit 1; }
+
+printf 'LULUS: smoke sukses + 9 kegagalan, validasi domain, deploy berhenti saat fetch gagal, backup pgsql terenkripsi/rotasi/tolak passphrase longgar/pg_dump gagal, backup mysql gpg+openssl/tolak dump gagal-kosong, hostinger-deploy tolak repo di public_html/arsip salah/API localhost/fetch gagal.\n'

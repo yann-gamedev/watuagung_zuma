@@ -2,6 +2,8 @@
 
 **Manusia menjalankan seluruh perintah server.** Skrip di sini tidak memasang Nginx, PHP-FPM, PostgreSQL, HTTPS atau firewall; langkah manualnya ada di [server-setup.md](server-setup.md). Agent tidak menjalankan SSH, push atau deploy. Satu domain: frontend statis di `/`, Laravel di `/api/v1`.
 
+> **Produksi memakai Hostinger Web Hosting Premium** (keputusan 12 November 2026): ikuti [hostinger.md](hostinger.md), skrip [hostinger-deploy.sh](hostinger-deploy.sh), dan berkas [hostinger/](hostinger/) (`.htaccess`, `laravel.php`). Sisa dokumen ini (Nginx, PHP-FPM, PostgreSQL, `deploy.sh`) berlaku untuk VPS dan disimpan bila kelak pindah ke VPS. `backup.sh`, `smoke-test.sh` dan `test-scripts.sh` dipakai keduanya (`DB_DRIVER=mysql` untuk Hostinger).
+
 ## Persiapan sekali
 
 1. Ikuti [first-deploy.md](first-deploy.md) sebelum deploy rutin. Siapkan checkout rilis, dependensi, `.env`, izin runtime, kunci, migration, impor konten dan admin pertama. Jangan membuka penerimaan data warga selama bootstrap.

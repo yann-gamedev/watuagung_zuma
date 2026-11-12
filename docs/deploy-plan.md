@@ -18,8 +18,8 @@
 
 | # | Keputusan | Pilihan | Status |
 |---|---|---|---|
-| K2 | Hosting | Satu VPS: Nginx menyajikan static export Next.js **dan** Laravel pada origin yang sama (`/api/v1` → Laravel). Vercel tetap untuk demo/preview saja. | Usulan, tunggu persetujuan |
-| K3 | Database | **PostgreSQL 16+**; SQLite tetap didukung untuk pengembangan cepat. Rencana VPS yang sama, hanya mendengarkan `127.0.0.1`, mengikuti keputusan hosting K2. | Database disetujui 24 Oktober 2026; verifikasi lokal PostgreSQL 18.6 lulus |
+| K2 | Hosting | **Hostinger Web Hosting Premium** (shared, hPanel): LiteSpeed menyajikan static export di `public_html` dan `/api/v1` → Laravel lewat `.htaccess` + `laravel.php`, origin sama. Repo Laravel di luar `public_html`. Vercel tetap untuk demo/preview saja. Panduan `deploy/hostinger.md`. Rencana VPS lama (Nginx) disimpan di `deploy/` untuk migrasi kelak. | Dipilih pengguna 12 November 2026, menggantikan usulan satu VPS; catat juga di `ROADMAP.md` |
+| K3 | Database | **MySQL/MariaDB** dari Hostinger (driver Laravel `mysql`), karena Web Hosting tidak menyediakan PostgreSQL. SQLite tetap untuk pengembangan; PostgreSQL tetap didukung kode. | Diubah 12 November 2026 mengikuti K2 (keputusan PostgreSQL 24 Oktober tidak berlaku untuk produksi). **Belum diuji pada MySQL/MariaDB** |
 | K4 | Pengelola konten desa | Nama orang/jabatan di desa | Belum |
 | K6 | Lingkup rilis pertama | Lihat "Lingkup rilis 1" | Usulan, tunggu persetujuan |
 | K7 | Domain | Domain `.id` umum (tanpa dokumen) atas nama/email desa; `.desa.id` dibatalkan karena waktu | Belum dibeli |
@@ -94,9 +94,12 @@ Daftar lengkap ada di `ROADMAP.md` § "Data yang harus diminta ke desa". Yang me
 
 ## Fase 3 — Infrastruktur (dikerjakan manusia, agent menyiapkan berkas)
 
-Berkas tersedia di `deploy/` (9 November 2026): `nginx/watuagung.conf` + `nginx/watuagung-headers.conf`, `deploy.sh`, `backup.sh`, `restore.md`, `crontab.txt`, `server-setup.md`. Langkah server mengikuti **`deploy/server-setup.md`**; butir di bawah dicentang setelah manusia menjalankannya di VPS.
+Berkas tersedia di `deploy/` (9 November 2026): `nginx/watuagung.conf` + `nginx/watuagung-headers.conf`, `deploy.sh`, `backup.sh`, `restore.md`, `crontab.txt`, `server-setup.md`. Langkah server mengikuti **`deploy/hostinger.md`** (sejak 12 November 2026 produksi memakai Hostinger Web Hosting Premium). Butir VPS/Nginx di bawah hanya berlaku bila kelak pindah ke VPS; padanan Hostinger ada di daftar periksa `deploy/hostinger.md`.
 
-- [ ] VPS: Ubuntu 24.04 LTS, minimal 2 vCPU / 2 GB RAM / 40 GB SSD, lokasi data center Indonesia bila memungkinkan.
+- [ ] **(BLOKIR)** Hostinger: `php artisan test` dan uji penomoran multiproses M3a lulus pada MySQL/MariaDB versi yang sama dengan Hostinger. Belum dijalankan (12 November 2026: menjalankan MariaDB lokal belum diizinkan di sesi).
+- [ ] Hostinger: akun email desa + 2FA, Premium, lokasi Indonesia, PHP 8.3 + ekstensi, database khusus, SSH kunci, cron (UTC), daftar periksa `deploy/hostinger.md` lengkap.
+- [ ] Hostinger: keputusan query string di access log (`deploy/hostinger.md` § K).
+- [ ] `.htaccess` diuji di LiteSpeed Hostinger: header, `/api/`, `/storage/` (symlink `SymLinksIfOwnerMatch`), penolakan dotfile/PHP. Uji lokal Apache 2.4.58 lulus 12 November 2026 (`docs/progres-2026-11-12.md`).
 - [ ] Paket (`server-setup.md` §1): Nginx, PHP 8.3 FPM (`composer.json` `^8.3`) dengan `pgsql`, `mbstring`, `xml`/`dom`, `gd`, `intl`, `bcmath`, `zip`, `curl`; Composer; PostgreSQL 16; certbot; Node 24.x hanya bila build di VPS. `php-gd` wajib JPEG/PNG/WebP (cek CLI dan FPM). PHP `upload_max_filesize`/`post_max_size` 12M, `memory_limit` 256M, `expose_php Off` (§5).
 - [ ] Keamanan server (§2–3): login SSH hanya kunci (password dan root login dimatikan), user deploy terpisah, `ufw` hanya 22/80/443, `fail2ban`, `unattended-upgrades`, zona waktu Asia/Jakarta.
 - [ ] PostgreSQL (§4): user dan database khusus aplikasi dengan kata sandi kuat, `listen_addresses = 'localhost'`.
@@ -138,6 +141,7 @@ Berkas: `deploy/backup.sh` (cron 02.00 WIB di `deploy/crontab.txt`), `deploy/res
 
 - [ ] `backup.sh` harian: `pg_dump -Fc` + tar **seluruh** `backend/storage/app` (`private`: PDF surat terenkripsi; `public`: sampul berita, foto UMKM, bagan, PDF APBDes; soft delete tetap ikut), digabung lalu `gpg --symmetric` AES256 dengan passphrase dari berkas `PASSPHRASE_FILE` (mode 600/400, di luar repo). Uji dekripsi setiap selesai. 14 harian + 8 mingguan di `BACKUP_DIR`. Salinan ke luar VPS lewat `rclone sync` (masih dikomentari) **wajib diaktifkan sebelum go-live**. Uji pemulihan juga mencocokkan `posts.cover_path`, `businesses.photo_path`, `chartImagePath` dan `budgets[].documentPath` dengan file di `/storage/…`.
 - [ ] `APP_KEY` dan `.env` **tidak** ikut dalam arsip; passphrase backup dan `APP_KEY` disimpan terpisah di password manager desa.
+- [ ] Hostinger: `backup.sh` dengan `DB_DRIVER=mysql` (mysqldump) lewat cron hPanel 19.00 UTC = 02.00 WIB, `ENCRYPTOR=openssl` bila gpg tidak ada, salinan ke luar Hostinger aktif. Backup otomatis Hostinger hanya pelengkap (memuat `.env`/`APP_KEY` bersama data). Uji stub mysqldump + gpg/openssl asli lulus 12 November 2026; belum dijalankan di Hostinger.
 - [ ] **(BLOKIR)** Uji pemulihan ke VM kosong mengikuti `deploy/restore.md`: restore database + file + `APP_KEY`, buka satu permohonan fiktif di panel (NIK terbaca = `APP_KEY` benar) dan unduh satu PDF surat. Catat hasil di `docs/progres-*.md`.
 
 ## Fase 6 — Uji pra-rilis di server (data fiktif)
