@@ -23,9 +23,9 @@ const profilPaths = ["/profil", "/sejarah", "/visi-misi", "/struktur-pemerintaha
 const primaryLinks: { label: string; href: string; isActive: (p: string) => boolean }[] = [
   { label: "Profil Desa", href: "/profil", isActive: (p) => profilPaths.includes(p) },
   {
-    label: "Layanan Surat",
-    href: "/pelayanan",
-    isActive: (p) => p === "/pelayanan" || p.startsWith("/pelayanan/"),
+    label: "UMKM",
+    href: "/umkm",
+    isActive: (p) => p === "/umkm" || p.startsWith("/umkm/"),
   },
   {
     label: "Berita",
