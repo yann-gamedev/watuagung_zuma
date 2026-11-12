@@ -34,6 +34,32 @@ export function Footer() {
             <p>{contact.hours}</p>
             <ContactNumber />
           </div>
+          <section className="footer-credit" aria-labelledby="footer-credit-title">
+            <h3 id="footer-credit-title">Dikembangkan oleh</h3>
+            <div className="footer-credit-body">
+              <div className="footer-credit-logos">
+                <Image
+                  src="/brand/logo-bem-fasilkom-160.png"
+                  width={48}
+                  height={48}
+                  alt="Logo BEM Fasilkom UPN Veteran Jawa Timur"
+                />
+                <Image
+                  src="/brand/logo-pengmas-160.png"
+                  width={48}
+                  height={48}
+                  alt="Logo Bidang Pengabdian Masyarakat BEM Fasilkom UPN Veteran Jawa Timur"
+                />
+              </div>
+              <p>
+                <strong>Kepanitiaan Fasilkom Zuma</strong>
+                <br />
+                Bidang Pengabdian Masyarakat
+                <br />
+                BEM Fasilkom UPN &quot;Veteran&quot; Jawa&nbsp;Timur
+              </p>
+            </div>
+          </section>
         </div>
         <nav className="footer-links" aria-label="Layanan di footer">
           <h3>Layanan</h3>
@@ -68,6 +94,7 @@ export function Footer() {
           <Link href="/kebijakan-privasi/">Kebijakan Privasi</Link>
         </nav>
       </div>
+
       <div className="container footer-bottom">
         <span>© 2026 Pemerintah Desa Watuagung</span>
         <span>
