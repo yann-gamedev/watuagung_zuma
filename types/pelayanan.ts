@@ -56,9 +56,10 @@ export interface StaffApplication {
 export interface StaffApplicationEvent {
   /**
    * null = perubahan status; ACCESS_CODE_RESET = kode akses dibuat ulang; STATEMENT_EDITED = isi keterangan UMUM
-   * disunting (note "Isi keterangan disunting"). Keduanya tanpa perubahan status.
+   * disunting (note "Isi keterangan disunting"); ATTACHMENTS_UPDATED = pemohon mengganti lampiran saat NEED_REVISION
+   * (note "Lampiran diperbarui: KTP, …", staff_name null). Ketiganya tanpa perubahan status.
    */
-  action: "ACCESS_CODE_RESET" | "STATEMENT_EDITED" | null;
+  action: "ACCESS_CODE_RESET" | "STATEMENT_EDITED" | "ATTACHMENTS_UPDATED" | null;
   from_status: Status | null;
   to_status: Status;
   note: string | null;
@@ -103,6 +104,22 @@ export interface StaffApplicationDetail extends StaffApplication, Pick<Submissio
   letter_numbers?: LetterNumber[];
   /** Hanya peran kantor; null sampai Kepala Desa menyetujui. */
   letter?: LetterFile | null;
+  /** Hanya staff/admin/village_head (bukan Ketua RT/RW); tanpa path atau hash. */
+  attachments?: StaffAttachment[];
+}
+/**
+ * Lampiran pada detail petugas. Isi dibuka lewat GET /staff/applications/{request_id}/attachments/{id}
+ * (staff/admin/village_head, diaudit setiap kali; gambar inline, PDF unduhan). `purged` → 410.
+ */
+export interface StaffAttachment {
+  id: number;
+  kind: AttachmentKind;
+  label: string;
+  stored_mime: "image/webp" | "image/jpeg" | "application/pdf";
+  size_bytes: number;
+  /** Saat file terakhir diterima (pengajuan atau penggantian). */
+  uploaded_at: string;
+  purged: boolean;
 }
 /** Surat final; kode verifikasi tidak pernah dikirim ke panel. */
 export interface LetterFile {
@@ -273,6 +290,16 @@ export interface Receipt {
    * ukuran, atau hash. Data lama sebelum lampiran = []. Tidak ada pada mode demo.
    */
   lampiran?: AttachmentKind[];
+}
+/**
+ * POST /applications/attachments (multipart, publik): `request_id`, `lookup_secret`, satu atau lebih `lampiran[KIND]`.
+ * Hanya saat NEED_REVISION (selain itu 422); kode salah memakai kunci percobaan cek status (5 salah → 429 15 menit).
+ */
+export interface AttachmentReplaceResponse {
+  success: true;
+  request_id: string;
+  status: "NEED_REVISION";
+  lampiran: AttachmentKind[];
 }
 export interface StatusReceipt extends Receipt {
   catatan?: string | null;

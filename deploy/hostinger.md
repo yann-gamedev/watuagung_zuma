@@ -166,9 +166,10 @@ hPanel → Advanced → Cron Jobs → Custom. **Jadwal cron Hostinger memakai UT
 |---|---|---|
 | Prune token 00.00 WIB | `0 17 * * *` | `cd /home/u123456789/watuagung/backend && /opt/alt/php83/usr/bin/php artisan sanctum:prune-expired --hours=24 >/dev/null 2>&1` |
 | Retensi 00.05 WIB | `5 17 * * *` | `cd /home/u123456789/watuagung/backend && /opt/alt/php83/usr/bin/php artisan applications:purge >/dev/null 2>&1` |
+| Retensi lampiran 00.10 WIB | `10 17 * * *` | `cd /home/u123456789/watuagung/backend && /opt/alt/php83/usr/bin/php artisan attachments:purge >/dev/null 2>&1` |
 | Backup 02.00 WIB | `0 19 * * *` | `/home/u123456789/bin/watuagung-backup.sh >> /home/u123456789/backups/watuagung/backup.log 2>&1` |
 
-**Jangan pakai `schedule:run`.** Hostinger mematikan `proc_open` (juga di PHP CLI) dan scheduler Laravel menjalankan tiap tugas sebagai proses anak, sehingga tugas terjadwal gagal. Dua tugas harian di `routes/console.php` dipasang langsung sebagai cron di atas; bila menambah `Schedule::` baru, tambahkan juga cron-nya. `applications:purge` tidak mengubah apa pun selama `RETENTION_APPLICATION_DAYS` kosong. Perintah cron dibatasi **255 karakter**, sehingga backup memakai skrip pembungkus.
+**Jangan pakai `schedule:run`.** Hostinger mematikan `proc_open` (juga di PHP CLI) dan scheduler Laravel menjalankan tiap tugas sebagai proses anak, sehingga tugas terjadwal gagal. Tugas harian di `routes/console.php` dipasang langsung sebagai cron di atas; bila menambah `Schedule::` baru, tambahkan juga cron-nya. `applications:purge` tidak mengubah apa pun selama `RETENTION_APPLICATION_DAYS` kosong. `attachments:purge` **aktif bawaan** (`ATTACHMENT_RETENTION_DAYS=30`): menghapus file lampiran permohonan `COMPLETED`/`REJECTED` setelah 30 hari; `0` mematikannya. (`media:prune` belum dipasang sebagai cron; di luar lingkup perubahan ini.) Perintah cron dibatasi **255 karakter**, sehingga backup memakai skrip pembungkus.
 
 Backup:
 
@@ -189,6 +190,10 @@ exec bash "$APP_DIR/deploy/backup.sh"
 ```
 
 `~/.my.cnf` (§ D) dapat dibuat tanpa menampilkan kata sandi dengan menyalin dari konfigurasi Laravel di server: `umask 077; php artisan tinker --execute='$c = config("database.connections.mysql"); file_put_contents(getenv("HOME")."/.my.cnf", "[client]\nuser={$c["username"]}\npassword=\"{$c["password"]}\"\nhost=localhost\n");'`. Tambahkan `ENCRYPTOR=openssl` bila `gpg` tidak tersedia. Jalankan sekali manual lewat SSH sebelum memasang cron. Backup: `mysqldump --single-transaction` + seluruh `storage/app` (private dan public), dienkripsi, diuji dekripsi, rotasi 14 harian dan 8 mingguan. `.env`/`APP_KEY` tidak ikut.
+
+**Lampiran persyaratan dan backup.** File KTP/KK/pengantar RT/RW ada di `storage/app/private/attachments/`, jadi ikut backup. Di dalam arsip isinya **tetap terenkripsi** dengan `APP_KEY` (selain enkripsi arsip backup); memulihkan backup tanpa `APP_KEY` yang sama berarti lampiran, surat PDF, dan field terenkripsi tidak dapat dibaca. Lampiran yang sudah dihapus retensi tetap ada di backup lama sampai rotasinya habis (±8 minggu).
+
+**Perkiraan kuota disk lampiran.** Isi ±2–4 MB per permohonan (3 file; foto di-encode ulang ≤ 2.000 px biasanya jauh di bawah 1 MB, PDF hingga 5 MB). Enkripsi Laravel menyimpan isi sebagai base64 di dalam base64, sehingga file di disk ±1,8× isinya: ±3,5–7 MB per permohonan, terburuk ±27 MB (3 × 5 MB). Contoh: 150 permohonan/bulan dengan retensi 30 hari setelah selesai → kira-kira 1–2 GB aktif di `storage/app/private`, ditambah salinan di setiap backup harian/mingguan (arsip terkompresi; base64 terkompresi kembali sebagian). Pantau di hPanel → Files → Disk usage dan sesuaikan rotasi backup bila perlu.
 
 **Salinan ke luar Hostinger wajib sebelum go-live.** Backup di akun yang sama hilang bersama akun. Pilih salah satu:
 

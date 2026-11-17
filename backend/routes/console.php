@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\Business;
 use App\Models\Post;
 use App\Models\User;
+use App\Support\AttachmentStore;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Foundation\Inspiring;
@@ -69,12 +70,13 @@ Artisan::command('applications:purge {--dry-run}', function () {
     $query = Application::query()->whereIn('status', ['COMPLETED', 'REJECTED'])->whereNull('purged_at')->where('updated_at', '<', $cutoff);
     foreach ($query->lazyById(200) as $application) {
         $letter = Letter::find($application);
-        $this->line(sprintf('%s  %-8s  %-9s  %s%s', $application->request_id, $application->jenis_surat, $application->status,
-            $application->updated_at->toDateString(), $letter?->path ? '  + file surat' : ''));
+        $attachments = DB::table('application_attachments')->where('application_id', $application->id)->whereNull('purged_at')->count();
+        $this->line(sprintf('%s  %-8s  %-9s  %s%s%s', $application->request_id, $application->jenis_surat, $application->status,
+            $application->updated_at->toDateString(), $letter?->path ? '  + file surat' : '', $attachments ? "  + $attachments lampiran" : ''));
         $count++;
         if ($dry) continue;
 
-        DB::transaction(function () use ($application, $letter) {
+        $attachmentPaths = DB::transaction(function () use ($application, $letter) {
             $initials = implode(' ', array_map(fn (string $word) => mb_substr($word, 0, 1).'.', preg_split('/\s+/u', trim($application->nama), -1, PREG_SPLIT_NO_EMPTY)));
             // Kolom NOT NULL terenkripsi diisi string kosong terenkripsi agar detail panel tetap dapat didekripsi.
             $application->forceFill([
@@ -88,13 +90,49 @@ Artisan::command('applications:purge {--dry-run}', function () {
             $application->save();
             if ($letter?->path) DB::table('letters')->where('id', $letter->id)->update(['path' => null, 'file_purged_at' => now()]);
             DB::table('audit_logs')->insert(['user_id' => null, 'action' => 'application.purged', 'subject_type' => 'application', 'subject_id' => $application->id, 'created_at' => now()]);
+            // Lampiran persyaratan ikut dihapus; audit attachment.purged per lampiran.
+            return AttachmentStore::purgeRows($application->id);
         });
         // Setelah commit: kegagalan hapus hanya menyisakan berkas yatim terenkripsi, bukan baris yang menunjuk berkas hilang.
         if ($letter?->path && ! Storage::disk('local')->delete($letter->path)) $this->warn("Berkas surat {$application->request_id} gagal dihapus.");
+        if (! AttachmentStore::deleteFiles($attachmentPaths)) $this->warn("Lampiran {$application->request_id} gagal dihapus.");
     }
     $this->info(($dry ? "[dry-run] $count permohonan akan dianonimkan; tidak ada yang diubah." : "$count permohonan dianonimkan."));
     return 0;
 })->purpose('Anonimkan permohonan COMPLETED/REJECTED yang melewati masa simpan (RETENTION_APPLICATION_DAYS)');
+
+// Retensi lampiran: hapus file KTP/KK/pengantar permohonan COMPLETED/REJECTED yang lebih tua dari ATTACHMENT_RETENTION_DAYS.
+// Baris lampiran tetap (jenis, ukuran, hash) dengan purged_at; data permohonan tidak diubah.
+Artisan::command('attachments:purge {--dry-run}', function () {
+    $days = config('retention.attachment_days');
+    if ($days === null || $days === '' || $days === 0 || $days === '0') {
+        $this->info('Retensi lampiran mati (ATTACHMENT_RETENTION_DAYS kosong atau 0). Tidak ada lampiran yang dihapus.');
+        return 0;
+    }
+    if (($days = filter_var($days, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])) === false) {
+        $this->error('ATTACHMENT_RETENTION_DAYS harus bilangan bulat minimal 0. Tidak ada lampiran yang dihapus.');
+        return 1;
+    }
+    $dry = (bool) $this->option('dry-run');
+    $cutoff = now()->subDays($days);
+    $this->info(($dry ? '[dry-run] ' : '')."Masa simpan lampiran $days hari; batas updated_at sebelum {$cutoff->toDateTimeString()}.");
+    $applications = 0;
+    $files = 0;
+    $query = Application::query()->whereIn('status', ['COMPLETED', 'REJECTED'])->where('updated_at', '<', $cutoff)
+        ->whereExists(fn ($sub) => $sub->select(DB::raw(1))->from('application_attachments')
+            ->whereColumn('application_attachments.application_id', 'applications.id')->whereNull('application_attachments.purged_at'));
+    foreach ($query->select(['id', 'request_id', 'status', 'updated_at'])->lazyById(200) as $application) {
+        $count = DB::table('application_attachments')->where('application_id', $application->id)->whereNull('purged_at')->count();
+        $this->line(sprintf('%s  %-9s  %s  %d lampiran', $application->request_id, $application->status, $application->updated_at->toDateString(), $count));
+        $applications++;
+        $files += $count;
+        if ($dry) continue;
+        $paths = DB::transaction(fn () => AttachmentStore::purgeRows($application->id));
+        if (! AttachmentStore::deleteFiles($paths)) $this->warn("Lampiran {$application->request_id} gagal dihapus.");
+    }
+    $this->info($dry ? "[dry-run] $files lampiran dari $applications permohonan akan dihapus; tidak ada yang diubah." : "$files lampiran dari $applications permohonan dihapus.");
+    return 0;
+})->purpose('Hapus lampiran persyaratan permohonan COMPLETED/REJECTED yang melewati ATTACHMENT_RETENTION_DAYS (bawaan 30)');
 
 // Hapus foto berita/UMKM yang tidak lagi dirujuk baris aktif: sisa soft delete sebelum foto ikut terhapus,
 // atau file yang gagal dihapus. File berumur < 1 jam dilewati agar unggahan yang belum commit tidak ikut terhapus.
@@ -124,5 +162,7 @@ Artisan::command('media:prune {--dry-run}', function () {
 Schedule::command('sanctum:prune-expired --hours=24')->daily();
 // Aman dijadwalkan: tanpa RETENTION_APPLICATION_DAYS perintah keluar tanpa mengubah apa pun.
 Schedule::command('applications:purge')->daily();
+// Bawaan 30 hari; ATTACHMENT_RETENTION_DAYS=0 mematikan.
+Schedule::command('attachments:purge')->daily();
 // Hanya menghapus file yang tidak dirujuk berita/UMKM aktif.
 Schedule::command('media:prune')->daily();

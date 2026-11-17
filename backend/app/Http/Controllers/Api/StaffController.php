@@ -8,6 +8,7 @@ use App\Domain\LetterNumber;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\User;
+use App\Support\AttachmentStore;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -198,6 +199,8 @@ class StaffController extends Controller {
                         'issued_at'=>Carbon::parse($letter->issued_at)->toISOString(),
                     ]),
                 'letter'=>LetterController::summary(Letter::find($application)),
+                // Hanya peran yang boleh membuka lampiran (bukan Ketua RT/RW); tanpa path atau hash.
+                'attachments'=>AttachmentStore::staffList($application),
             ];
         }
         // Fail closed: do not return private data if recording the access fails.

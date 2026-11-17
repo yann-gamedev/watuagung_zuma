@@ -1,5 +1,6 @@
 <?php
 use App\Http\Controllers\Api\ApplicationController;
+use App\Http\Controllers\Api\AttachmentController;
 use App\Http\Controllers\Api\LetterController;
 use App\Http\Controllers\Api\BusinessController;
 use App\Http\Controllers\Api\PostController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Api\StaffUserController;
 use Illuminate\Support\Facades\Route;
 Route::post('/v1/applications', [ApplicationController::class, 'store'])->middleware('throttle:5,1');
 Route::post('/v1/applications/status', [ApplicationController::class, 'status'])->middleware('throttle:10,1');
+Route::post('/v1/applications/attachments', [ApplicationController::class, 'replaceAttachments'])->middleware('throttle:5,1,application-attachments');
 Route::post('/v1/staff/login', [StaffController::class, 'login'])->middleware('throttle:5,1');
 Route::get('/v1/verify/{code}', [LetterController::class, 'verify'])->middleware('throttle:30,1');
 Route::get('/v1/posts', [PostController::class, 'index'])->middleware('throttle:60,1');
@@ -33,6 +35,7 @@ Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/
     Route::get('/applications/{request_id}/letter.pdf', [LetterController::class, 'download'])->middleware('throttle:30,1');
     Route::post('/applications/{request_id}/letter.pdf', [LetterController::class, 'upload'])->middleware('throttle:10,1');
     Route::get('/applications/{request_id}/letter-qr.png', [LetterController::class, 'qr']);
+    Route::get('/applications/{request_id}/attachments/{id}', [AttachmentController::class, 'show'])->whereNumber('id')->middleware('throttle:60,1,attachment-view');
     Route::get('/users', [StaffUserController::class, 'index']);
     Route::post('/users', [StaffUserController::class, 'store']);
     Route::patch('/users/{id}', [StaffUserController::class, 'update']);
