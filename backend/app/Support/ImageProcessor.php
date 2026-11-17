@@ -22,6 +22,24 @@ class ImageProcessor {
             'file.max'=>"Ukuran foto maksimal {$maxSizeKiB} KiB.",
             'file.dimensions'=>"Lebar foto harus {$minWidth}–{$maxInputWidth} piksel dan tinggi {$minHeight}–{$maxInputHeight} piksel.",
         ])->validate();
+        [$bytes, $extension] = self::encode($file, $maxWidth);
+        $path = $directory.'/'.Str::uuid().'.'.$extension;
+        try {
+            abort_unless(Storage::disk('public')->put($path, $bytes), 500, 'Foto gagal disimpan.');
+        } catch (\Throwable $e) {
+            Storage::disk('public')->delete($path);
+            throw $e;
+        }
+        return $path;
+    }
+
+    /**
+     * Gambar ulang ke kanvas baru (lebar maksimal $maxWidth) lalu encode WebP, atau JPEG bila GD tanpa WebP.
+     * Pemanggil wajib memvalidasi tipe, ukuran, dan dimensi lebih dulu.
+     *
+     * @return array{0: string, 1: 'webp'|'jpg'} isi hasil encode dan ekstensinya
+     */
+    public static function encode(UploadedFile $file, int $maxWidth): array {
         abort_unless(extension_loaded('gd'), 503, 'Pengolah foto belum tersedia. Hubungi administrator.');
         // GD tanpa dukungan JPEG/WebP gagal membaca file valid; jangan salahkan format foto pengguna.
         $read = [IMAGETYPE_JPEG=>IMG_JPG, IMAGETYPE_PNG=>IMG_PNG, IMAGETYPE_WEBP=>IMG_WEBP][(@getimagesize($file->getRealPath()) ?: [])[2] ?? 0] ?? 0;
@@ -50,14 +68,9 @@ class ImageProcessor {
             $encoded = $webp ? imagewebp($image, $stream, 80) : imagejpeg($image, $stream, 82);
             abort_unless($encoded && ftell($stream) > 0, 500, 'Foto gagal disimpan.');
             rewind($stream);
-            $path = $directory.'/'.Str::uuid().($webp ? '.webp' : '.jpg');
-            try {
-                abort_unless(Storage::disk('public')->put($path, $stream), 500, 'Foto gagal disimpan.');
-            } catch (\Throwable $e) {
-                Storage::disk('public')->delete($path);
-                throw $e;
-            }
-            return $path;
+            $output = stream_get_contents($stream);
+            abort_if($output === false || $output === '', 500, 'Foto gagal disimpan.');
+            return [$output, $webp ? 'webp' : 'jpg'];
         } finally {
             imagedestroy($source);
             if ($image !== false) imagedestroy($image);

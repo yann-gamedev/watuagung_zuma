@@ -245,6 +245,20 @@ export interface Submission {
   isi_keterangan?: string;
   keperluan: string;
 }
+/** Dokumen lampiran pengajuan (cermin `AttachmentKind.php`); daftar wajib per jenis di `LetterType::requiredAttachments()`. */
+export const attachmentKinds = ["KTP", "KK", "PENGANTAR_RT_RW"] as const;
+export type AttachmentKind = (typeof attachmentKinds)[number];
+export const attachmentKindLabels: Record<AttachmentKind, string> = {
+  KTP: "KTP",
+  KK: "Kartu Keluarga (KK)",
+  PENGANTAR_RT_RW: "Surat Pengantar RT/RW",
+};
+/**
+ * POST /applications mode API: multipart `Submission` + file `lampiran[KTP]`, `lampiran[KK]`, `lampiran[PENGANTAR_RT_RW]`
+ * (wajib untuk keenam jenis yang ditawarkan). JPG/PNG/WebP/PDF <= 5 MB per file, tipe dibaca dari isi file;
+ * foto sisi pendek >= 600 px; PDF <= 10 halaman. Kesalahan 422 per dokumen di `errors["lampiran.KTP"]` dst.
+ */
+export type SubmissionAttachments = Record<AttachmentKind, File | Blob>;
 export interface Receipt {
   /** Dihitung LetterType server; opsional hanya untuk bukti demo lama. */
   requires_neighborhood_approval?: boolean;
@@ -254,6 +268,11 @@ export interface Receipt {
   lookup_secret?: string;
   /** Receipt demo lama belum menyimpan jenis surat. */
   jenis_surat?: ServiceCode;
+  /**
+   * Mode API: jenis lampiran yang diterima dan belum dihapus retensi (urutan `attachmentKinds`); tanpa path,
+   * ukuran, atau hash. Data lama sebelum lampiran = []. Tidak ada pada mode demo.
+   */
+  lampiran?: AttachmentKind[];
 }
 export interface StatusReceipt extends Receipt {
   catatan?: string | null;

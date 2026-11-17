@@ -26,12 +26,12 @@ Jalankan Laravel sesuai [README backend](../backend/README.md). Atur `FRONTEND_O
 
 ## Kontrak API
 
-Path berikut relatif terhadap `/api/v1`. Transport menggunakan `Accept: application/json` dan `Content-Type: application/json`, tanpa field `action`.
+Path berikut relatif terhadap `/api/v1`. Transport menggunakan `Accept: application/json` dan `Content-Type: application/json`, tanpa field `action`; pengecualian: unggahan berkas, termasuk `POST /applications`, memakai `multipart/form-data`.
 
 | Metode | Path | Permintaan / kegunaan |
 | --- | --- | --- |
-| POST | `/applications` | Publik, 5/menit | Field sesuai [Submission](../types/pelayanan.ts) dan [aturan per jenis surat](#enam-jenis-surat-final-s1-8-november-2026); SKU/KTP_KK → 422 |
-| POST | `/applications/status` | `request_id` dan `lookup_secret`; 5 kode salah per nomor → 429 selama 15 menit |
+| POST | `/applications` | Publik, 5/menit | **Multipart**: field sesuai [Submission](../types/pelayanan.ts) dan [aturan per jenis surat](#enam-jenis-surat-final-s1-8-november-2026) + file wajib `lampiran[KTP]`, `lampiran[KK]`, `lampiran[PENGANTAR_RT_RW]` ([lampiran](#lampiran-persyaratan-m6-16-november-2026)); JSON tanpa lampiran → 422 per dokumen; SKU/KTP_KK → 422. Respons 201 menambah `lampiran: AttachmentKind[]` |
+| POST | `/applications/status` | `request_id` dan `lookup_secret`; 5 kode salah per nomor → 429 selama 15 menit. Respons menambah `lampiran: AttachmentKind[]` (jenis yang diterima saja) |
 | POST | `/staff/login` | `username` dan `password`; kompatibilitas klien lama: `email` dan `password`; respons bearer token |
 | POST | `/staff/logout` | Ability `panel`: mencabut token petugas aktif |
 | GET | `/staff/me` | Ability `panel`, profil petugas pemilik token: `{ name, username, role, rt, rw, must_change_password, features: { neighborhood_approval: boolean }, abilities: string[] }`; enam peran tetap dikenal, tetapi RT/RW mendapat 403 saat fitur mati; `rt`/`rw` nullable (3 digit untuk ketua RT/RW); dipakai untuk memvalidasi sesi dan kemampuan panel |
@@ -228,6 +228,25 @@ Rancangan dan sumber pilihan: `docs/PROMPTS-SURAT.md`. Aturan ada di `backend/ap
 - **PDF S2:** enam jenis final memiliki template resmi masing-masing di `resources/views/letters/`; judul dari `LetterType::title()`. Kop JPG data URI, identitas 1–11, RT/RW tiga digit, tanggal lahir `dd-mm-yyyy`, keterangan per jenis. KERAMAIAN memakai tabel a–g tanpa NIK/KK dan rentang tanggal Indonesia. UMUM mencetak `isi_keterangan` terkini hasil suntingan petugas, bukan teks awal warga. BELUM_MENIKAH/KEHILANGAN memakai dua kolom tanda tangan; QR di bawah area tanda tangan. SKU/KTP_KK lama tetap dirender, termasuk data tanpa kolom baru. Tidak ada perubahan kontrak API pada S2.
 - **Retensi:** `applications:purge` mengosongkan semua kolom baru.
 - **Formulir warga S3 (8 November 2026):** katalog hanya enam jenis final. Kelompok data diri tambahan memakai pilihan baku dan datalist pekerjaan; KERAMAIAN tidak meminta agama/status perkawinan/pendidikan/pekerjaan. Zod memeriksa field per jenis, kalender dan batas tujuh hari inklusif dengan hari ini Asia/Jakarta sebelum ringkasan dan kirim; demo memakai skema sama, SKU/KTP_KK ditolak. Ringkasan memuat semua isian dan dapat dikoreksi tanpa kehilangan nilai. Jenis surat pada bukti sukses disimpan per nomor di sessionStorage tanpa identitas; kode akses tetap terpisah per tab, tidak di URL. Enam pengajuan fiktif ke Laravel lokal tersimpan; bukti dan batas verifikasi di `docs/progres-2026-11-08-s3.md`.
+
+### Lampiran persyaratan (M6, 16 November 2026)
+
+Setiap pengajuan online wajib menyertakan **KTP**, **Kartu Keluarga (KK)**, dan **Surat Pengantar RT/RW**. Daftar wajib per jenis hanya di `LetterType::requiredAttachments()` (saat ini ketiganya untuk keenam jenis yang ditawarkan); enum `App\Domain\AttachmentKind`, tipe frontend `attachmentKinds`/`AttachmentKind`/`SubmissionAttachments` di `types/pelayanan.ts`.
+
+- **Permintaan:** `multipart/form-data` berisi field formulir seperti sebelumnya + `lampiran[KTP]`, `lampiran[KK]`, `lampiran[PENGANTAR_RT_RW]`. Kunci lain di `lampiran` → 422 `Jenis lampiran tidak dikenal untuk surat ini.` Throttle tetap 5/menit.
+- **Validasi per file** (pesan di `errors["lampiran.KTP"]` dst., digabung dengan kesalahan isian lain dalam satu respons 422):
+  - tidak ada → `KTP wajib dilampirkan.` (label: KTP, Kartu Keluarga (KK), Surat Pengantar RT/RW); bukan file → `… harus berupa file.`;
+  - tipe dibaca dari **isi** file (finfo), bukan ekstensi/Content-Type: hanya JPEG, PNG, WebP, PDF; selain itu (mis. teks bernama `.jpg`, GIF) → `… harus berupa foto JPG, PNG, WebP, atau berkas PDF.`;
+  - maksimal 5 MB (5.242.880 byte) → `Ukuran … maksimal 5 MB.`;
+  - foto: sisi terpendek < 600 px → `Foto terlalu kecil untuk dibaca. …`; sisi terpanjang > 6.000 px → ditolak (batas memori GD); foto rusak → `… tidak dapat dibaca. …`;
+  - PDF: wajib diawali `%PDF-`; > 10 halaman → `PDF … maksimal 10 halaman.` Halaman dihitung dari objek `/Type /Page` dan `/Count` tanpa pustaka PDF; PDF yang menyimpan objek di stream terkompresi tidak terhitung sehingga batas halaman **dilewati** (berkas tetap diterima, ukuran ≤ 5 MB tetap berlaku).
+  - File ditolak PHP sebelum Laravel → `… gagal diterima server. …`. Badan permintaan di atas `post_max_size` → 413 dari Laravel tanpa pesan per dokumen; lihat batas server di bawah.
+- **Pengolahan:** foto digambar ulang dengan GD (lebar maks 2.000 px, tanpa memperbesar) lalu di-encode WebP, atau JPEG bila GD tanpa WebP, sehingga EXIF/GPS hilang. PDF disimpan apa adanya; metadata dokumennya tidak dibuang (tanpa pustaka PDF).
+- **Penyimpanan:** `Crypt::encryptString(isi)` ke disk privat `local`, `storage/app/private/attachments/{application_id}/{uuid}.bin`. Nama file asli **tidak pernah** disimpan, dicatat, atau dikembalikan (bisa berisi nama/NIK). Tabel `application_attachments`: `kind`, `original_mime` (hasil deteksi isi), `stored_mime`, `size_bytes` (isi tersimpan sebelum enkripsi), `path`, `sha256` (isi asli yang diunggah), `uploaded_by` (`applicant`/`staff`), `purged_at`, unique (`application_id`, `kind`), FK cascade.
+- **Atomik:** baris permohonan, event `SUBMITTED`, dan baris lampiran dalam satu transaksi. Bila penyimpanan gagal di tengah, transaksi dibatalkan dan file yang sudah tertulis dihapus; tidak ada baris atau file yatim.
+- **Respons publik** (pengajuan 201 dan cek status): `lampiran: ["KTP", "KK", "PENGANTAR_RT_RW"]` — hanya jenis yang diterima dan belum dihapus retensi; tanpa path, ukuran, MIME, atau hash. Data lama sebelum fitur ini → `[]`.
+- **Batas server:** 3 × 5 MB + isian melebihi `post_max_size = 12M` yang sebelumnya tercatat di `deploy/hostinger.md` § C; bahkan 3 × 4 MB (12 MiB) + overhead multipart sedikit melewati 12M. Karena itu § C kini meminta 20M (VPS: `client_max_body_size` Nginx juga perlu dinaikkan). Kompres foto di browser (L3) tetap dianjurkan untuk koneksi warga.
+- **Belum ada:** layar formulir unggah (L3) dan tampilan petugas (L4); endpoint petugas membaca/mengganti lampiran; penghapusan lampiran oleh `applications:purge` (retensi). Sampai L3, formulir mode API yang masih mengirim JSON akan mendapat 422; mode demo tidak terpengaruh.
 
 ### Sunting isi keterangan (UMUM)
 

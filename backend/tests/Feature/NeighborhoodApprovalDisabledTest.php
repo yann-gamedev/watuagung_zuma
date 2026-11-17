@@ -57,7 +57,7 @@ class NeighborhoodApprovalDisabledTest extends TestCase
     {
         config()->set('letters.neighborhood_approval', $enabled);
         $this->assertSame($expected, LetterType::from($type)->requiresNeighborhoodApproval());
-        $receipt = $this->postJson('/api/v1/applications', $this->payload($type))->assertCreated()
+        $receipt = $this->submitLetter($this->payload($type))->assertCreated()
             ->assertJsonPath('requires_neighborhood_approval', $expected)->json();
         $this->postJson('/api/v1/applications/status', [
             'request_id' => $receipt['request_id'], 'lookup_secret' => $receipt['lookup_secret'],
@@ -68,7 +68,7 @@ class NeighborhoodApprovalDisabledTest extends TestCase
     public function test_all_types_complete_office_workflow_without_neighborhood_approval(string $type): void
     {
         config()->set('letters.neighborhood_approval', false);
-        $receipt = $this->postJson('/api/v1/applications', $this->payload($type))->assertCreated()->json();
+        $receipt = $this->submitLetter($this->payload($type))->assertCreated()->json();
         $application = Application::where('request_id', $receipt['request_id'])->firstOrFail();
         $staff = User::factory()->create(['role' => 'staff']);
         $admin = User::factory()->create(['role' => 'admin']);
@@ -163,7 +163,7 @@ class NeighborhoodApprovalDisabledTest extends TestCase
     {
         $this->withoutMiddleware(ThrottleRequests::class);
         $this->actAs(User::factory()->create(['role' => 'admin']));
-        $receipt = $this->postJson('/api/v1/applications', $this->payload('SKTM'))->assertCreated()->json();
+        $receipt = $this->submitLetter($this->payload('SKTM'))->assertCreated()->json();
         $application = Application::where('request_id', $receipt['request_id'])->firstOrFail();
         foreach (['SUBMITTED', 'RT_APPROVED'] as $status) {
             $application->update(['status' => $status]);

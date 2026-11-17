@@ -82,7 +82,7 @@ class NeighborhoodApprovalTest extends TestCase
     public function test_submission_normalizes_area_and_returns_letter_type(): void
     {
         $payload = self::letterPayload('SKTM', ['rt' => '5', 'rw' => '09']);
-        $this->postJson('/api/v1/applications', $payload)->assertCreated()->assertJsonPath('jenis_surat', 'SKTM');
+        $this->submitLetter($payload)->assertCreated()->assertJsonPath('jenis_surat', 'SKTM');
         $this->assertDatabaseHas('applications', ['rt' => '005', 'rw' => '009']);
     }
 
@@ -216,7 +216,7 @@ class NeighborhoodApprovalTest extends TestCase
         // Message follows the recorded stage, not the account's current role.
         $rt->forceFill(['role' => 'staff', 'rt' => null, 'rw' => null])->save();
         $this->lookup($rtRejected)->assertOk()->assertExactJson([
-            'success' => true, 'request_id' => $rtRejected->request_id, 'jenis_surat' => 'DOMISILI', 'status' => 'REJECTED',
+            'success' => true, 'request_id' => $rtRejected->request_id, 'jenis_surat' => 'DOMISILI', 'lampiran' => [], 'status' => 'REJECTED',
             'catatan' => 'Ditolak oleh Ketua RT: Alamat belum sesuai. Silakan ajukan ulang setelah data diperbaiki.',
             'letter_number' => null, 'requires_neighborhood_approval' => true,
         ]);

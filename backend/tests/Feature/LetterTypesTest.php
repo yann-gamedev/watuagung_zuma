@@ -29,7 +29,7 @@ class LetterTypesTest extends TestCase
 
     private function submit(array $payload)
     {
-        return $this->postJson('/api/v1/applications', $payload);
+        return $this->submitLetter($payload);
     }
 
     private function act(string $role, ?string $rt = null, ?string $rw = null): User

@@ -233,8 +233,8 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 
 | Metode | Path | Akses | Kegunaan |
 | --- | --- | --- | --- |
-| POST | `/applications` | Publik, 5 permintaan/menit | Mengajukan layanan; mengembalikan `request_id`, `status`, `jenis_surat`, `requires_neighborhood_approval: boolean` dari `LetterType`, dan `lookup_secret` (HTTP 201) |
-| POST | `/applications/status` | Publik, 10 permintaan/menit; 5 kode salah per nomor → 429 selama 15 menit | Body: `request_id` dan `lookup_secret`; mengembalikan `jenis_surat`, `requires_neighborhood_approval: boolean` dari `LetterType`, status, dan catatan (penolakan RT/RW historis tetap diberi awalan "Ditolak oleh Ketua RT/RW") |
+| POST | `/applications` | Publik, 5 permintaan/menit | Mengajukan layanan (multipart, lampiran KTP/KK/pengantar RT/RW wajib; lihat § Lampiran persyaratan); mengembalikan `request_id`, `status`, `jenis_surat`, `requires_neighborhood_approval: boolean` dari `LetterType`, `lampiran` (jenis yang diterima), dan `lookup_secret` (HTTP 201) |
+| POST | `/applications/status` | Publik, 10 permintaan/menit; 5 kode salah per nomor → 429 selama 15 menit | Body: `request_id` dan `lookup_secret`; mengembalikan `jenis_surat`, `requires_neighborhood_approval: boolean` dari `LetterType`, status, `lampiran` (jenis yang diterima, tanpa path/ukuran/hash), dan catatan (penolakan RT/RW historis tetap diberi awalan "Ditolak oleh Ketua RT/RW") |
 | POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `username` dan `password` (atau `email` untuk klien lama); mengembalikan bearer token |
 | POST | `/staff/logout` | Token petugas | Mencabut token aktif |
 | GET | `/staff/me` | Token petugas | Mengembalikan `{ name, username, role, rt, rw, must_change_password, features: { neighborhood_approval: boolean }, abilities: string[] }`; `username`, `rt`, `rw` bisa `null`. Peran di luar enam peran panel, akun nonaktif, ketua RT/RW tanpa wilayah lengkap, atau token RT/RW saat fitur mati mendapat 403 |
@@ -279,6 +279,16 @@ Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Validasi yang g
 - `ApplicationStatus::canEditContent()` menentukan kapan isi surat boleh disunting kantor (`SUBMITTED`, `RT_APPROVED`, `RW_APPROVED`, `VERIFIED`, `PROCESSING`, `NEED_REVISION`; peran staff/admin). Detail mengirim `can_edit_isi_keterangan`.
 - PDF S2: `Letter::view()` memakai `letters/{jenis}.blade.php` untuk delapan jenis. Enam jenis final mengikuti contoh resmi desa; SKU/KTP_KK tetap bisa dirender dengan kolom baru kosong. Judul final dari `LetterType::title()`.
 - Kontrak lengkap dan tabel jenis: [docs/integrasi.md § Enam jenis surat final](../docs/integrasi.md#enam-jenis-surat-final-s1-8-november-2026). Tes: `tests/Feature/LetterTypesTest.php`, payload fiktif bersama di `tests/LetterPayloads.php`.
+
+### Lampiran persyaratan (M6, 16 November 2026)
+
+- `App\Domain\AttachmentKind`: `KTP`, `KK`, `PENGANTAR_RT_RW` dengan `label()` bahasa Indonesia. `LetterType::requiredAttachments()` satu-satunya daftar wajib per jenis (ketiganya untuk enam jenis yang ditawarkan; SKU/KTP_KK lama = kosong).
+- `App\Support\AttachmentStore`: `errors()` memeriksa keberadaan, ukuran ≤ 5 MB, tipe dari isi (finfo; JPEG/PNG/WebP/PDF), dimensi foto (sisi pendek ≥ 600, sisi panjang ≤ 6.000), PDF `%PDF-` dan ≤ 10 halaman bila terhitung tanpa pustaka (stream objek terkompresi → dilewati). `storeAll()` (di dalam transaksi) meng-encode ulang foto lewat `ImageProcessor::encode()` (lebar ≤ 2.000 px, WebP/JPEG, tanpa EXIF), lalu menulis `Crypt::encryptString()` ke `attachments/{application_id}/{uuid}.bin` di disk `local`. `discard()` menghapus file yang sudah tertulis bila transaksi gagal. `contents()` mendekripsi; `receivedKinds()` untuk respons publik.
+- `ImageProcessor::store()` kini memakai `encode()` yang sama; perilaku sampul berita/UMKM/situs tidak berubah.
+- `ApplicationController::store()`: kesalahan isian dan lampiran digabung dalam satu 422; permohonan, event, dan lampiran satu transaksi; file dibersihkan bila gagal.
+- Migration `2026_11_16_000000_create_application_attachments` (kolom di [docs/integrasi.md § Lampiran](../docs/integrasi.md#lampiran-persyaratan-m6-16-november-2026)); `down()` menghapus tabel (file di disk tidak ikut terhapus). FK cascade hanya menghapus baris; kode yang menghapus permohonan wajib menghapus file.
+- Nama file asli tidak pernah disimpan. Hostinger: `upload_max_filesize`/`post_max_size` 20M (`deploy/hostinger.md` § C).
+- Tes: `tests/Feature/ApplicationAttachmentsTest.php`; tes lain mengajukan lewat `submitLetter()` di `tests/LetterPayloads.php` (gambar polos fiktif, disk `local` palsu).
 
 ### Berita
 
@@ -492,7 +502,8 @@ Migration `2026_10_20_000000_add_neighborhood_territories` menambah kolom `rt`/`
   - Satu audit `application.purged` per permohonan dengan `user_id = null` (aksi sistem; migration `2026_10_27_000000` membuat kolom ini nullable dan rollback sengaja membiarkannya nullable). Tanpa isi data.
   - Idempoten: permohonan yang sudah memiliki `purged_at` dilewati. Nilai bukan bilangan bulat ≥ 1 → keluar dengan error tanpa perubahan.
   - Dijadwalkan harian di `routes/console.php`; aman karena mati bawaan. Backup lama tetap berisi data sebelum anonimisasi sampai rotasinya habis.
-- Belum ada unggah dokumen persyaratan, OTP, TTE, atau pengelolaan konten. Jangan menguji dengan data pribadi nyata.
+  - **Belum menghapus lampiran persyaratan** (`application_attachments`, file KTP/KK/pengantar terenkripsi). Jangan menyalakan retensi untuk data nyata sebelum purge lampiran dibuat.
+- Lampiran persyaratan diterima di API (§ Lampiran persyaratan), tetapi belum ada layar unggah, tampilan petugas, atau purge lampiran. Belum ada OTP, TTE, atau pengelolaan konten. Jangan menguji dengan data pribadi nyata.
 
 ## Sebelum produksi
 
