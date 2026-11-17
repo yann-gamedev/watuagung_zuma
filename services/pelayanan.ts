@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { serviceCodes, statuses, type Submission, type Receipt, type StatusReceipt } from "@/types/pelayanan";
+import { attachmentKinds, attachmentKindLabels, serviceCodes, statuses, type Submission, type SubmissionAttachments, type Receipt, type StatusReceipt } from "@/types/pelayanan";
 import { submissionSchema } from "@/lib/validation";
 // An explicit demo build must never contact an API, even with a stale API URL.
 export const apiBase = process.env.NEXT_PUBLIC_DEMO_MODE === "true"
@@ -7,7 +7,14 @@ export const apiBase = process.env.NEXT_PUBLIC_DEMO_MODE === "true"
   : process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "");
 export const isDemo = !apiBase;
 const receiptSchema = z.object({ success: z.literal(true), request_id: z.string().min(1), status: z.enum(statuses), lookup_secret: z.string().optional(), requires_neighborhood_approval: z.boolean().optional(), jenis_surat: z.enum(serviceCodes).optional() });
+const attachmentListSchema = z.array(z.enum(attachmentKinds));
 const key = "watuagung-demo-receipts-v1";
+export class SubmissionValidationError extends Error {
+  constructor(public readonly errors: Record<string, string[]>, message?: string) {
+    super(message || Object.values(errors).flat().join(" ") || "Periksa kembali isian dan lampiran Anda.");
+    this.name = "SubmissionValidationError";
+  }
+}
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!apiBase) throw new Error("API tidak tersedia dalam mode simulasi.");
   const controller = new AbortController();
@@ -31,21 +38,84 @@ function demoRecords(): Receipt[] {
     return parsed.success ? parsed.data : [];
   } catch { return []; }
 }
+function uploadMultipart<T>(path: string, form: FormData, schema: z.ZodType<T>, onProgress?: (percent: number | null) => void): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${apiBase}${path}`);
+    xhr.timeout = 120000;
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.upload.onprogress = (event) => onProgress?.(event.lengthComputable && event.total > 0 ? Math.min(100, Math.round(event.loaded / event.total * 100)) : null);
+    xhr.onerror = () => reject(new Error('Pengajuan gagal dikirim. Periksa koneksi internet lalu coba lagi.'));
+    xhr.ontimeout = () => reject(new Error('Waktu unggah habis. Periksa koneksi internet lalu coba lagi.'));
+    xhr.onabort = () => reject(new Error('Pengiriman dibatalkan. Coba kirim pengajuan kembali.'));
+    xhr.onload = () => {
+      try {
+        if (xhr.status === 413) throw new Error('Ukuran lampiran terlalu besar untuk server. Kecilkan ukuran file lalu coba lagi.');
+        let body: unknown;
+        try { body = JSON.parse(xhr.responseText); } catch {
+          if (xhr.status === 422) throw new SubmissionValidationError({});
+          throw new Error('Respons layanan tidak dapat dibaca. Coba lagi nanti.');
+        }
+        if (xhr.status < 200 || xhr.status >= 300) {
+          const failure = z.object({ message: z.string().optional(), errors: z.record(z.string(), z.array(z.string())).optional() }).safeParse(body);
+          if (xhr.status === 422) throw new SubmissionValidationError(failure.success ? failure.data.errors || {} : {}, failure.success ? failure.data.message : undefined);
+          throw new Error(failure.success && failure.data.message || 'Layanan belum dapat dihubungi. Coba lagi nanti.');
+        }
+        const receipt = schema.parse(body);
+        onProgress?.(100);
+        resolve(receipt);
+      } catch (error) { reject(error); }
+    };
+    onProgress?.(null);
+    xhr.send(form);
+  });
+}
 export const pelayananService = {
-  async submit(data: Submission): Promise<Receipt> {
-    if (apiBase) return receiptSchema.extend({ lookup_secret: z.string().min(1), requires_neighborhood_approval: z.boolean() }).parse(await apiRequest('/applications', { method: 'POST', body: JSON.stringify(data) }));
-    const parsed = submissionSchema.safeParse(data);
-    if (!parsed.success) throw new Error(parsed.error.issues.map((issue) => issue.message).join(' '));
-    await new Promise((resolve) => setTimeout(resolve, 650));
-    const result: Receipt = { success: true, request_id: `REQ-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, status: 'SUBMITTED', requires_neighborhood_approval: false, jenis_surat: parsed.data.jenis_surat };
+  async submit(data: Submission, attachments: SubmissionAttachments, onProgress?: (percent: number | null) => void): Promise<Receipt> {
+    // Demo checks form fields first, matching the existing validation contract.
+    const parsed = !apiBase ? submissionSchema.safeParse(data) : undefined;
+    if (parsed && !parsed.success) throw new Error(parsed.error.issues.map((issue) => issue.message).join(' '));
+    const errors: Record<string, string[]> = {};
+    for (const kind of attachmentKinds) {
+      if (!(attachments?.[kind] instanceof Blob) || !attachments[kind].size) errors[`lampiran.${kind}`] = [`${attachmentKindLabels[kind]} wajib dilampirkan.`];
+    }
+    if (Object.keys(errors).length) throw new SubmissionValidationError(errors);
+    if (apiBase) {
+      const form = new FormData();
+      for (const [field, value] of Object.entries(data)) if (value !== undefined && value !== null) form.append(field, String(value));
+      for (const kind of attachmentKinds) form.append(`lampiran[${kind}]`, attachments[kind]);
+      return uploadMultipart('/applications', form, receiptSchema.extend({ lookup_secret: z.string().min(1), requires_neighborhood_approval: z.boolean(), lampiran: attachmentListSchema }), onProgress);
+    }
+    onProgress?.(0);
+    await new Promise((resolve) => setTimeout(resolve, 325));
+    onProgress?.(50);
+    await new Promise((resolve) => setTimeout(resolve, 325));
+    const result: Receipt = { success: true, request_id: `REQ-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, status: 'SUBMITTED', requires_neighborhood_approval: false, jenis_surat: data.jenis_surat };
     try { localStorage.setItem(key, JSON.stringify([...demoRecords().slice(-49), result])); }
     catch { throw new Error('Penyimpanan simulasi tidak tersedia. Izinkan penyimpanan browser lalu coba lagi.'); }
+    onProgress?.(100);
     return result;
+  },
+  async replaceAttachments(id: string, secret: string, attachments: Partial<SubmissionAttachments>, onProgress?: (percent: number | null) => void): Promise<StatusReceipt> {
+    if (!apiBase) throw new Error('Penggantian lampiran tidak tersedia dalam mode simulasi.');
+    if (!secret.trim()) throw new Error('Masukkan kode akses pengajuan.');
+    const selected = attachmentKinds.filter((kind) => attachments?.[kind] !== undefined);
+    const errors: Record<string, string[]> = {};
+    if (!selected.length) errors.lampiran = ['Pilih minimal satu lampiran yang akan diganti.'];
+    for (const kind of selected) {
+      if (!(attachments[kind] instanceof Blob) || !attachments[kind].size) errors[`lampiran.${kind}`] = [`${attachmentKindLabels[kind]} wajib dilampirkan.`];
+    }
+    if (Object.keys(errors).length) throw new SubmissionValidationError(errors);
+    const form = new FormData();
+    form.append('request_id', id);
+    form.append('lookup_secret', secret);
+    for (const kind of selected) form.append(`lampiran[${kind}]`, attachments[kind]!);
+    return uploadMultipart('/applications/attachments', form, z.object({ success: z.literal(true), request_id: z.string().min(1), status: z.literal('NEED_REVISION'), lampiran: attachmentListSchema }), onProgress);
   },
   async getStatus(id: string, secret?: string): Promise<StatusReceipt> {
     if (apiBase) {
       if (!secret) throw new Error('Masukkan kode akses pengajuan.');
-      return receiptSchema.extend({ requires_neighborhood_approval: z.boolean(), jenis_surat: z.enum(serviceCodes), catatan: z.string().nullable().optional(), letter_number: z.string().nullable().optional() }).parse(await apiRequest('/applications/status', { method: 'POST', body: JSON.stringify({ request_id: id, lookup_secret: secret }) }));
+      return receiptSchema.extend({ requires_neighborhood_approval: z.boolean(), jenis_surat: z.enum(serviceCodes), lampiran: attachmentListSchema.optional(), catatan: z.string().nullable().optional(), letter_number: z.string().nullable().optional() }).parse(await apiRequest('/applications/status', { method: 'POST', body: JSON.stringify({ request_id: id, lookup_secret: secret }) }));
     }
     await new Promise((resolve) => setTimeout(resolve, 650));
     const record = demoRecords().find((item) => item.request_id === id);

@@ -274,6 +274,8 @@ export const attachmentKindLabels: Record<AttachmentKind, string> = {
  * POST /applications mode API: multipart `Submission` + file `lampiran[KTP]`, `lampiran[KK]`, `lampiran[PENGANTAR_RT_RW]`
  * (wajib untuk keenam jenis yang ditawarkan). JPG/PNG/WebP/PDF <= 5 MB per file, tipe dibaca dari isi file;
  * foto sisi pendek >= 600 px; PDF <= 10 halaman. Kesalahan 422 per dokumen di `errors["lampiran.KTP"]` dst.
+ * `pelayananService.submit(data, attachments, onProgress?)`: progres persen atau null bila ukuran belum diketahui.
+ * Demo mewajibkan ketiga file tetapi tidak mengirim atau menyimpan file maupun metadata lampiran.
  */
 export type SubmissionAttachments = Record<AttachmentKind, File | Blob>;
 export interface Receipt {

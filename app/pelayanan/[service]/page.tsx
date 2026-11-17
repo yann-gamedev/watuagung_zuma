@@ -36,13 +36,14 @@ export default async function Page({
           <h2 id="preparation-title">Siapkan dulu</h2>
           <p className="service-example">Persyaratan sementara — menunggu konfirmasi desa</p>
           <ul>
-            {item.requirements.map((requirement) => (
-              <li key={requirement}>{requirement}</li>
-            ))}
+            <li>Foto/pindaian KTP</li>
+            <li>Foto/pindaian Kartu Keluarga</li>
+            <li>Surat Pengantar dari Ketua RT/RW</li>
           </ul>
           <p className="service-estimate"><strong>Waktu pelayanan:</strong> {item.time}</p>
           <p className="service-example"><strong>Contoh keperluan:</strong> {item.example}</p>
-          <p className="service-example">Persyaratan ini belum menjadi ketentuan resmi desa. Gunakan data fiktif saat mencoba formulir.</p>
+          <p className="service-example">Bawa dokumen asli saat mengambil surat.</p>
+          <p className="service-example">Persyaratan ini belum menjadi ketentuan resmi desa.</p>
         </aside>
         <ApplicationForm code={item.code} />
       </section>
