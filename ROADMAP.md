@@ -186,7 +186,7 @@ Bergantung pada K2 dan K4. **Pengecualian R3 disetujui 3 November 2026:** backen
 
 - [x] API (16 Nov 2026, `feat/attachments-api`): `POST /applications` multipart wajib `lampiran[KTP]`, `lampiran[KK]`, `lampiran[PENGANTAR_RT_RW]` untuk keenam jenis; tabel `application_attachments`; file `Crypt::encryptString` di disk privat `attachments/{id}/{uuid}.bin`, nama asli tidak disimpan; respons publik hanya daftar jenis. SQLite dan MariaDB 11.4.8: 435 tes lulus (`docs/progres-2026-11-16-lampiran.md`)
 - [x] Hanya petugas yang bisa membuka: API `GET /staff/applications/{id}/attachments/{id}` untuk staff/admin/village_head, audit setiap pembukaan (17 Nov 2026, `feat/attachments-access`)
-- [ ] Tampilan lampiran di panel petugas (L4)
+- [x] Tampilan lampiran di panel petugas (L4, 17 Nov 2026): status tiga dokumen, blob privat, penampil gambar perbesar/putar, PDF tab baru, cleanup object URL dan catatan cepat; verifikasi serta batasnya di `docs/progres-2026-11-17-lampiran-admin.md`
 - [x] Warga mengganti lampiran saat NEED_REVISION dengan kode akses (API, 17 Nov 2026); layar di L3
 - [x] Batasan: JPG/PNG/WebP/PDF dari isi file, maksimal 5 MB per file (menggantikan rencana 2 MB), foto sisi pendek ≥ 600 px, PDF ≤ 10 halaman bila terhitung; daftar per layanan di `LetterType::requiredAttachments()`
 - [ ] Formulir unggah warga dengan kompres di browser (L3)

@@ -7,8 +7,9 @@ import { ArrowLeft } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { z } from "zod";
 import { StatusBadge, statusLabels } from "@/components/site";
-import { agamaOptions, dusunOptions, kewarganegaraanOptions, pendidikanOptions, serviceCodes, statusPerkawinanOptions, statuses, type LetterFile, type StaffAccessCodeResponse, type StaffApplicationDetail, type StaffStatementResponse, type StaffStatusResponse, type Status } from "@/types/pelayanan";
+import { attachmentKinds, agamaOptions, dusunOptions, kewarganegaraanOptions, pendidikanOptions, serviceCodes, statusPerkawinanOptions, statuses, type LetterFile, type StaffAccessCodeResponse, type StaffApplicationDetail, type StaffStatementResponse, type StaffStatusResponse, type Status } from "@/types/pelayanan";
 import { AdminUnauthorizedError } from "./api";
+import { ApplicantDocuments } from "./applicant-documents";
 import { useAdminSession } from "./session";
 import { applicationServiceLabels, buildApplicationsHref, parseApplicationFilters, parseApplicationSection } from "./application-filters";
 import { useUnsavedChanges } from "./use-unsaved-changes";
@@ -39,6 +40,8 @@ const detailSchema = z.object({
   pekerjaan: z.string().nullable().optional(),
   letter_numbers: z.array(z.object({ number: z.string(), status: z.enum(["issued", "void"]), void_reason: z.string().nullable(), issued_at: z.string() })).optional(),
   letter: z.object({ approved_at: z.string(), source: z.enum(["generated", "uploaded"]).nullable(), sha256: z.string().nullable(), file_updated_at: z.string().nullable(), file_purged_at: z.string().nullable() }).nullable().optional(),
+  attachments: z.array(z.object({ id: z.number().int().positive(), kind: z.enum(attachmentKinds), label: z.string(),
+    stored_mime: z.enum(["image/webp", "image/jpeg", "application/pdf"]), size_bytes: z.number().int().nonnegative(), uploaded_at: z.string(), purged: z.boolean() })).optional(),
   history: z.array(z.object({ action: z.enum(["ACCESS_CODE_RESET", "STATEMENT_EDITED", "ATTACHMENTS_UPDATED"]).nullable(), from_status: z.enum(statuses).nullable(), to_status: z.enum(statuses),
     note: z.string().nullable(), staff_name: z.string().nullable(), created_at: z.string() })),
 });
@@ -348,6 +351,7 @@ function DetailContent({ id }: { id: string }) {
               </>}
               <h3>Keperluan</h3><p className={styles.multiline}>{detail.keperluan}</p>
               <h3>Catatan terakhir</h3><p className={styles.multiline}>{detail.catatan || "Belum ada catatan."}</p></section>
+            {user && ["staff", "admin", "village_head"].includes(user.role) && <ApplicantDocuments id={id} attachments={detail.attachments} />}
             {!neighborhood && <section className={styles.card}><h2>Nomor surat</h2>
               {detail.letter_numbers?.length ? <dl className={styles.fields}>{detail.letter_numbers.map((letter) => <div key={letter.number}>
                 <dt>{letter.status === "void" ? "Dibatalkan" : "Diberikan"} · <time dateTime={letter.issued_at}>{dateTime(letter.issued_at)}</time></dt>
@@ -373,6 +377,10 @@ function DetailContent({ id }: { id: string }) {
             {detail.allowed_transitions.length ? <>
               <label htmlFor="staff-note">Catatan status</label>
               <p id="note-help">{neighborhood ? "Wajib untuk Tolak." : "Wajib untuk Tolak dan Minta perbaikan."} Jangan tuliskan NIK, KK, telepon, atau alamat dalam catatan.</p>
+              {!neighborhood && detail.allowed_transitions.includes("NEED_REVISION") && <div className={styles.buttons} role="group" aria-label="Pilihan cepat catatan perbaikan">
+                {["Foto KTP buram", "Pengantar RT/RW belum ditandatangani", "Foto KK buram"].map((text) => <button type="button" className="btn btn-secondary" key={text}
+                  disabled={busy || note.length + text.length + (note ? 1 : 0) > 1000} onClick={() => { setNote((current) => current ? `${current}\n${text}` : text); noteRef.current?.focus(); }}>{text}</button>)}
+              </div>}
               <textarea ref={noteRef} id="staff-note" className="search-input" aria-describedby={actionError ? "note-help action-error" : "note-help"} aria-invalid={actionError.startsWith("Catatan wajib") || undefined} value={note} onChange={(event) => setNote(event.target.value)} disabled={busy} maxLength={1000} rows={5} />
               <div className={styles.buttons}>{detail.allowed_transitions.map((status) => <button type="button" id={`status-${status}`} className="btn btn-secondary" key={status} disabled={busy || !!statementDirty} onClick={(event) => choose(status, event.currentTarget)}>{actionLabels[status]}</button>)}</div>
             </> : <p>Tidak ada tindakan yang tersedia untuk peran Anda pada status ini.</p>}
