@@ -2,6 +2,7 @@ import { Hero } from "@/components/hero";
 import { TaskPanel } from "@/components/task-panel";
 import { ServiceList } from "@/components/service-list";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { PublicShell } from "@/components/site";
 import { OfficeContact } from "@/components/office-contact";
@@ -46,7 +47,13 @@ export default function Home() {
       <section className="home-profile home-bottom" aria-labelledby="profile-title">
         <div className="container home-bottom-container home-profile-grid">
           <div className="home-profile-photo">
-            [FOTO KEPALA DESA / BALAI DESA]
+            <Image
+              src="/balai-desa.jpg"
+              alt="Balai Desa Watuagung"
+              fill
+              sizes="(min-width: 900px) 42vw, 100vw"
+              className="object-cover"
+            />
           </div>
           <div>
             <div className="home-bottom-label">PROFIL DESA</div>
@@ -68,7 +75,7 @@ export default function Home() {
               </div>
               <div>
                 <dt>Luas wilayah</dt>
-                <dd>[LUAS]</dd>
+                <dd>4,4 km²</dd>
               </div>
             </dl>
             <p className="home-profile-summary home-profile-source">
