@@ -8,8 +8,9 @@ import { Send, LoaderCircle, CircleAlert } from "lucide-react";
 import { FormField } from "@/components/form-field";
 import { services } from "@/lib/data";
 import { submissionSchema, type SubmissionValues } from "@/lib/validation";
-import { agamaOptions, dusunOptions, kewarganegaraanOptions, pendidikanOptions, statusPerkawinanOptions } from "@/types/pelayanan";
-import { pelayananService, isDemo } from "@/services/pelayanan";
+import { agamaOptions, dusunOptions, kewarganegaraanOptions, pendidikanOptions, statusPerkawinanOptions, attachmentKinds, attachmentKindLabels, type AttachmentKind, type SubmissionAttachments } from "@/types/pelayanan";
+import { pelayananService, isDemo, SubmissionValidationError } from "@/services/pelayanan";
+import { DocumentUpload } from "./document-upload";
 
 const labels: Partial<Record<keyof SubmissionValues, string>> = {
   nama: "Nama lengkap", nik: "NIK", no_kk: "Nomor KK", tempat_lahir: "Tempat lahir", tanggal_lahir: "Tanggal lahir",
@@ -26,13 +27,25 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
   const [error, setError] = useState("");
   const [acceptedId, setAcceptedId] = useState("");
   const [review, setReview] = useState<SubmissionValues | null>(null);
-  const reviewHeading = useRef<HTMLHeadingElement>(null);
-  const { register, handleSubmit, setFocus, formState: { errors, isSubmitting } } = useForm<SubmissionValues>({
+  const [step, setStep] = useState<"data" | "documents" | "review">("data");
+  const [files, setFiles] = useState<Partial<SubmissionAttachments>>({});
+  const [documentErrors, setDocumentErrors] = useState<Partial<Record<AttachmentKind, string>>>({});
+  const [processing, setProcessing] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
+  const stepHeading = useRef<HTMLDivElement>(null);
+  const errorSummary = useRef<HTMLDivElement>(null);
+  const { register, handleSubmit, setFocus, setError: setFieldError, formState: { errors, isSubmitting } } = useForm<SubmissionValues>({
     resolver: zodResolver(submissionSchema),
     defaultValues: { jenis_surat: code, kewarganegaraan: "WNI" },
     mode: "onBlur",
   });
-  useEffect(() => { if (review) reviewHeading.current?.focus(); }, [review]);
+  useEffect(() => { stepHeading.current?.querySelector<HTMLElement>("h2")?.focus(); }, [step]);
+  useEffect(() => { if (error) errorSummary.current?.focus(); }, [error]);
+  function changeDocument(kind: AttachmentKind, file?: File) {
+    setFiles((previous) => ({ ...previous, [kind]: file }));
+    setDocumentErrors((previous) => ({ ...previous, [kind]: "" }));
+    setError("");
+  }
   const field = (name: keyof SubmissionValues, label: string, type = "text", wide = false) => (
     <FormField key={name} name={name} label={label} type={type} wide={wide} register={register} errors={errors} />
   );
@@ -40,11 +53,22 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
     <FormField name={name} label={labels[name]!} options={options} hint={hint} register={register} errors={errors} />
   );
   async function submit(values: SubmissionValues) {
-    if (acceptedId) return;
+    if (acceptedId || processing) return;
     setError("");
-    if (!review) { setReview(values); return; }
+    setReview(values);
+    if (step === "data") { setStep("documents"); return; }
+    const missing = attachmentKinds.filter((kind) => !files[kind]);
+    if (missing.length || attachmentKinds.some((kind) => documentErrors[kind])) {
+      setDocumentErrors((previous) => ({ ...previous, ...Object.fromEntries(missing.map((kind) => [kind, `${attachmentKindLabels[kind]} wajib dilampirkan.`])) }));
+      setStep("documents");
+      setError("Periksa dokumen yang ditandai. Lengkapi atau pilih ulang sebelum melanjutkan.");
+      return;
+    }
+    if (step === "documents") { setStep("review"); return; }
+    setProgress(null);
     try {
-      const result = await pelayananService.submit(values);
+      const result = await pelayananService.submit(values, files as SubmissionAttachments, setProgress);
+      setFiles({});
       setAcceptedId(result.request_id);
       // Nomor/jenis saja; identitas formulir tidak disimpan di browser.
       try {
@@ -60,6 +84,20 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
       }
       router.push("/pelayanan/sukses/?id=" + encodeURIComponent(result.request_id));
     } catch (e) {
+      if (e instanceof SubmissionValidationError) {
+        const attachments: Partial<Record<AttachmentKind, string>> = {};
+        let hasFieldError = false;
+        for (const [name, messages] of Object.entries(e.errors)) {
+          const kind = attachmentKinds.find((kind) => name === `lampiran.${kind}`);
+          if (kind) attachments[kind] = messages.join(" ");
+          else if (name in labels) {
+            setFieldError(name as keyof SubmissionValues, { type: "server", message: messages.join(" ") });
+            hasFieldError = true;
+          }
+        }
+        setDocumentErrors(attachments);
+        setStep(hasFieldError ? "data" : "documents");
+      }
       setError(e instanceof Error ? e.message : "Pengajuan gagal. Silakan coba lagi.");
     }
   }
@@ -71,12 +109,18 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
           ? "Mode simulasi. Gunakan data fiktif. Data identitas tidak disimpan atau dikirim ke pemerintah desa."
           : "Periksa data sebelum mengirim. Permohonan akan diteruskan ke layanan administrasi desa."}</div>
         <form className="form-card" method="post" onSubmit={handleSubmit(submit, (invalid) => {
-          setReview(null);
+          setStep("data");
           const first = Object.keys(invalid)[0] as keyof SubmissionValues | undefined;
           if (first) setTimeout(() => setFocus(first), 0);
-        })} noValidate aria-busy={isSubmitting}>
-          <div hidden={!!review}>
-            <h2>Formulir permohonan</h2>
+        })} noValidate aria-busy={isSubmitting || processing}>
+          <p className="form-help mb-4" aria-live="polite">{step === "data" ? "Langkah 1 dari 3: Isi formulir" : step === "documents" ? "Langkah 2 dari 3: Unggah dokumen" : "Langkah 3 dari 3: Periksa ringkasan"}</p>
+          {error && <div ref={errorSummary} className="error-box mb-4" role="alert" tabIndex={-1}>
+            <CircleAlert size={22} aria-hidden="true" /><div><p>{error}</p>
+              {step === "documents" && attachmentKinds.filter((kind) => documentErrors[kind]).map((kind) => <p key={kind}><a className="underline" href={`#attachment-${kind}`}>{attachmentKindLabels[kind]}: {documentErrors[kind]}</a></p>)}
+            </div>
+          </div>}
+          <div ref={step === "data" ? stepHeading : undefined} hidden={step !== "data"}>
+            <h2 tabIndex={-1}>Formulir permohonan</h2>
             <p className="mt-2 form-help">Semua kolom bertanda * wajib diisi. Setelah lengkap, periksa ringkasan sebelum kirim.</p>
             <fieldset disabled={isSubmitting}>
               <legend>Data diri</legend>
@@ -130,8 +174,11 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
               </div>
             </fieldset>
           </div>
-          {review && <section aria-labelledby="review-heading">
-            <h2 id="review-heading" tabIndex={-1} ref={reviewHeading}>Periksa ringkasan pengajuan</h2>
+          <div ref={step === "documents" ? stepHeading : undefined} hidden={step !== "documents"}>
+            <DocumentUpload files={files} errors={documentErrors} busy={processing || isSubmitting} onBusy={setProcessing} onChange={changeDocument} onError={(kind, message) => setDocumentErrors((previous) => ({ ...previous, [kind]: message }))} />
+          </div>
+          {step === "review" && review && <div ref={stepHeading}><section aria-labelledby="review-heading">
+            <h2 id="review-heading" tabIndex={-1}>Periksa ringkasan pengajuan</h2>
             <p className="form-help">Pastikan semua isian benar sebelum mengirim.</p>
             <dl className="application-summary">
               <div><dt>Jenis surat</dt><dd>{item?.title}</dd></div>
@@ -140,26 +187,36 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
                 return value ? <div key={name}><dt>{label}</dt><dd>{value}</dd></div> : null;
               })}
             </dl>
-            <button className="btn btn-secondary" type="button" disabled={isSubmitting || !!acceptedId} onClick={() => { setReview(null); setError(""); setTimeout(() => setFocus("nik"), 0); }}>Ubah isian</button>
-          </section>}
-          {error && <div className="error-box" role="alert"><CircleAlert size={22} aria-hidden="true" /><span>{error}</span></div>}
+            <h3>Dokumen terlampir</h3>
+            <ul className="my-4 list-disc pl-6">{attachmentKinds.map((kind) => <li key={kind}>{attachmentKindLabels[kind]} — {files[kind]?.type === "application/pdf" ? "PDF terpilih" : "Foto JPG"}</li>)}</ul>
+            <div className="flex flex-wrap gap-3">
+              <button className="btn btn-secondary" type="button" disabled={isSubmitting || !!acceptedId} onClick={() => { setStep("data"); setError(""); }}>Ubah isian</button>
+              <button className="btn btn-secondary" type="button" disabled={isSubmitting || !!acceptedId} onClick={() => { setStep("documents"); setError(""); }}>Ubah dokumen</button>
+            </div>
+          </section></div>}
           <div className="form-footer">
-            {review && <>
+            {step === "documents" && <button className="btn btn-secondary" type="button" disabled={processing || isSubmitting} onClick={() => { setStep("data"); setError(""); }}>Kembali ke formulir</button>}
+            {step === "review" && <>
               <p>Pastikan data yang Anda isikan sudah benar. Simpan nomor permohonan setelah pengajuan berhasil.</p>
               <p>Dengan mengirim, Anda menyetujui pengolahan data sesuai{" "}<Link className="inline-flex min-h-12 items-center underline!" href="/kebijakan-privasi/">Kebijakan Privasi</Link>.</p>
             </>}
             {acceptedId && <Link className="btn btn-secondary" href={`/pelayanan/status/?id=${encodeURIComponent(acceptedId)}`}>Cek Status Surat</Link>}
-            <button className="btn application-submit" type="submit" disabled={isSubmitting || !!acceptedId}>
+            {isSubmitting && step === "review" && <div role="status" className="form-help">
+              <p>{isDemo ? "Simulasi unggah" : "Mengunggah dokumen"}{progress === null ? "…" : progress < 100 ? `: ${progress}%` : ": 100%. Menunggu konfirmasi penerimaan…"}</p>
+              <progress className="w-full" aria-label={isDemo ? "Progres simulasi unggah" : "Progres unggah dokumen"} max={100} value={progress ?? undefined} />
+              <p>Jangan tutup halaman sampai nomor pengajuan diterima.</p>
+            </div>}
+            <button className="btn application-submit" type="submit" disabled={isSubmitting || processing || !!acceptedId}>
               {isSubmitting ? <LoaderCircle className="spin" size={22} aria-hidden="true" /> : <Send size={22} aria-hidden="true" />}{" "}
-              {isSubmitting ? "Mengirim…" : !review ? "Periksa ringkasan" : isDemo ? "Kirim simulasi" : "Kirim permohonan"}
+              {isSubmitting ? "Mengirim…" : step === "data" ? "Lanjut: Unggah dokumen" : step === "documents" ? "Periksa ringkasan" : isDemo ? "Kirim simulasi" : "Kirim permohonan"}
             </button>
           </div>
         </form>
       </div>
       <aside className="form-aside">
         <h3>Alur pengajuan</h3>
-        <ol><li>Lengkapi formulir dan periksa ringkasan.</li><li>Simpan nomor pengajuan.</li><li>Pantau proses verifikasi.</li><li>Tunggu persetujuan Kepala Desa.</li></ol>
-        <p>Bawa KTP dan KK asli saat mengambil surat. Persyaratan sementara: menunggu konfirmasi desa.</p>
+        <ol><li>Lengkapi formulir, unggah tiga dokumen, dan periksa ringkasan.</li><li>Simpan nomor pengajuan.</li><li>Pantau proses verifikasi.</li><li>Tunggu persetujuan Kepala Desa.</li></ol>
+        <p>Bawa dokumen asli saat mengambil surat. Persyaratan sementara: menunggu konfirmasi desa.</p>
       </aside>
     </div>
   );

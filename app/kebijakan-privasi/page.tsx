@@ -17,6 +17,10 @@ const blocks = [
     text: "Jenis surat dan keperluan surat.\nNama lengkap, NIK, nomor KK, tempat lahir, tanggal lahir, jenis kelamin, dan kewarganegaraan.\nAlamat lengkap, dusun, RT, RW, dan nomor telepon.\nAgama, status perkawinan, pendidikan, dan pekerjaan untuk surat selain Izin Keramaian.\nSesuai jenis surat: barang atau dokumen yang hilang; rincian acara (acara, tempat, tanggal mulai dan selesai, jenis hiburan); atau isi keterangan tentang diri pemohon.\nData pengajuan Surat Keterangan Usaha lama tetap dapat memuat nama usaha, jenis usaha, dan alamat usaha; layanan ini tidak menerima pengajuan online baru.",
   },
   {
+    title: "Dokumen persyaratan",
+    text: "Foto/pindaian KTP, KK, dan surat pengantar RT/RW dikumpulkan untuk verifikasi permohonan; disimpan terenkripsi, hanya dilihat petugas desa (termasuk admin pelayanan) dan kepala desa. Sistem menyediakan penghapusan otomatis 30 hari setelah permohonan selesai atau ditolak. Pelaksanaannya membutuhkan penjadwal server dan konfigurasi retensi aktif; penerapan pada server produksi belum diverifikasi. Pada mode simulasi, file hanya diproses di memori browser, tidak disimpan atau dikirim ke mana pun.",
+  },
+  {
     title: "Tujuan pengolahan",
     text: "Data digunakan hanya untuk memproses permohonan surat. Data tidak digunakan untuk tujuan lain. Pengolahan dilakukan sesuai peraturan perlindungan data pribadi yang berlaku.\nPada mode simulasi, data identitas tidak disimpan atau dikirim ke pemerintah desa. Gunakan data fiktif saat mencoba.",
   },

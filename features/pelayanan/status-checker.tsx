@@ -1,11 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, Search, LoaderCircle, CircleAlert, CircleX } from "lucide-react";
-import { pelayananService, isDemo } from "@/services/pelayanan";
+import { pelayananService, isDemo, SubmissionValidationError } from "@/services/pelayanan";
 import { services } from "@/lib/data";
-import type { StatusReceipt } from "@/types/pelayanan";
+import { attachmentKinds, attachmentKindLabels, type AttachmentKind, type SubmissionAttachments, type StatusReceipt } from "@/types/pelayanan";
+import { DocumentUpload } from "./document-upload";
 import { letterSteps } from "@/lib/letter-workflow";
 import { StatusBadge, statusDescriptions } from "@/components/site";
 export function StatusChecker() {
@@ -15,8 +16,50 @@ export function StatusChecker() {
   const [result, setResult] = useState<StatusReceipt | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [replacement, setReplacement] = useState(false);
+  const [files, setFiles] = useState<Partial<SubmissionAttachments>>({});
+  const [documentErrors, setDocumentErrors] = useState<Partial<Record<AttachmentKind, string>>>({});
+  const [processing, setProcessing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
+  const [replacementError, setReplacementError] = useState("");
+  const [replacementSuccess, setReplacementSuccess] = useState("");
+  const verifiedSecret = useRef("");
+  const replacementPanel = useRef<HTMLDivElement>(null);
+  const replaceButton = useRef<HTMLButtonElement>(null);
+  const replaceAlert = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (replacement) replacementPanel.current?.querySelector<HTMLElement>("h2")?.focus(); }, [replacement]);
+  useEffect(() => { if (replacementError) replaceAlert.current?.focus(); }, [replacementError]);
+  async function replaceDocuments() {
+    if (!result || uploading || processing) return;
+    setReplacementError("");
+    if (!attachmentKinds.some((kind) => files[kind]) || attachmentKinds.some((kind) => documentErrors[kind])) {
+      setReplacementError("Pilih minimal satu dokumen yang akan diganti dan periksa dokumen yang ditandai.");
+      return;
+    }
+    setUploading(true);
+    setProgress(null);
+    try {
+      const updated = await pelayananService.replaceAttachments(result.request_id, verifiedSecret.current, files, setProgress);
+      setResult((previous) => previous ? { ...previous, ...updated } : updated);
+      setFiles({});
+      setReplacement(false);
+      setReplacementSuccess("Dokumen pengganti sudah diterima. Status tetap Perlu perbaikan sampai petugas memeriksa kembali.");
+      setTimeout(() => replaceButton.current?.focus(), 0);
+    } catch (error) {
+      if (error instanceof SubmissionValidationError) setDocumentErrors(Object.fromEntries(attachmentKinds.map((kind) => [kind, error.errors[`lampiran.${kind}`]?.join(" ") || ""])));
+      setReplacementError(error instanceof Error ? error.message : "Gagal mengganti dokumen. Coba lagi.");
+    } finally { setUploading(false); }
+  }
   async function lookup(value: string) {
+    if (busy || uploading || processing) return;
     setError("");
+    setReplacement(false);
+    setFiles({});
+    setDocumentErrors({});
+    setReplacementError("");
+    setReplacementSuccess("");
+    verifiedSecret.current = "";
     setResult(null);
     if (!/^REQ-\d{4}-[A-Z0-9]{6,36}$/.test(value)) {
       setError("Gunakan nomor pengajuan yang valid, misalnya REQ-2026-000001.");
@@ -28,7 +71,9 @@ export function StatusChecker() {
     }
     setBusy(true);
     try {
-      setResult(await pelayananService.getStatus(value, secret.trim()));
+      const lookupSecret = secret.trim();
+      setResult(await pelayananService.getStatus(value, lookupSecret));
+      verifiedSecret.current = lookupSecret;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal memuat status.");
     } finally {
@@ -70,7 +115,7 @@ export function StatusChecker() {
             <input id="lookup-secret" className="search-input" type="password" autoComplete="off" placeholder="WAD-1234-5678" value={secret} onChange={(e) => setSecret(e.target.value)} required aria-describedby={error ? "lookup-help lookup-error" : "lookup-help"} />
           </div>
         )}
-        <button id="lookup-submit" type="submit" className="btn" disabled={busy}>
+        <button id="lookup-submit" type="submit" className="btn" disabled={busy || processing || uploading}>
           {busy ? (
             <LoaderCircle className="spin" size={22} aria-hidden="true" />
           ) : (
@@ -134,6 +179,7 @@ export function StatusChecker() {
               <h3>Catatan petugas</h3>
               <p className="officer-note">{result.catatan || "Catatan belum tersedia. Hubungi kantor desa untuk penjelasan."}</p>
               <Link href="/kontak" className="text-link">Lihat Kontak Kantor</Link>
+              {result.status === "NEED_REVISION" && !isDemo && <button ref={replaceButton} type="button" className="btn btn-secondary mt-4" disabled={replacement || uploading} onClick={() => { setReplacement(true); setReplacementSuccess(""); }}>Ganti dokumen</button>}
             </div>
           ) : (
             <>
@@ -163,6 +209,19 @@ export function StatusChecker() {
               </ol>
             </>
           )}
+          {replacementSuccess && <p className="notice mt-4" role="status">{replacementSuccess}</p>}
+          {replacement && result.status === "NEED_REVISION" && <div ref={replacementPanel} className="application-form mt-6">
+            <form className="form-card" aria-busy={uploading || processing} onSubmit={(event) => { event.preventDefault(); void replaceDocuments(); }}>
+              <DocumentUpload replacement files={files} errors={documentErrors} busy={processing || uploading} onBusy={setProcessing} onChange={(kind, file) => { setFiles((previous) => ({ ...previous, [kind]: file })); setDocumentErrors((previous) => ({ ...previous, [kind]: "" })); setReplacementError(""); }} onError={(kind, message) => setDocumentErrors((previous) => ({ ...previous, [kind]: message }))} />
+              {attachmentKinds.some((kind) => files[kind]) && <p className="form-help">Dokumen pengganti: {attachmentKinds.filter((kind) => files[kind]).map((kind) => attachmentKindLabels[kind]).join(", ")}.</p>}
+              {replacementError && <div ref={replaceAlert} className="error-box my-4" role="alert" tabIndex={-1}>{replacementError}</div>}
+              {uploading && <div role="status"><p>{progress === null ? "Mengunggah…" : `Mengunggah: ${progress}%${progress === 100 ? ". Menunggu konfirmasi penerimaan…" : ""}`}</p><progress aria-label="Progres unggah dokumen pengganti" max={100} value={progress ?? undefined} /></div>}
+              <div className="flex flex-wrap gap-3 mt-4">
+                <button className="btn" type="submit" disabled={processing || uploading}>{uploading ? "Mengirim…" : "Kirim dokumen pengganti"}</button>
+                <button className="btn btn-secondary" type="button" disabled={processing || uploading} onClick={() => { setReplacement(false); setFiles({}); setDocumentErrors({}); setReplacementError(""); setTimeout(() => replaceButton.current?.focus(), 0); }}>Batal</button>
+              </div>
+            </form>
+          </div>}
         </section>
       )}
     </div>
