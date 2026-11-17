@@ -234,6 +234,7 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | Metode | Path | Akses | Kegunaan |
 | --- | --- | --- | --- |
 | POST | `/applications` | Publik, 5 permintaan/menit | Mengajukan layanan (multipart, lampiran KTP/KK/pengantar RT/RW wajib; lihat § Lampiran persyaratan); mengembalikan `request_id`, `status`, `jenis_surat`, `requires_neighborhood_approval: boolean` dari `LetterType`, `lampiran` (jenis yang diterima), dan `lookup_secret` (HTTP 201) |
+| POST | `/applications/attachments` | Publik, 5 permintaan/menit; kunci kode akses bersama cek status | Warga mengganti lampiran saat `NEED_REVISION` (multipart `request_id`, `lookup_secret`, `lampiran[KIND]`) |
 | POST | `/applications/status` | Publik, 10 permintaan/menit; 5 kode salah per nomor → 429 selama 15 menit | Body: `request_id` dan `lookup_secret`; mengembalikan `jenis_surat`, `requires_neighborhood_approval: boolean` dari `LetterType`, status, `lampiran` (jenis yang diterima, tanpa path/ukuran/hash), dan catatan (penolakan RT/RW historis tetap diberi awalan "Ditolak oleh Ketua RT/RW") |
 | POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `username` dan `password` (atau `email` untuk klien lama); mengembalikan bearer token |
 | POST | `/staff/logout` | Token petugas | Mencabut token aktif |
@@ -253,6 +254,7 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | GET | `/staff/applications/{request_id}/letter.pdf` | Staff, admin, village_head (30/menit) | Draf (PROCESSING/WAITING_APPROVAL) atau surat final (sejak APPROVED); diaudit |
 | POST | `/staff/applications/{request_id}/letter.pdf` | Staff, admin (10/menit) | Multipart `file` PDF ≤ 5 MB; mengganti PDF otomatis dengan surat hasil pindaian |
 | GET | `/staff/applications/{request_id}/letter-qr.png` | Staff, admin | Gambar QR verifikasi untuk ditempel pada surat manual |
+| GET | `/staff/applications/{request_id}/attachments/{id}` | Staff, admin, village_head (60/menit) | Isi lampiran didekripsi, header aman, audit `attachment.viewed` setiap kali (§ Lampiran persyaratan) |
 | GET | `/verify/{kode}` | Publik, 30 permintaan/menit | Metadata surat tersamar untuk halaman verifikasi QR |
 | GET | `/posts` | Publik, 60 permintaan/menit | Berita terbit, 10 per halaman, `Cache-Control: public, max-age=60` |
 | GET | `/posts/{slug}` | Publik, 60 permintaan/menit | Detail berita terbit + `body`; draf/terhapus 404 |
@@ -289,6 +291,7 @@ Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Validasi yang g
 - Migration `2026_11_16_000000_create_application_attachments` (kolom di [docs/integrasi.md § Lampiran](../docs/integrasi.md#lampiran-persyaratan-m6-16-november-2026)); `down()` menghapus tabel (file di disk tidak ikut terhapus). FK cascade hanya menghapus baris; kode yang menghapus permohonan wajib menghapus file.
 - Nama file asli tidak pernah disimpan. Hostinger: `upload_max_filesize`/`post_max_size` 20M (`deploy/hostinger.md` § C).
 - Tes: `tests/Feature/ApplicationAttachmentsTest.php`; tes lain mengajukan lewat `submitLetter()` di `tests/LetterPayloads.php` (gambar polos fiktif, disk `local` palsu).
+- **Akses, penggantian, retensi (17 November 2026):** `AttachmentController::show()` (staff/admin/village_head, `forUser()`, 404/410, audit `attachment.viewed` setiap kali sebelum isi dikirim, header `private, no-store` + `nosniff`, nama netral). `ApplicationController::replaceAttachments()` memakai `authenticate()` yang sama dengan cek status (kunci `lookup:{request_id}`), hanya `NEED_REVISION`, `AttachmentStore::replace()` memperbarui baris yang sama dan mengembalikan path lama untuk `deleteFiles()` setelah commit; event `ATTACHMENTS_UPDATED`. Detail petugas memakai `AttachmentStore::staffList()`. `AttachmentStore::purgeRows()` dipakai `attachments:purge` dan `applications:purge`. Tes: `tests/Feature/AttachmentAccessTest.php`. Kontrak lengkap: [docs/integrasi.md § Akses petugas, penggantian, dan retensi lampiran](../docs/integrasi.md#akses-petugas-penggantian-dan-retensi-lampiran-17-november-2026).
 
 ### Berita
 
@@ -502,8 +505,9 @@ Migration `2026_10_20_000000_add_neighborhood_territories` menambah kolom `rt`/`
   - Satu audit `application.purged` per permohonan dengan `user_id = null` (aksi sistem; migration `2026_10_27_000000` membuat kolom ini nullable dan rollback sengaja membiarkannya nullable). Tanpa isi data.
   - Idempoten: permohonan yang sudah memiliki `purged_at` dilewati. Nilai bukan bilangan bulat ≥ 1 → keluar dengan error tanpa perubahan.
   - Dijadwalkan harian di `routes/console.php`; aman karena mati bawaan. Backup lama tetap berisi data sebelum anonimisasi sampai rotasinya habis.
-  - **Belum menghapus lampiran persyaratan** (`application_attachments`, file KTP/KK/pengantar terenkripsi). Jangan menyalakan retensi untuk data nyata sebelum purge lampiran dibuat.
-- Lampiran persyaratan diterima di API (§ Lampiran persyaratan), tetapi belum ada layar unggah, tampilan petugas, atau purge lampiran. Belum ada OTP, TTE, atau pengelolaan konten. Jangan menguji dengan data pribadi nyata.
+  - Lampiran persyaratan permohonan yang dianonimkan ikut dihapus (`AttachmentStore::purgeRows()`, audit `attachment.purged` per lampiran).
+- **Retensi lampiran (aktif bawaan, 30 hari):** `config/retention.php` `attachment_days` membaca `ATTACHMENT_RETENTION_DAYS` (tidak diset = 30; kosong/`0` = mati). `php artisan attachments:purge --dry-run` menampilkan target. Tanpa opsi: lampiran permohonan `COMPLETED`/`REJECTED` dengan `updated_at` lebih tua dari N hari → `path` null, `purged_at` diisi, audit `attachment.purged`, file dihapus setelah commit. Data permohonan tidak diubah. Dijadwalkan harian; di Hostinger dipasang sebagai cron sendiri (`deploy/hostinger.md` § H).
+- Lampiran persyaratan diterima, dibuka petugas, diganti warga, dan dihapus retensi di API (§ Lampiran persyaratan), tetapi belum ada layar unggah/ganti warga (L3) atau tampilan petugas (L4). Belum ada OTP, TTE, atau pengelolaan konten. Jangan menguji dengan data pribadi nyata.
 
 ## Sebelum produksi
 

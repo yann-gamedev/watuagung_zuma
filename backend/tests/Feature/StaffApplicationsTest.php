@@ -84,6 +84,7 @@ class StaffApplicationsTest extends TestCase
             'can_reset_access_code' => $role !== 'village_head',
             'letter_numbers' => [],
             'letter' => null,
+            'attachments' => [],
             'history' => [
                 ['action' => null, 'from_status' => null, 'to_status' => 'SUBMITTED', 'note' => null, 'staff_name' => null, 'created_at' => now()->toISOString()],
                 ['action' => null, 'from_status' => 'PROCESSING', 'to_status' => 'WAITING_APPROVAL', 'note' => 'Riwayat fiktif', 'staff_name' => 'Petugas Fiktif', 'created_at' => now()->toISOString()],

@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Domain\AttachmentKind;
 use App\Models\Application;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -33,12 +34,14 @@ class AttachmentStore
      * Pemeriksaan murah (tanpa decode gambar) agar dapat digabung dengan kesalahan formulir.
      *
      * @param  mixed  $files  nilai field `lampiran` dari permintaan
-     * @param  list<AttachmentKind>  $required
+     * @param  list<AttachmentKind>  $allowed  jenis yang dikenal untuk surat ini
+     * @param  list<AttachmentKind>|null  $required  jenis yang wajib ada; null = semua $allowed
      * @return array<string, list<string>> kesalahan per `lampiran.{KIND}`; kosong = lolos
      */
-    public static function errors(mixed $files, array $required): array
+    public static function errors(mixed $files, array $allowed, ?array $required = null): array
     {
         $files = is_array($files) ? $files : [];
+        $required ??= $allowed;
         $errors = [];
         foreach ($required as $kind) {
             $file = $files[$kind->value] ?? null;
@@ -49,7 +52,7 @@ class AttachmentStore
             };
             if ($error !== null) $errors['lampiran.'.$kind->value] = [$error];
         }
-        $known = array_map(fn (AttachmentKind $kind) => $kind->value, $required);
+        $known = array_map(fn (AttachmentKind $kind) => $kind->value, $allowed);
         foreach (array_keys($files) as $key) {
             if (! in_array((string) $key, $known, true)) $errors['lampiran'] = ['Jenis lampiran tidak dikenal untuk surat ini.'];
         }
@@ -117,33 +120,125 @@ class AttachmentStore
      */
     public static function storeAll(Application $application, array $files, array $kinds, string $uploadedBy, array &$written): void
     {
+        foreach ($kinds as $kind) self::persist($application, $kind, $files[$kind->value], $uploadedBy, $written);
+    }
+
+    /**
+     * Ganti (atau tambahkan) lampiran tertentu. Panggil di dalam DB::transaction dengan baris permohonan terkunci.
+     * File lama TIDAK dihapus di sini: pemanggil menghapusnya lewat deleteFiles() setelah commit,
+     * supaya kegagalan transaksi tidak menghilangkan file yang masih dirujuk.
+     *
+     * @param  array<string, UploadedFile>  $files
+     * @param  list<AttachmentKind>  $kinds
+     * @param  list<string>  $written
+     * @return list<string> path file lama yang sudah tidak dirujuk
+     */
+    public static function replace(Application $application, array $files, array $kinds, string $uploadedBy, array &$written): array
+    {
+        $old = [];
         foreach ($kinds as $kind) {
-            $file = $files[$kind->value];
-            $mime = self::detectMime($file);
-            if ($mime === 'application/pdf') {
-                // PDF disimpan apa adanya (terenkripsi); metadata dokumennya tidak dapat dibuang tanpa pustaka PDF.
-                [$bytes, $storedMime] = [(string) file_get_contents($file->getRealPath()), 'application/pdf'];
-            } else {
-                try {
-                    [$bytes, $extension] = ImageProcessor::encode($file, self::MAX_IMAGE_WIDTH);
-                } catch (ValidationException) {
-                    throw ValidationException::withMessages(['lampiran.'.$kind->value => $kind->label().' tidak dapat dibaca. Pilih foto JPG, PNG, atau WebP yang valid.']);
-                }
-                $storedMime = $extension === 'webp' ? 'image/webp' : 'image/jpeg';
-            }
-            $path = 'attachments/'.$application->id.'/'.Str::uuid().'.bin';
-            // Dicatat sebelum menulis: tulisan yang gagal di tengah tetap ikut dibersihkan.
-            $written[] = $path;
-            if (! Storage::disk(self::DISK)->put($path, Crypt::encryptString($bytes))) {
-                throw new RuntimeException('Lampiran gagal disimpan.');
-            }
-            DB::table('application_attachments')->insert([
-                'application_id' => $application->id, 'kind' => $kind->value,
-                'original_mime' => $mime, 'stored_mime' => $storedMime, 'size_bytes' => strlen($bytes),
-                'path' => $path, 'sha256' => hash_file('sha256', $file->getRealPath()),
-                'uploaded_by' => $uploadedBy, 'created_at' => now(), 'updated_at' => now(),
-            ]);
+            $previous = self::persist($application, $kind, $files[$kind->value], $uploadedBy, $written);
+            if ($previous !== null) $old[] = $previous;
         }
+
+        return $old;
+    }
+
+    /** @param  list<string>  $written  @return string|null path lama bila baris sudah ada */
+    private static function persist(Application $application, AttachmentKind $kind, UploadedFile $file, string $uploadedBy, array &$written): ?string
+    {
+        $mime = self::detectMime($file);
+        if ($mime === 'application/pdf') {
+            // PDF disimpan apa adanya (terenkripsi); metadata dokumennya tidak dapat dibuang tanpa pustaka PDF.
+            [$bytes, $storedMime] = [(string) file_get_contents($file->getRealPath()), 'application/pdf'];
+        } else {
+            try {
+                [$bytes, $extension] = ImageProcessor::encode($file, self::MAX_IMAGE_WIDTH);
+            } catch (ValidationException) {
+                throw ValidationException::withMessages(['lampiran.'.$kind->value => $kind->label().' tidak dapat dibaca. Pilih foto JPG, PNG, atau WebP yang valid.']);
+            }
+            $storedMime = $extension === 'webp' ? 'image/webp' : 'image/jpeg';
+        }
+        $path = 'attachments/'.$application->id.'/'.Str::uuid().'.bin';
+        // Dicatat sebelum menulis: tulisan yang gagal di tengah tetap ikut dibersihkan.
+        $written[] = $path;
+        if (! Storage::disk(self::DISK)->put($path, Crypt::encryptString($bytes))) {
+            throw new RuntimeException('Lampiran gagal disimpan.');
+        }
+        $values = [
+            'original_mime' => $mime, 'stored_mime' => $storedMime, 'size_bytes' => strlen($bytes),
+            'path' => $path, 'sha256' => hash_file('sha256', $file->getRealPath()),
+            'uploaded_by' => $uploadedBy, 'purged_at' => null, 'updated_at' => now(),
+        ];
+        $existing = DB::table('application_attachments')->where('application_id', $application->id)->where('kind', $kind->value)->first(['id', 'path']);
+        if ($existing) {
+            DB::table('application_attachments')->where('id', $existing->id)->update($values);
+
+            return $existing->path;
+        }
+        DB::table('application_attachments')->insert($values + ['application_id' => $application->id, 'kind' => $kind->value, 'created_at' => now()]);
+
+        return null;
+    }
+
+    /**
+     * Hapus file yang tidak lagi dirujuk (setelah commit). Kegagalan hanya menyisakan file terenkripsi yatim.
+     *
+     * @param  list<string>  $paths
+     */
+    public static function deleteFiles(array $paths): bool
+    {
+        return $paths === [] || Storage::disk(self::DISK)->delete($paths);
+    }
+
+    /**
+     * Retensi: tandai lampiran aktif satu permohonan sebagai dihapus dan catat audit per lampiran.
+     * Panggil di dalam DB::transaction; hapus file yang dikembalikan lewat deleteFiles() setelah commit.
+     *
+     * @return list<string> path file yang harus dihapus
+     */
+    public static function purgeRows(int $applicationId): array
+    {
+        $rows = DB::table('application_attachments')->where('application_id', $applicationId)->whereNull('purged_at')->orderBy('id')->get(['id', 'path']);
+        foreach ($rows as $row) {
+            DB::table('application_attachments')->where('id', $row->id)->update(['path' => null, 'purged_at' => now(), 'updated_at' => now()]);
+            DB::table('audit_logs')->insert(['user_id' => null, 'action' => 'attachment.purged', 'subject_type' => 'attachment', 'subject_id' => $row->id, 'created_at' => now()]);
+        }
+
+        return array_values(array_filter($rows->pluck('path')->all()));
+    }
+
+    /**
+     * Daftar lampiran untuk detail petugas, tanpa path, hash, atau MIME asli.
+     *
+     * @return list<array{id: int, kind: string, label: string, stored_mime: string, size_bytes: int, uploaded_at: string, purged: bool}>
+     */
+    public static function staffList(Application $application): array
+    {
+        return DB::table('application_attachments')->where('application_id', $application->id)
+            ->get(['id', 'kind', 'stored_mime', 'size_bytes', 'updated_at', 'purged_at'])
+            ->sortBy(fn (object $row) => array_search($row->kind, array_map(fn (AttachmentKind $kind) => $kind->value, AttachmentKind::cases()), true))
+            ->map(fn (object $row) => [
+                'id' => (int) $row->id,
+                'kind' => $row->kind,
+                'label' => AttachmentKind::tryFrom($row->kind)?->label() ?? $row->kind,
+                'stored_mime' => $row->stored_mime,
+                'size_bytes' => (int) $row->size_bytes,
+                // updated_at = saat file terakhir diterima (pengajuan atau penggantian).
+                'uploaded_at' => Carbon::parse($row->updated_at)->toISOString(),
+                'purged' => $row->purged_at !== null,
+            ])->values()->all();
+    }
+
+    /** Ekstensi nama unduhan sesuai isi tersimpan, bukan nama file asli. */
+    public static function extension(string $storedMime): string
+    {
+        return match ($storedMime) {
+            'image/webp' => 'webp',
+            'image/png' => 'png',
+            'application/pdf' => 'pdf',
+            default => 'jpg',
+        };
     }
 
     /**

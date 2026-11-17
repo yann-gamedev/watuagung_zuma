@@ -39,7 +39,7 @@ const detailSchema = z.object({
   pekerjaan: z.string().nullable().optional(),
   letter_numbers: z.array(z.object({ number: z.string(), status: z.enum(["issued", "void"]), void_reason: z.string().nullable(), issued_at: z.string() })).optional(),
   letter: z.object({ approved_at: z.string(), source: z.enum(["generated", "uploaded"]).nullable(), sha256: z.string().nullable(), file_updated_at: z.string().nullable(), file_purged_at: z.string().nullable() }).nullable().optional(),
-  history: z.array(z.object({ action: z.enum(["ACCESS_CODE_RESET", "STATEMENT_EDITED"]).nullable(), from_status: z.enum(statuses).nullable(), to_status: z.enum(statuses),
+  history: z.array(z.object({ action: z.enum(["ACCESS_CODE_RESET", "STATEMENT_EDITED", "ATTACHMENTS_UPDATED"]).nullable(), from_status: z.enum(statuses).nullable(), to_status: z.enum(statuses),
     note: z.string().nullable(), staff_name: z.string().nullable(), created_at: z.string() })),
 });
 function lowerLabel(status: Status) {
@@ -359,7 +359,7 @@ function DetailContent({ id }: { id: string }) {
             {!neighborhood && user && <LetterFiles key={`${detail.status}-${detail.letter?.file_updated_at}`} detail={detail} role={user.role} blocked={busy || !!statementDirty} dirty={!!statementDirty} />}
             <section className={styles.card}><h2>Riwayat status</h2>
               {detail.history.length ? <ol className={styles.timeline}>{detail.history.map((event, index) => <li key={`${event.created_at}-${index}`}>
-                <h3>{event.action === "ACCESS_CODE_RESET" ? "Kode akses dibuat ulang" : event.action === "STATEMENT_EDITED" ? "Isi keterangan disunting" : <>{event.from_status ? `${statusLabels[event.from_status]} → ` : ""}{statusLabels[event.to_status]}</>}</h3>
+                <h3>{event.action === "ACCESS_CODE_RESET" ? "Kode akses dibuat ulang" : event.action === "STATEMENT_EDITED" ? "Isi keterangan disunting" : event.action === "ATTACHMENTS_UPDATED" ? "Lampiran diganti pemohon" : <>{event.from_status ? `${statusLabels[event.from_status]} → ` : ""}{statusLabels[event.to_status]}</>}</h3>
                 <p>{event.staff_name ?? "Pengajuan warga / sistem"}</p>
                 <time dateTime={event.created_at}>{dateTime(event.created_at)}</time>
                 {event.note && <p className={styles.multiline}>{event.note}</p>}

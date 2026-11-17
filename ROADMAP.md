@@ -16,7 +16,7 @@
 | M3a — Register | Implementasi dan uji konkurensi PostgreSQL selesai | Uji browser dengan Laravel |
 | M4 — Pengaduan | Dialihkan ke Google Form desa (24 Okt 2026); tautan selesai | URL Google Form dari desa (`NEXT_PUBLIC_COMPLAINT_FORM_URL`) |
 | M5 — CMS | API berita, sampul, panel C3 dan halaman publik C4 sudah di-commit | CORS DELETE, konten lain dan keputusan produksi K2/K4 |
-| M6 — Lampiran persyaratan | Dihidupkan kembali 16 Nov 2026: API wajib 3 dokumen (KTP, KK, pengantar RT/RW) terenkripsi selesai | Layar warga L3, tampilan petugas L4, purge retensi lampiran, `post_max_size` 20M di Hostinger |
+| M6 — Lampiran persyaratan | Dihidupkan kembali 16 Nov 2026: API wajib 3 dokumen terenkripsi; 17 Nov akses petugas teraudit, ganti saat NEED_REVISION, purge 30 hari | Layar warga L3, tampilan petugas L4, `post_max_size` 20M dan cron `attachments:purge` di Hostinger |
 | M7 — PDF/QR | Template sementara selesai; S1 (enam jenis surat final, nomor `470/{urut}/424.314.2.02/{tahun}`) selesai di backend 8 Nov 2026 | S2 template resmi (S3 formulir warga dan S4 panel petugas selesai 8 Nov 2026); uji browser Laravel dan pindai QR; TTE di luar lingkup |
 | M8 — Produksi | Belum siap operasional | Infrastruktur, privasi/retensi, prosedur bantuan, verifikasi keamanan |
 
@@ -185,10 +185,12 @@ Bergantung pada K2 dan K4. **Pengecualian R3 disetujui 3 November 2026:** backen
 ## M6 — Unggah lampiran persyaratan
 
 - [x] API (16 Nov 2026, `feat/attachments-api`): `POST /applications` multipart wajib `lampiran[KTP]`, `lampiran[KK]`, `lampiran[PENGANTAR_RT_RW]` untuk keenam jenis; tabel `application_attachments`; file `Crypt::encryptString` di disk privat `attachments/{id}/{uuid}.bin`, nama asli tidak disimpan; respons publik hanya daftar jenis. SQLite dan MariaDB 11.4.8: 435 tes lulus (`docs/progres-2026-11-16-lampiran.md`)
-- [ ] Hanya petugas yang bisa membuka (endpoint + tampilan petugas L4)
+- [x] Hanya petugas yang bisa membuka: API `GET /staff/applications/{id}/attachments/{id}` untuk staff/admin/village_head, audit setiap pembukaan (17 Nov 2026, `feat/attachments-access`)
+- [ ] Tampilan lampiran di panel petugas (L4)
+- [x] Warga mengganti lampiran saat NEED_REVISION dengan kode akses (API, 17 Nov 2026); layar di L3
 - [x] Batasan: JPG/PNG/WebP/PDF dari isi file, maksimal 5 MB per file (menggantikan rencana 2 MB), foto sisi pendek ≥ 600 px, PDF ≤ 10 halaman bila terhitung; daftar per layanan di `LetterType::requiredAttachments()`
 - [ ] Formulir unggah warga dengan kompres di browser (L3)
-- [ ] Hapus lampiran otomatis setelah masa retensi (ikut keputusan di M8)
+- [x] Hapus lampiran otomatis: `attachments:purge` harian, `ATTACHMENT_RETENTION_DAYS` bawaan 30 hari setelah COMPLETED/REJECTED; `applications:purge` ikut menghapus lampiran (17 Nov 2026). Angka 30 hari dari rencana Tech Lead, belum keputusan resmi desa (M8)
 - [ ] Ubah langkah "Cara mengajukan" di beranda setelah fitur aktif
 
 ## M7 — Penerbitan surat (PDF)
