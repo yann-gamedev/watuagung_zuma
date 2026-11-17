@@ -1,31 +1,52 @@
 <?php
 namespace App\Http\Controllers\Api;
 use App\Domain\AccessCode;
+use App\Domain\AttachmentKind;
 use App\Domain\LetterSubmission;
 use App\Domain\LetterType;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
+use App\Support\AttachmentStore;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 class ApplicationController extends Controller {
     public function store(Request $request): JsonResponse {
         // Aturan per jenis surat ada di LetterSubmission/LetterType, bukan di controller.
-        $data = LetterSubmission::validate($request->all());
+        $type = is_string($request->input('jenis_surat')) ? LetterType::tryFrom($request->input('jenis_surat')) : null;
+        $kinds = $type?->isOffered() ? $type->requiredAttachments() : AttachmentKind::cases();
+        // Kesalahan formulir dan lampiran dikembalikan bersama supaya warga cukup memperbaiki sekali.
+        $errors = AttachmentStore::errors($request->all()['lampiran'] ?? null, $kinds);
+        try {
+            $data = LetterSubmission::validate($request->except('lampiran'));
+        } catch (ValidationException $e) {
+            $errors = $e->errors() + $errors;
+        }
+        if ($errors !== []) throw ValidationException::withMessages($errors);
         // Teks asli warga disimpan terpisah agar sunting petugas tetap dapat dibandingkan.
         if (isset($data['isi_keterangan'])) $data['isi_keterangan_awal'] = $data['isi_keterangan'];
         $secret = AccessCode::generate();
-        $application = DB::transaction(function () use ($data, $secret) {
-            $application = Application::create($data + [
-                'request_id'=>'REQ-'.now()->year.'-'.Str::upper((string) Str::ulid()),
-                'lookup_secret_hash'=>AccessCode::hash($secret), 'status'=>'SUBMITTED',
-            ]);
-            DB::table('application_events')->insert(['application_id'=>$application->id,'to_status'=>'SUBMITTED','created_at'=>now()]);
-            return $application;
-        });
-        return response()->json(['success'=>true,'request_id'=>$application->request_id,'status'=>$application->status,'jenis_surat'=>$application->jenis_surat,'requires_neighborhood_approval'=>LetterType::from($application->jenis_surat)->requiresNeighborhoodApproval(),'lookup_secret'=>$secret], 201);
+        $files = $request->file('lampiran');
+        $written = [];
+        try {
+            $application = DB::transaction(function () use ($data, $secret, $files, $kinds, &$written) {
+                $application = Application::create($data + [
+                    'request_id'=>'REQ-'.now()->year.'-'.Str::upper((string) Str::ulid()),
+                    'lookup_secret_hash'=>AccessCode::hash($secret), 'status'=>'SUBMITTED',
+                ]);
+                DB::table('application_events')->insert(['application_id'=>$application->id,'to_status'=>'SUBMITTED','created_at'=>now()]);
+                AttachmentStore::storeAll($application, $files, $kinds, 'applicant', $written);
+                return $application;
+            });
+        } catch (\Throwable $e) {
+            // Transaksi sudah dibatalkan; file yang terlanjur tertulis tidak boleh tertinggal tanpa baris.
+            AttachmentStore::discard($written);
+            throw $e;
+        }
+        return response()->json(['success'=>true,'request_id'=>$application->request_id,'status'=>$application->status,'jenis_surat'=>$application->jenis_surat,'requires_neighborhood_approval'=>LetterType::from($application->jenis_surat)->requiresNeighborhoodApproval(),'lampiran'=>AttachmentStore::receivedKinds($application),'lookup_secret'=>$secret], 201);
     }
     public function status(Request $request): JsonResponse {
         $data = $request->validate(['request_id'=>['required','string','max:64'],'lookup_secret'=>['required','string','max:128']]);
@@ -55,6 +76,6 @@ class ApplicationController extends Controller {
         $letterNumber = in_array($application->status, ['APPROVED', 'READY_FOR_PICKUP', 'COMPLETED'], true)
             ? DB::table('letter_numbers')->where('application_id', $application->id)->where('status', 'issued')->orderByDesc('id')->value('number')
             : null;
-        return response()->json(['success'=>true,'request_id'=>$application->request_id,'jenis_surat'=>$application->jenis_surat,'requires_neighborhood_approval'=>LetterType::from($application->jenis_surat)->requiresNeighborhoodApproval(),'status'=>$application->status,'catatan'=>$note,'letter_number'=>$letterNumber]);
+        return response()->json(['success'=>true,'request_id'=>$application->request_id,'jenis_surat'=>$application->jenis_surat,'requires_neighborhood_approval'=>LetterType::from($application->jenis_surat)->requiresNeighborhoodApproval(),'status'=>$application->status,'catatan'=>$note,'letter_number'=>$letterNumber,'lampiran'=>AttachmentStore::receivedKinds($application)]);
     }
 }

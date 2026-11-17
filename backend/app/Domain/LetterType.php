@@ -52,6 +52,17 @@ enum LetterType: string
         return array_values(array_map(fn (self $type) => $type->value, array_filter(self::cases(), fn (self $type) => $type->isOffered())));
     }
 
+    /**
+     * Dokumen yang wajib dilampirkan saat mengajukan. Satu-satunya tempat aturan ini;
+     * jenis lama (SKU, KTP_KK) tidak dapat diajukan sehingga tidak punya daftar.
+     *
+     * @return list<AttachmentKind>
+     */
+    public function requiredAttachments(): array
+    {
+        return $this->isOffered() ? [AttachmentKind::Ktp, AttachmentKind::Kk, AttachmentKind::PengantarRtRw] : [];
+    }
+
     /** Izin keramaian tidak mencetak agama, status perkawinan, pendidikan, dan pekerjaan. */
     public function requiresFullPersonalData(): bool
     {

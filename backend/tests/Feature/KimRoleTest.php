@@ -77,7 +77,7 @@ class KimRoleTest extends TestCase
 
     public function test_kim_is_rejected_by_controllers_even_with_leaked_abilities(): void
     {
-        $this->postJson('/api/v1/applications', self::letterPayload('UMUM'))->assertCreated();
+        $this->submitLetter(self::letterPayload('UMUM'))->assertCreated();
         DB::table('applications')->update(['request_id' => 'REQ-2026-FIKTIF']);
         $kim = User::factory()->create(['role' => 'kim']);
         $token = $kim->createToken('bocor', ['panel', 'applications:manage', 'media:manage', 'site:manage'])->plainTextToken;

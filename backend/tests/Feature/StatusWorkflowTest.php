@@ -169,7 +169,7 @@ class StatusWorkflowTest extends TestCase
         foreach (['READY_FOR_PICKUP', 'COMPLETED'] as $status) {
             $application = $this->application($status);
             $this->postJson('/api/v1/applications/status', ['request_id' => $application->request_id, 'lookup_secret' => 'rahasia-fiktif'])
-                ->assertOk()->assertExactJson(['success' => true, 'request_id' => $application->request_id, 'status' => $status, 'catatan' => null, 'jenis_surat' => 'SKU', 'letter_number' => null, 'requires_neighborhood_approval' => false]);
+                ->assertOk()->assertExactJson(['success' => true, 'request_id' => $application->request_id, 'status' => $status, 'catatan' => null, 'jenis_surat' => 'SKU', 'lampiran' => [], 'letter_number' => null, 'requires_neighborhood_approval' => false]);
         }
     }
 
