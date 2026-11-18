@@ -9,6 +9,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -220,14 +221,14 @@ class AttachmentAccessTest extends TestCase
         $this->assertSame('ATTACHMENTS_UPDATED', $event->action);
         $this->assertSame('NEED_REVISION', $event->from_status);
         $this->assertSame('NEED_REVISION', $event->to_status);
-        $this->assertSame('Lampiran diperbarui: KTP', $event->note);
+        $this->assertSame('Lampiran diperbarui: KTP', Crypt::decryptString($event->note));
         $this->assertNull($event->user_id);
         $this->assertSame('NEED_REVISION', $application->fresh()->status);
         $this->assertStringNotContainsString('Warga Fiktif', json_encode(DB::table('application_attachments')->get()));
 
         // Beberapa lampiran sekaligus; staf melihatnya di riwayat.
         $this->replace($application, $secret, ['KK' => $this->image(), 'PENGANTAR_RT_RW' => $this->image()])->assertOk();
-        $this->assertSame('Lampiran diperbarui: Kartu Keluarga (KK), Surat Pengantar RT/RW', DB::table('application_events')->orderByDesc('id')->value('note'));
+        $this->assertSame('Lampiran diperbarui: Kartu Keluarga (KK), Surat Pengantar RT/RW', Crypt::decryptString(DB::table('application_events')->orderByDesc('id')->value('note')));
         $this->assertCount(3, Storage::disk('local')->allFiles('attachments'));
         $this->act('staff');
         $history = $this->getJson('/api/v1/staff/applications/'.$application->request_id)->assertOk()->json('history');

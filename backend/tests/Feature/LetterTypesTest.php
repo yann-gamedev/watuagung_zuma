@@ -242,8 +242,9 @@ class LetterTypesTest extends TestCase
             $response->assertOk()->assertJsonPath('isi_keterangan', "Disunting oleh $role.")->assertJsonPath('can_edit_isi_keterangan', true);
             $this->assertDatabaseHas('application_events', [
                 'application_id' => $application->id, 'user_id' => $user->id, 'action' => 'STATEMENT_EDITED',
-                'from_status' => $status, 'to_status' => $status, 'note' => 'Isi keterangan disunting',
+                'from_status' => $status, 'to_status' => $status,
             ]);
+            $this->assertSame('Isi keterangan disunting', Crypt::decryptString(DB::table('application_events')->where('application_id', $application->id)->where('user_id', $user->id)->value('note')));
         }
         $fresh = $application->fresh();
         $this->assertSame($editable ? 'Disunting oleh admin.' : 'Orang tersebut bekerja di kota fiktif.', $fresh->isi_keterangan);

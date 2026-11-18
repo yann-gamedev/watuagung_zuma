@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Support\AttachmentStore;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -145,7 +146,7 @@ class StaffController extends Controller {
                 'action'=>$event->action,
                 'from_status'=>$event->from_status,
                 'to_status'=>$event->to_status,
-                'note'=>$event->note,
+                'note'=>$event->note === null ? null : Crypt::decryptString($event->note),
                 'staff_name'=>$event->staff_name,
                 'created_at'=>Carbon::parse($event->created_at)->toISOString(),
             ]);
@@ -195,7 +196,7 @@ class StaffController extends Controller {
                 'pekerjaan'=>$application->pekerjaan,
                 'letter_numbers'=>DB::table('letter_numbers')->where('application_id', $application->id)->orderBy('id')
                     ->get(['number','status','void_reason','issued_at'])->map(fn ($letter) => [
-                        'number'=>$letter->number, 'status'=>$letter->status, 'void_reason'=>$letter->void_reason,
+                        'number'=>$letter->number, 'status'=>$letter->status, 'void_reason'=>$letter->void_reason === null ? null : Crypt::decryptString($letter->void_reason),
                         'issued_at'=>Carbon::parse($letter->issued_at)->toISOString(),
                     ]),
                 'letter'=>LetterController::summary(Letter::find($application)),
@@ -232,7 +233,7 @@ class StaffController extends Controller {
             // Siapa dan kapan Kepala Desa menyetujui, beserta kode verifikasi QR.
             if ($data['status'] === 'APPROVED') Letter::approve($fresh, $user);
             $fresh->update(['status'=>$data['status'],'catatan'=>$note]);
-            DB::table('application_events')->insert(['application_id'=>$fresh->id,'user_id'=>$user->id,'from_status'=>$from,'to_status'=>$data['status'],'note'=>$note,'created_at'=>now()]);
+            DB::table('application_events')->insert(['application_id'=>$fresh->id,'user_id'=>$user->id,'from_status'=>$from,'to_status'=>$data['status'],'note'=>$note === null ? null : Crypt::encryptString($note),'created_at'=>now()]);
             return $fresh;
         }, 3);
         if ($result instanceof JsonResponse) return $result;
@@ -270,7 +271,7 @@ class StaffController extends Controller {
             DB::table('application_events')->insert([
                 'application_id'=>$application->id, 'user_id'=>$user->id, 'action'=>'STATEMENT_EDITED',
                 'from_status'=>$application->status, 'to_status'=>$application->status,
-                'note'=>'Isi keterangan disunting', 'created_at'=>now(),
+                'note'=>Crypt::encryptString('Isi keterangan disunting'), 'created_at'=>now(),
             ]);
             DB::table('audit_logs')->insert([
                 'user_id'=>$user->id, 'action'=>'application.statement_edited', 'subject_type'=>'application',

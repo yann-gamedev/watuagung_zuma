@@ -9,6 +9,7 @@ use App\Models\Application;
 use App\Support\AttachmentStore;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
@@ -62,7 +63,7 @@ class ApplicationController extends Controller {
                 'RT_APPROVED' => 'RW',
                 default => null,
             };
-            if ($head !== null) $note = 'Ditolak oleh Ketua '.$head.': '.rtrim($event->note ?? $note ?? '', '. ').'. Silakan ajukan ulang setelah data diperbaiki.';
+            if ($head !== null) $note = 'Ditolak oleh Ketua '.$head.': '.rtrim($event?->note === null ? ($note ?? '') : Crypt::decryptString($event->note), '. ').'. Silakan ajukan ulang setelah data diperbaiki.';
         }
         $letterNumber = in_array($application->status, ['APPROVED', 'READY_FOR_PICKUP', 'COMPLETED'], true)
             ? DB::table('letter_numbers')->where('application_id', $application->id)->where('status', 'issued')->orderByDesc('id')->value('number')
@@ -95,7 +96,7 @@ class ApplicationController extends Controller {
                 $old = AttachmentStore::replace($locked, $uploads, $present, 'applicant', $written);
                 DB::table('application_events')->insert([
                     'application_id'=>$locked->id, 'action'=>'ATTACHMENTS_UPDATED', 'from_status'=>$locked->status, 'to_status'=>$locked->status,
-                    'note'=>'Lampiran diperbarui: '.implode(', ', array_map(fn (AttachmentKind $kind) => $kind->label(), $present)),
+                    'note'=>Crypt::encryptString('Lampiran diperbarui: '.implode(', ', array_map(fn (AttachmentKind $kind) => $kind->label(), $present))),
                     'created_at'=>now(),
                 ]);
                 return $old;

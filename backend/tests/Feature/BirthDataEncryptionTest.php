@@ -78,7 +78,7 @@ class BirthDataEncryptionTest extends TestCase
                 'nama' => 'Nama Fiktif', 'nik' => Crypt::encryptString('0000000000000001'), 'no_kk' => Crypt::encryptString('0000000000000002'),
                 'tempat_lahir' => 'Kota Fiktif '.$i, 'tanggal_lahir' => $date, 'jenis_kelamin' => 'Laki-laki',
                 'alamat' => Crypt::encryptString('Jalan Fiktif'), 'rt' => '001', 'rw' => '002',
-                'telepon' => Crypt::encryptString('08000000000'), 'keperluan' => 'Fiktif', 'status' => 'SUBMITTED',
+                'telepon' => Crypt::encryptString('08000000000'), 'keperluan' => Crypt::encryptString('Fiktif'), 'status' => 'SUBMITTED',
                 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
