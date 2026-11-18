@@ -15,7 +15,14 @@ class Application extends Model
     protected function casts(): array {
         // tanggal_lahir is an encrypted "Y-m-d" string (validated on submit), not a Carbon date.
         // tanggal_mulai/tanggal_selesai stay plain "Y-m-d" strings for the same reason.
-        return ['nik' => 'encrypted', 'no_kk' => 'encrypted', 'telepon' => 'encrypted', 'alamat' => 'encrypted', 'alamat_usaha' => 'encrypted', 'tempat_lahir' => 'encrypted', 'tanggal_lahir' => 'encrypted', 'agama' => 'encrypted', 'status_perkawinan' => 'encrypted', 'rt' => AreaCode::class, 'rw' => AreaCode::class];
+        return [
+            'nik' => 'encrypted', 'no_kk' => 'encrypted', 'telepon' => 'encrypted', 'alamat' => 'encrypted',
+            'alamat_usaha' => 'encrypted', 'tempat_lahir' => 'encrypted', 'tanggal_lahir' => 'encrypted',
+            'agama' => 'encrypted', 'status_perkawinan' => 'encrypted', 'keperluan' => 'encrypted',
+            'isi_keterangan' => 'encrypted', 'isi_keterangan_awal' => 'encrypted', 'barang_hilang' => 'encrypted',
+            'pekerjaan' => 'encrypted', 'pendidikan' => 'encrypted', 'catatan' => 'encrypted',
+            'rt' => AreaCode::class, 'rw' => AreaCode::class,
+        ];
     }
 
     public function scopeForUser(Builder $query, User $user): void {

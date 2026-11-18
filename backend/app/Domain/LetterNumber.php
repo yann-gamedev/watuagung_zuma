@@ -5,6 +5,7 @@ namespace App\Domain;
 use App\Models\Application;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 
 class LetterNumber
@@ -43,6 +44,6 @@ class LetterNumber
     public static function void(Application $application, string $reason): void
     {
         DB::table('letter_numbers')->where('application_id', $application->id)->where('status', 'issued')
-            ->update(['status' => 'void', 'void_reason' => $reason]);
+            ->update(['status' => 'void', 'void_reason' => Crypt::encryptString($reason)]);
     }
 }

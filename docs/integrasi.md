@@ -320,6 +320,7 @@ Migration `2026_10_22_000000_add_staff_account_fields_to_users_table` membuat `e
 - Semua permintaan panel melewati `adminRequest()` (`features/admin/api.ts`). Respons 401 menghapus sesi lalu menampilkan login dengan pesan "Sesi berakhir, silakan masuk lagi."
 - Token kedaluwarsa setelah `SANCTUM_EXPIRATION` menit (bawaan 480 = 8 jam kerja), dihitung sejak login, bukan sejak aktivitas terakhir. Tipe frontend: `StaffProfile` di `types/pelayanan.ts`.
 - Jangan mengganti APP_KEY pada database berisi data terenkripsi tanpa prosedur migrasi yang benar.
+- **18 November 2026:** enkripsi penyimpanan diperluas ke `keperluan`, `isi_keterangan`, `isi_keterangan_awal` (padanan teks asli warga yang tersedia), `barang_hilang`, `pekerjaan`, `pendidikan`, `catatan`, serta salinan di `application_events.note` dan `letter_numbers.void_reason`. Respons API dan PDF tetap plaintext hanya sesuai akses yang sudah ada; tidak ada perubahan kontrak TypeScript. Migration chunk 500 reversible up/down/up; null dan string kosong dipertahankan. Tidak ada filter/pencarian/urutan SQL pada kolom ini. `nama`, nomor, jenis, status, RT/RW, dusun dan tanggal operasional tidak ditambah enkripsi; tanggal lahir yang sebelumnya terenkripsi tetap demikian. Prosedur maintenance, backup, kunci dan rollback ada di `backend/README.md`. Perlindungan ini tidak mencakup kebocoran APP_KEY, server aplikasi aktif, atau backup plaintext sebelum migrasi.
 
 ## Status dan batas fitur
 

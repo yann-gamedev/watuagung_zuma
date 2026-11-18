@@ -6,6 +6,7 @@ use App\Domain\AccessCode;
 use App\Models\Application;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
@@ -96,7 +97,7 @@ class AccessCodeResetTest extends TestCase
     {
         config()->set('letters.neighborhood_approval', true);
         $application = $this->application(['status' => 'REJECTED', 'catatan' => 'Alamat tidak sesuai']);
-        DB::table('application_events')->insert(['application_id' => $application->id, 'from_status' => 'SUBMITTED', 'to_status' => 'REJECTED', 'note' => 'Alamat tidak sesuai', 'created_at' => now()]);
+        DB::table('application_events')->insert(['application_id' => $application->id, 'from_status' => 'SUBMITTED', 'to_status' => 'REJECTED', 'note' => Crypt::encryptString('Alamat tidak sesuai'), 'created_at' => now()]);
         for ($i = 0; $i < 5; $i++) $this->lookup($application, 'WAD-0000-0000')->assertNotFound();
         $this->user('staff');
         $code = $this->reset($application)->assertOk()->json('lookup_secret');

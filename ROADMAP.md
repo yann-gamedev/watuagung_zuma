@@ -232,6 +232,7 @@ Wajib selesai sebelum menerima data warga nyata.
 - [x] Tempat dan tanggal lahir pemohon terenkripsi (cast `encrypted`, migration mengenkripsi baris lama, rollback mendekripsi). `nama` tetap teks biasa. SQLite 182 tes / 1.879 assertions dan PostgreSQL 18.6 182 tes / 1.881 assertions lulus (24 Oktober 2026, `docs/progres-2026-10-24.md`).
 - [x] Halaman `/kebijakan-privasi/`, tautan footer dan pemberitahuan di atas tombol kirim empat formulir. Lint, tsc, build, build:demo, test:demo serta pemeriksaan 390px/1440px lulus (27 Oktober 2026, `docs/progres-2026-10-27.md`). Masa simpan masih placeholder sampai keputusan desa/F10; bukan penyelesaian kebijakan retensi.
 - [ ] Uji keamanan dasar: rate limit, otorisasi per peran, field sensitif tidak bocor di respons atau log
+  - [x] Enkripsi teks pemohon tambahan (18 Nov 2026): keperluan, isi_keterangan, isi_keterangan_awal, barang_hilang, pekerjaan, pendidikan, catatan; termasuk salinan catatan pada riwayat dan alasan pembatalan nomor. Migration chunk 500 reversible; tidak menambah enkripsi kolom pencarian/filter. Bukti SQLite/MariaDB dan batasnya di `docs/progres-2026-11-18-enkripsi-teks.md`.
 
 ---
 

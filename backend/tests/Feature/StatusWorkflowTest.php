@@ -7,6 +7,7 @@ use App\Domain\LetterType;
 use App\Models\Application;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
@@ -76,8 +77,10 @@ class StatusWorkflowTest extends TestCase
         $this->assertSame($to, $application->fresh()->status);
         $this->assertDatabaseHas('application_events', [
             'application_id' => $application->id, 'user_id' => $user->id,
-            'from_status' => $from, 'to_status' => $to, 'note' => $note,
+            'from_status' => $from, 'to_status' => $to,
         ]);
+        $rawNote = DB::table('application_events')->where('application_id', $application->id)->value('note');
+        $this->assertSame($note, $rawNote === null ? null : Crypt::decryptString($rawNote));
     }
 
     public function test_every_other_combination_is_rejected_without_side_effects(): void

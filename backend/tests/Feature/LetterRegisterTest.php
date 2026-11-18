@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
@@ -153,7 +154,8 @@ class LetterRegisterTest extends TestCase
         $this->change($application, $status)->assertUnprocessable();
         $this->assertDatabaseHas('letter_numbers', ['id' => $first->id, 'status' => 'issued']);
         $this->change($application, $status, '  Alasan fiktif privat  ')->assertOk();
-        $this->assertDatabaseHas('letter_numbers', ['id' => $first->id, 'status' => 'void', 'void_reason' => 'Alasan fiktif privat']);
+        $this->assertDatabaseHas('letter_numbers', ['id' => $first->id, 'status' => 'void']);
+        $this->assertSame('Alasan fiktif privat', Crypt::decryptString(DB::table('letter_numbers')->where('id', $first->id)->value('void_reason')));
         $this->lookup($application)->assertOk()->assertJsonPath('letter_number', null)->assertJsonMissingPath('letter_numbers');
 
         $this->act();
@@ -195,7 +197,7 @@ class LetterRegisterTest extends TestCase
                 'letter_number' => in_array($status, ['APPROVED', 'READY_FOR_PICKUP', 'COMPLETED']) ? $number : null,
             ]);
         }
-        DB::table('letter_numbers')->update(['status' => 'void', 'void_reason' => 'Alasan fiktif']);
+        DB::table('letter_numbers')->update(['status' => 'void', 'void_reason' => Crypt::encryptString('Alasan fiktif')]);
         $application->update(['status' => 'APPROVED']);
         $this->lookup($application)->assertOk()->assertJsonPath('letter_number', null);
         $legacy = $this->application(['status' => 'WAITING_APPROVAL']);

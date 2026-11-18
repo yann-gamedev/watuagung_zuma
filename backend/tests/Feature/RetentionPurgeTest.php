@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Application;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -151,7 +152,7 @@ class RetentionPurgeTest extends TestCase
         auth()->forgetGuards();
         $this->getJson('/api/v1/verify/'.$letter->verification_code)->assertOk()
             ->assertJsonPath('status', 'valid')->assertJsonPath('number', $number)->assertJsonPath('nama', 'S* W*');
-        DB::table('letter_numbers')->update(['status' => 'void', 'void_reason' => 'Pembatalan fiktif']);
+        DB::table('letter_numbers')->update(['status' => 'void', 'void_reason' => Crypt::encryptString('Pembatalan fiktif')]);
         $this->getJson('/api/v1/verify/'.$letter->verification_code)->assertOk()->assertJsonPath('status', 'revoked');
 
         Sanctum::actingAs(User::factory()->create(['role' => 'staff']), ['applications:manage']);

@@ -7,6 +7,7 @@ use App\Domain\LetterType;
 use App\Models\Application;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -62,7 +63,7 @@ class StaffApplicationsTest extends TestCase
         // Identical timestamps intentionally exercise the stable event ID tiebreaker.
         DB::table('application_events')->insert([
             ['application_id' => $application->id, 'user_id' => null, 'from_status' => null, 'to_status' => 'SUBMITTED', 'note' => null, 'created_at' => now()],
-            ['application_id' => $application->id, 'user_id' => $user->id, 'from_status' => 'PROCESSING', 'to_status' => 'WAITING_APPROVAL', 'note' => 'Riwayat fiktif', 'created_at' => now()],
+            ['application_id' => $application->id, 'user_id' => $user->id, 'from_status' => 'PROCESSING', 'to_status' => 'WAITING_APPROVAL', 'note' => Crypt::encryptString('Riwayat fiktif'), 'created_at' => now()],
         ]);
         $other = $this->application();
         DB::table('application_events')->insert(['application_id' => $other->id, 'to_status' => 'SUBMITTED', 'created_at' => now()]);

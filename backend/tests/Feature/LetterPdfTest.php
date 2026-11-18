@@ -8,6 +8,7 @@ use App\Models\Application;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -251,7 +252,7 @@ class LetterPdfTest extends TestCase
         $this->getJson('/api/v1/verify/'.str_repeat('a', 32))->assertNotFound();
         $this->getJson('/api/v1/verify/pendek')->assertNotFound();
         $this->approved();
-        DB::table('letter_numbers')->update(['status' => 'void', 'void_reason' => 'Contoh pembatalan']);
+        DB::table('letter_numbers')->update(['status' => 'void', 'void_reason' => Crypt::encryptString('Contoh pembatalan')]);
         $this->getJson('/api/v1/verify/'.DB::table('letters')->value('verification_code'))->assertOk()->assertJsonPath('status', 'revoked');
     }
 
