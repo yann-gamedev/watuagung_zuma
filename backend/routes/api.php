@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\StaffUserController;
 use Illuminate\Support\Facades\Route;
 Route::post('/v1/applications', [ApplicationController::class, 'store'])->middleware('throttle:5,1');
 Route::post('/v1/applications/status', [ApplicationController::class, 'status'])->middleware('throttle:10,1');
+// Unduh scan surat oleh warga; kunci kode akses bersama cek status + batas per IP.
+Route::post('/v1/applications/letter', [ApplicationController::class, 'letter'])->middleware('throttle:10,1,application-letter');
 Route::post('/v1/applications/attachments', [ApplicationController::class, 'replaceAttachments'])->middleware('throttle:5,1,application-attachments');
 Route::post('/v1/staff/login', [StaffController::class, 'login'])->middleware('throttle:5,1');
 Route::get('/v1/verify/{code}', [LetterController::class, 'verify'])->middleware('throttle:30,1');

@@ -4,11 +4,13 @@ use App\Domain\AccessCode;
 use App\Domain\AttachmentKind;
 use App\Domain\LetterSubmission;
 use App\Domain\LetterType;
+use App\Domain\Letter;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Support\AttachmentStore;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
@@ -68,7 +70,11 @@ class ApplicationController extends Controller {
         $letterNumber = in_array($application->status, ['APPROVED', 'READY_FOR_PICKUP', 'COMPLETED'], true)
             ? DB::table('letter_numbers')->where('application_id', $application->id)->where('status', 'issued')->orderByDesc('id')->value('number')
             : null;
-        return response()->json(['success'=>true,'request_id'=>$application->request_id,'jenis_surat'=>$application->jenis_surat,'requires_neighborhood_approval'=>LetterType::from($application->jenis_surat)->requiresNeighborhoodApproval(),'status'=>$application->status,'catatan'=>$note,'letter_number'=>$letterNumber,'lampiran'=>AttachmentStore::receivedKinds($application)]);
+        $letter = Letter::find($application);
+        $download = Letter::downloadState($application, $letter);
+        // Tanggal batas hanya untuk scan unggahan pada status unduh; tanpa path atau hash.
+        $until = $download === 'unavailable' ? null : Letter::downloadUntil($letter)?->toISOString();
+        return response()->json(['success'=>true,'request_id'=>$application->request_id,'jenis_surat'=>$application->jenis_surat,'requires_neighborhood_approval'=>LetterType::from($application->jenis_surat)->requiresNeighborhoodApproval(),'status'=>$application->status,'catatan'=>$note,'letter_number'=>$letterNumber,'lampiran'=>AttachmentStore::receivedKinds($application),'letter_available'=>$download === 'available','letter_available_until'=>$until]);
     }
 
     /**
@@ -113,6 +119,42 @@ class ApplicationController extends Controller {
         // Setelah commit: file lama tidak lagi dirujuk. Gagal hapus hanya menyisakan file terenkripsi yatim.
         AttachmentStore::deleteFiles($old);
         return response()->json(['success'=>true,'request_id'=>$application->request_id,'status'=>'NEED_REVISION','lampiran'=>AttachmentStore::receivedKinds($application)]);
+    }
+
+    /**
+     * Warga mengunduh scan surat bertanda tangan. POST agar kode akses tidak tercatat di access log.
+     * Unduhan pertama memindahkan READY_FOR_PICKUP → COMPLETED; unduhan ulang tetap boleh selama masa unduh.
+     */
+    public function letter(Request $request): Response {
+        $application = $this->authenticate($request);
+        if ($application instanceof JsonResponse) return $application;
+        $result = DB::transaction(function () use ($application) {
+            $fresh = Application::whereKey($application->id)->lockForUpdate()->firstOrFail();
+            $letter = Letter::find($fresh);
+            $state = Letter::downloadState($fresh, $letter);
+            if ($state !== 'available') return $state;
+            $pdf = Letter::contents($letter);
+            if ($fresh->status === 'READY_FOR_PICKUP') {
+                $fresh->update(['status'=>'COMPLETED', 'catatan'=>null]);
+                DB::table('application_events')->insert([
+                    'application_id'=>$fresh->id, 'from_status'=>'READY_FOR_PICKUP', 'to_status'=>'COMPLETED',
+                    'note'=>Crypt::encryptString('Surat diunduh pemohon'), 'created_at'=>now(),
+                ]);
+            }
+            // Setiap unduhan dicatat; gagal mencatat = isi tidak dikirim.
+            DB::table('audit_logs')->insert(['user_id'=>null, 'action'=>'letter.downloaded', 'subject_type'=>'application', 'subject_id'=>$fresh->id, 'created_at'=>now()]);
+            return [$fresh, $pdf];
+        });
+        if ($result === 'unavailable') return response()->json(['success'=>false,'message'=>'Surat belum tersedia untuk diunduh.'], 404)->header('Cache-Control', 'private, no-store');
+        if ($result === 'expired') return response()->json(['success'=>false,'message'=>'Masa unduh sudah berakhir. Silakan hubungi petugas di kantor desa.'], 410)->header('Cache-Control', 'private, no-store');
+        [$fresh, $pdf] = $result;
+        return response($pdf, 200, [
+            'Content-Type'=>'application/pdf',
+            'Content-Disposition'=>'attachment; filename="Surat-'.$fresh->request_id.'.pdf"',
+            'Content-Length'=>(string) strlen($pdf),
+            'Cache-Control'=>'private, no-store',
+            'X-Content-Type-Options'=>'nosniff',
+        ]);
     }
 
     /** Nomor pengajuan + kode akses; 5 kode salah per nomor mengunci 15 menit (dipakai bersama semua endpoint warga). */

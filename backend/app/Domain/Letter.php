@@ -21,7 +21,9 @@ class Letter
 {
     public const DRAFT_STATUSES = ['PROCESSING', 'WAITING_APPROVAL'];
     public const FINAL_STATUSES = ['APPROVED', 'READY_FOR_PICKUP', 'COMPLETED'];
-    public const UPLOAD_STATUSES = ['APPROVED', 'READY_FOR_PICKUP'];
+    public const UPLOAD_STATUSES = ApplicationStatus::LETTER_UPLOAD_STATUSES;
+    /** Warga dapat mengunduh scan surat pada status ini (dalam masa unduh). */
+    public const DOWNLOAD_STATUSES = ['READY_FOR_PICKUP', 'COMPLETED'];
 
     /** Dipanggil di dalam transaksi perubahan status ke APPROVED. */
     public static function approve(Application $application, User $head): void
@@ -55,6 +57,33 @@ class Letter
             'uploaded_by' => $uploader?->id, 'file_updated_at' => now(),
         ]);
         if ($letter->path !== null && $letter->path !== $path) Storage::disk('local')->delete($letter->path);
+    }
+
+    public static function downloadDays(): int
+    {
+        $days = filter_var(config('letters.download_days', 30), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+        return $days === false ? 30 : $days;
+    }
+
+    /** Batas akhir unduhan warga; null bila bukan scan unggahan petugas atau belum pernah ditandai siap. */
+    public static function downloadUntil(?object $letter): ?Carbon
+    {
+        if (! $letter || $letter->source !== 'uploaded' || $letter->ready_at === null) return null;
+
+        return Carbon::parse($letter->ready_at)->addDays(self::downloadDays());
+    }
+
+    /**
+     * 'available' | 'unavailable' (belum ada scan, draf, PDF otomatis, status lain) | 'expired' (masa unduh lewat / berkas dihapus).
+     */
+    public static function downloadState(Application $application, ?object $letter): string
+    {
+        $until = self::downloadUntil($letter);
+        if (! in_array($application->status, self::DOWNLOAD_STATUSES, true) || $until === null) return 'unavailable';
+        if ($letter->file_purged_at !== null || $letter->path === null || now()->greaterThan($until)) return 'expired';
+
+        return 'available';
     }
 
     public static function contents(object $letter): string

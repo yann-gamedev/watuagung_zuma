@@ -130,6 +130,10 @@ export interface LetterFile {
   file_updated_at: string | null;
   /** Diisi bila PDF dihapus oleh retensi (`applications:purge`); unduhan lalu 410. */
   file_purged_at: string | null;
+  /** Unggahan scan terakhir (masa unduh warga dihitung dari sini); null bila belum ada scan sejak fitur unduh. */
+  ready_at?: string | null;
+  /** Batas unduhan warga (`ready_at` + LETTER_DOWNLOAD_DAYS); null bila bukan scan unggahan. */
+  download_until?: string | null;
 }
 /** GET /verify/{kode}, publik: tanpa NIK, alamat, isi surat, atau nomor pengajuan. */
 export interface LetterVerification {
@@ -306,6 +310,10 @@ export interface AttachmentReplaceResponse {
 export interface StatusReceipt extends Receipt {
   catatan?: string | null;
   letter_number?: string | null;
+  /** Mode API: true bila warga dapat mengunduh scan surat bertanda tangan sekarang (POST /applications/letter). */
+  letter_available?: boolean;
+  /** ISO 8601 batas masa unduh; tetap diisi setelah lewat (letter_available false). null bila belum ada scan. */
+  letter_available_until?: string | null;
 }
 export interface LetterNumber {
   number: string;

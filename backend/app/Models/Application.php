@@ -39,7 +39,7 @@ class Application extends Model
         $query->forUser($user)->where(function (Builder $queue) use ($user) {
             $queue->whereRaw('1 = 0');
             foreach (LetterType::cases() as $type) {
-                $statuses = array_filter(ApplicationStatus::values(), fn (string $status) => ApplicationStatus::allowedFor($status, $user->role, $type) !== []);
+                $statuses = array_filter(ApplicationStatus::values(), fn (string $status) => ApplicationStatus::awaitsAction($status, $user->role, $type));
                 if ($statuses) $queue->orWhere(fn (Builder $branch) => $branch->where('jenis_surat', $type->value)->whereIn('status', $statuses));
             }
         });

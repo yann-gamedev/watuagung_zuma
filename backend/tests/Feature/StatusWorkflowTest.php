@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -120,7 +121,8 @@ class StatusWorkflowTest extends TestCase
     {
         $this->act('village_head');
         $this->changeStatus($this->application('SUBMITTED'), 'VERIFIED')->assertForbidden();
-        $this->changeStatus($this->application('APPROVED'), 'READY_FOR_PICKUP')->assertForbidden();
+        // APPROVED → READY_FOR_PICKUP bukan transisi manual untuk peran apa pun (hanya lewat unggah scan).
+        $this->changeStatus($this->application('APPROVED'), 'READY_FOR_PICKUP')->assertUnprocessable();
         $this->changeStatus($this->application('READY_FOR_PICKUP'), 'COMPLETED')->assertForbidden();
     }
 
@@ -157,9 +159,10 @@ class StatusWorkflowTest extends TestCase
             ['staff', 'VERIFIED'], ['staff', 'PROCESSING'], ['admin', 'WAITING_APPROVAL'],
             ['village_head', 'APPROVED'], ['staff', 'READY_FOR_PICKUP'], ['admin', 'COMPLETED'],
         ];
+        Storage::fake('local');
         foreach ($steps as [$role, $to]) {
             $this->act($role);
-            $this->changeStatus($application, $to)->assertOk();
+            ($to === 'READY_FOR_PICKUP' ? $this->uploadScan($application->request_id) : $this->changeStatus($application, $to))->assertOk();
         }
         $this->assertSame('COMPLETED', $application->fresh()->status);
         $this->assertSame(6, DB::table('application_events')->whereNotNull('user_id')->count());
@@ -172,7 +175,7 @@ class StatusWorkflowTest extends TestCase
         foreach (['READY_FOR_PICKUP', 'COMPLETED'] as $status) {
             $application = $this->application($status);
             $this->postJson('/api/v1/applications/status', ['request_id' => $application->request_id, 'lookup_secret' => 'rahasia-fiktif'])
-                ->assertOk()->assertExactJson(['success' => true, 'request_id' => $application->request_id, 'status' => $status, 'catatan' => null, 'jenis_surat' => 'SKU', 'lampiran' => [], 'letter_number' => null, 'requires_neighborhood_approval' => false]);
+                ->assertOk()->assertExactJson(['success' => true, 'request_id' => $application->request_id, 'status' => $status, 'catatan' => null, 'jenis_surat' => 'SKU', 'lampiran' => [], 'letter_available' => false, 'letter_available_until' => null, 'letter_number' => null, 'requires_neighborhood_approval' => false]);
         }
     }
 
@@ -181,8 +184,9 @@ class StatusWorkflowTest extends TestCase
         $this->application('WAITING_APPROVAL');
         $this->application('APPROVED');
         $expected = [
-            'staff' => ['WAITING_APPROVAL' => [], 'APPROVED' => ['READY_FOR_PICKUP']],
-            'admin' => ['WAITING_APPROVAL' => [], 'APPROVED' => ['READY_FOR_PICKUP']],
+            // APPROVED tanpa pilihan manual: kantor mengunggah scan surat.
+            'staff' => ['WAITING_APPROVAL' => [], 'APPROVED' => []],
+            'admin' => ['WAITING_APPROVAL' => [], 'APPROVED' => []],
             'village_head' => ['WAITING_APPROVAL' => ['APPROVED', 'REJECTED', 'NEED_REVISION'], 'APPROVED' => []],
         ];
         foreach ($expected as $role => $byStatus) {
@@ -275,10 +279,10 @@ class StatusWorkflowTest extends TestCase
 
     public function test_stale_client_cannot_repeat_a_transition(): void
     {
-        $application = $this->application('APPROVED');
+        $application = $this->application('READY_FOR_PICKUP');
         $this->act('staff');
-        $this->changeStatus($application, 'READY_FOR_PICKUP')->assertOk();
-        $this->changeStatus($application, 'READY_FOR_PICKUP')->assertUnprocessable();
+        $this->changeStatus($application, 'COMPLETED')->assertOk();
+        $this->changeStatus($application, 'COMPLETED')->assertUnprocessable();
         $this->assertSame(1, DB::table('application_events')->count());
     }
 

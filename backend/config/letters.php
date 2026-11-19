@@ -4,6 +4,8 @@ use App\Domain\LetterType;
 
 return [
     'neighborhood_approval' => env('LETTER_NEIGHBORHOOD_APPROVAL', false),
+    // Masa warga dapat mengunduh scan surat bertanda tangan, dihitung dari unggahan terakhir (letters.ready_at).
+    'download_days' => env('LETTER_DOWNLOAD_DAYS', 30),
     // Format contoh surat desa, mis. 470/12/424.314.2.02/2026; satu urutan per tahun untuk semua jenis.
     'format' => '{kode_klasifikasi}/{urut}/{kode_desa}/{tahun}',
     'kode_desa' => '424.314.2.02',

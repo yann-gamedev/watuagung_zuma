@@ -91,7 +91,9 @@ class NeighborhoodApprovalDisabledTest extends TestCase
                 }
             }
             $this->actAs($user);
-            $this->patchJson($url.'/status', ['status' => $status])->assertOk()->assertJsonPath('status', $status);
+            // READY_FOR_PICKUP hanya lewat unggah scan surat.
+            ($status === 'READY_FOR_PICKUP' ? $this->uploadScan($application->request_id) : $this->patchJson($url.'/status', ['status' => $status]))
+                ->assertOk()->assertJsonPath('status', $status);
             $this->assertDatabaseHas('application_events', [
                 'application_id' => $application->id, 'user_id' => $user->id, 'from_status' => $from, 'to_status' => $status,
             ]);

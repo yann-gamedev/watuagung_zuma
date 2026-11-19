@@ -67,7 +67,10 @@ Artisan::command('applications:purge {--dry-run}', function () {
     $this->info(($dry ? '[dry-run] ' : '')."Masa simpan $days hari; batas updated_at sebelum {$cutoff->toDateTimeString()}.");
 
     $count = 0;
-    $query = Application::query()->whereIn('status', ['COMPLETED', 'REJECTED'])->whereNull('purged_at')->where('updated_at', '<', $cutoff);
+    // Surat yang masih dalam masa unduh warga tidak dianonimkan atau dihapus sebelum masa itu habis.
+    $query = Application::query()->whereIn('status', ['COMPLETED', 'REJECTED'])->whereNull('purged_at')->where('updated_at', '<', $cutoff)
+        ->whereNotExists(fn ($sub) => $sub->select(DB::raw(1))->from('letters')->whereColumn('letters.application_id', 'applications.id')
+            ->where('letters.source', 'uploaded')->where('letters.ready_at', '>=', now()->subDays(Letter::downloadDays())));
     foreach ($query->lazyById(200) as $application) {
         $letter = Letter::find($application);
         $attachments = DB::table('application_attachments')->where('application_id', $application->id)->whereNull('purged_at')->count();
@@ -134,6 +137,38 @@ Artisan::command('attachments:purge {--dry-run}', function () {
     return 0;
 })->purpose('Hapus lampiran persyaratan permohonan COMPLETED/REJECTED yang melewati ATTACHMENT_RETENTION_DAYS (bawaan 30)');
 
+// Masa unduh warga berakhir tanpa pernah diunduh: READY_FOR_PICKUP → COMPLETED. Berkas surat tidak dihapus di sini
+// (petugas tetap bisa mengunduh; retensi applications:purge yang menghapusnya).
+Artisan::command('letters:expire-downloads {--dry-run}', function () {
+    $dry = (bool) $this->option('dry-run');
+    $days = Letter::downloadDays();
+    $cutoff = now()->subDays($days);
+    $this->info(($dry ? '[dry-run] ' : '')."Masa unduh $days hari; scan siap sebelum {$cutoff->toDateTimeString()}.");
+    $count = 0;
+    $query = Application::query()->where('status', 'READY_FOR_PICKUP')
+        ->whereExists(fn ($sub) => $sub->select(DB::raw(1))->from('letters')->whereColumn('letters.application_id', 'applications.id')
+            ->where('letters.source', 'uploaded')->where('letters.ready_at', '<', $cutoff));
+    foreach ($query->select(['id', 'request_id', 'status'])->lazyById(200) as $application) {
+        $this->line($application->request_id);
+        if ($dry) { $count++; continue; }
+        $changed = DB::transaction(function () use ($application, $cutoff) {
+            $fresh = Application::whereKey($application->id)->lockForUpdate()->first();
+            $readyAt = DB::table('letters')->where('application_id', $application->id)->value('ready_at');
+            // Dicek ulang di bawah kunci: warga bisa mengunduh, atau petugas mengunggah ulang, sejak query dijalankan.
+            if (! $fresh || $fresh->status !== 'READY_FOR_PICKUP' || $readyAt === null || ! \Illuminate\Support\Carbon::parse($readyAt)->lessThan($cutoff)) return false;
+            $fresh->update(['status' => 'COMPLETED', 'catatan' => null]);
+            DB::table('application_events')->insert([
+                'application_id' => $fresh->id, 'from_status' => 'READY_FOR_PICKUP', 'to_status' => 'COMPLETED',
+                'note' => \Illuminate\Support\Facades\Crypt::encryptString('Masa unduh berakhir'), 'created_at' => now(),
+            ]);
+            return true;
+        });
+        if ($changed) $count++;
+    }
+    $this->info($dry ? "[dry-run] $count permohonan akan diselesaikan; tidak ada yang diubah." : "$count permohonan diselesaikan karena masa unduh berakhir.");
+    return 0;
+})->purpose('Selesaikan permohonan READY_FOR_PICKUP yang masa unduh suratnya (LETTER_DOWNLOAD_DAYS) sudah lewat');
+
 // Hapus foto berita/UMKM yang tidak lagi dirujuk baris aktif: sisa soft delete sebelum foto ikut terhapus,
 // atau file yang gagal dihapus. File berumur < 1 jam dilewati agar unggahan yang belum commit tidak ikut terhapus.
 Artisan::command('media:prune {--dry-run}', function () {
@@ -164,5 +199,7 @@ Schedule::command('sanctum:prune-expired --hours=24')->daily();
 Schedule::command('applications:purge')->daily();
 // Bawaan 30 hari; ATTACHMENT_RETENTION_DAYS=0 mematikan.
 Schedule::command('attachments:purge')->daily();
+// Menyelesaikan permohonan yang masa unduhnya lewat; tidak menghapus berkas.
+Schedule::command('letters:expire-downloads')->daily();
 // Hanya menghapus file yang tidak dirujuk berita/UMKM aktif.
 Schedule::command('media:prune')->daily();

@@ -192,7 +192,7 @@ class LetterRegisterTest extends TestCase
         foreach (ApplicationStatus::values() as $status) {
             $application->update(['status' => $status]);
             $this->lookup($application)->assertOk()->assertExactJson([
-                'success' => true, 'request_id' => $application->request_id, 'jenis_surat' => 'SKU', 'lampiran' => [],
+                'success' => true, 'request_id' => $application->request_id, 'jenis_surat' => 'SKU', 'lampiran' => [], 'letter_available' => false, 'letter_available_until' => null,
                 'status' => $status, 'catatan' => null, 'requires_neighborhood_approval' => false,
                 'letter_number' => in_array($status, ['APPROVED', 'READY_FOR_PICKUP', 'COMPLETED']) ? $number : null,
             ]);
