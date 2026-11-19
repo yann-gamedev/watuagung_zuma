@@ -5,6 +5,7 @@ import { CheckCircle2, Copy, CircleAlert, Search, House } from "lucide-react";
 import { useEffect, useState } from "react";
 import { isDemo } from "@/services/pelayanan";
 import { services } from "@/lib/data";
+import { HubungiPetugas } from "@/components/hubungi-petugas";
 export function Success() {
   const id = useSearchParams().get("id");
   const [message, setMessage] = useState("");
@@ -39,6 +40,7 @@ export function Success() {
         <Link href="/pelayanan" className="btn">
           Pilih layanan
         </Link>
+        <HubungiPetugas />
       </div>
     );
   return (
@@ -94,10 +96,11 @@ export function Success() {
           <strong>{isDemo ? "Simpan nomor pengajuan ini." : "Simpan nomor dan kode akses ini."}</strong>
           <p>{isDemo
             ? "Status simulasi hanya tersedia di browser yang sama dan tidak berubah otomatis. Menghapus penyimpanan browser akan menghapus riwayat. Simulasi tidak memerlukan kode akses."
-            : "Simpan di tempat aman; kode hanya tampil di tab ini. Jika hilang, minta kode baru ke kantor desa dengan membawa KTP/KK."}</p>
+            : "Simpan di tempat aman; kode hanya tampil di tab ini. Nomor pengajuan dan kode akses diperlukan untuk cek status dan unduh surat selama 30 hari sejak scan surat diunggah. Jangan bagikan kode akses, termasuk melalui WhatsApp. Jika hilang, hubungi petugas untuk arahan."}</p>
           {!isDemo && !secret && <p>Kode akses tidak tersedia di tab ini. Gunakan kode yang telah Anda simpan atau hubungi kantor desa untuk arahan.</p>}
         </div>
       </div>
+      {!isDemo && <p className="receipt-intro">Setelah status Disetujui, cek lagi dalam 1–2 hari kerja. Setelah surat ditandatangani basah, distempel, dan scan diunggah petugas, unduh melalui Cek Status Surat.</p>}
       <div className="button-row">
         <Link href={"/pelayanan/status/?id=" + encodeURIComponent(id)} className="btn">
           <Search size={22} aria-hidden="true" /> Cek Status Surat
@@ -106,6 +109,7 @@ export function Success() {
           <House size={22} aria-hidden="true" /> Kembali ke Beranda
         </Link>
       </div>
+      <HubungiPetugas requestId={id} />
     </div>
   );
 }

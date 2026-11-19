@@ -21,15 +21,15 @@ export default function Home() {
           {[
             [
               "Pilih jenis surat",
-              "Baca persyaratannya, lalu isi formulir data diri.",
+              "Baca persyaratannya, isi formulir, lalu unggah Scan KTP, Scan Kartu Keluarga, dan Scan Surat Pengantar RT/RW.",
             ],
             [
               "Simpan nomor dan kode akses",
               "Simpan keduanya untuk cek status; jika kode hilang, minta kode baru ke kantor desa dengan membawa KTP/KK. Semua jenis surat diverifikasi petugas desa lalu disetujui Kepala Desa.",
             ],
             [
-              "Ambil di kantor desa",
-              "Datang setelah petugas menyatakan surat Anda siap.",
+              "Unduh surat",
+              "Cek status dengan nomor pengajuan dan kode akses. Unduh surat bertanda tangan basah dan stempel selama 30 hari sejak scan surat diunggah.",
             ],
           ].map(([title, description], index) => (
             <li key={title}>

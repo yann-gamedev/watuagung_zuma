@@ -10,9 +10,9 @@ export function letterSteps(neighborhoodApproval = false): ReadonlyArray<readonl
     ] as const : []),
     ["VERIFIED", "Diverifikasi desa", "Verifikasi kelengkapan data oleh petugas desa."],
     ["PROCESSING", "Diproses", "Penyiapan surat oleh petugas."],
-    ["WAITING_APPROVAL", "Menunggu tanda tangan Kepala Desa", "Pengajuan menunggu persetujuan Kepala Desa; tanda tangan elektronik belum tersedia."],
-    ["APPROVED", "Disetujui", "Persetujuan pengajuan surat."],
-    ["READY_FOR_PICKUP", "Siap diambil", "Surat siap diambil di kantor desa."],
-    ["COMPLETED", "Selesai", "Surat sudah diambil."],
+    ["WAITING_APPROVAL", "Menunggu persetujuan Kepala Desa", "Pengajuan menunggu persetujuan Kepala Desa."],
+    ["APPROVED", "Disetujui", "Surat sedang ditandatangani Kepala Desa. Cek lagi dalam 1–2 hari kerja."],
+    ["READY_FOR_PICKUP", "Siap diunduh", "Surat sudah bisa diunduh di halaman ini sampai {tanggal}."],
+    ["COMPLETED", "Selesai", "Surat sudah diunduh."],
   ];
 }

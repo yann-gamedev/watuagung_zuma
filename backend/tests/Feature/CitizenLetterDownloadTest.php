@@ -96,7 +96,7 @@ class CitizenLetterDownloadTest extends TestCase
         [$application, $secret] = $this->approved();
         $this->actAs($this->staff);
         $response = $this->uploadScan($application->request_id)->assertOk()->assertJsonPath('status', 'READY_FOR_PICKUP')
-            ->assertJsonPath('letter.source', 'uploaded');
+            ->assertJsonPath('letter.source', 'uploaded')->assertJsonPath('letter.download_count', 0)->assertJsonPath('letter.last_downloaded_at', null);
         $letter = $this->letter($application);
         $this->assertNotNull($letter->ready_at);
         $this->assertSame(Carbon::parse($letter->ready_at)->toISOString(), $response->json('letter.ready_at'));
@@ -202,6 +202,39 @@ class CitizenLetterDownloadTest extends TestCase
             $this->assertSame($application->id, (int) $audit->subject_id);
         }
         $this->lookup($application, $secret)->assertOk()->assertJsonPath('status', 'COMPLETED')->assertJsonPath('letter_available', true);
+    }
+
+    public function test_staff_letter_summary_counts_only_citizen_downloads_for_this_application(): void
+    {
+        $this->travelTo(now()->startOfSecond());
+        [$application, $secret] = $this->ready();
+        $detailUrl = '/api/v1/staff/applications/'.$application->request_id;
+        $this->getJson($detailUrl)->assertOk()->assertJsonPath('letter.download_count', 0)->assertJsonPath('letter.last_downloaded_at', null);
+
+        $this->download($application, $secret)->assertOk();
+        $firstDownload = now()->toISOString();
+        $this->actAs($this->staff);
+        $this->getJson($detailUrl)->assertOk()->assertJsonPath('letter.download_count', 1)->assertJsonPath('letter.last_downloaded_at', $firstDownload);
+
+        $this->travel(1)->minutes();
+        $this->download($application, $secret)->assertOk();
+        $lastDownload = now()->toISOString();
+        $this->actAs($this->staff);
+        $this->getJson($detailUrl)->assertOk()->assertJsonPath('letter.download_count', 2)->assertJsonPath('letter.last_downloaded_at', $lastDownload);
+
+        $this->travel(1)->minutes();
+        $this->get('/api/v1/staff/applications/'.$application->request_id.'/letter.pdf')->assertOk();
+        $this->assertDatabaseHas('audit_logs', ['action' => 'letter.downloaded', 'subject_id' => $application->id, 'user_id' => $this->staff->id]);
+        [$other, $otherSecret] = $this->ready();
+        $this->download($other, $otherSecret)->assertOk();
+        DB::table('audit_logs')->insert([
+            ['action' => 'letter.downloaded', 'subject_type' => 'other', 'subject_id' => $application->id, 'user_id' => null, 'created_at' => now()],
+            ['action' => 'letter.uploaded', 'subject_type' => 'application', 'subject_id' => $application->id, 'user_id' => null, 'created_at' => now()],
+        ]);
+        $this->actAs($this->staff);
+        $this->getJson($detailUrl)->assertOk()->assertJsonPath('letter.download_count', 2)->assertJsonPath('letter.last_downloaded_at', $lastDownload);
+        $this->lookup($application, $secret)->assertOk()->assertJsonMissingPath('download_count')->assertJsonMissingPath('last_downloaded_at')
+            ->assertJsonMissingPath('letter.download_count')->assertJsonMissingPath('letter.last_downloaded_at');
     }
 
     public function test_wrong_code_shares_lockout_with_status_lookup(): void

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { services } from "@/lib/data";
 import { PageHeading, PublicShell } from "@/components/site";
 import { ApplicationForm } from "@/features/pelayanan/application-form";
+import { HubungiPetugas } from "@/components/hubungi-petugas";
 export function generateStaticParams() {
   return services.map((s) => ({ service: s.slug }));
 }
@@ -36,14 +37,15 @@ export default async function Page({
           <h2 id="preparation-title">Siapkan dulu</h2>
           <p className="service-example">Persyaratan sementara — menunggu konfirmasi desa</p>
           <ul>
-            <li>Foto/pindaian KTP</li>
-            <li>Foto/pindaian Kartu Keluarga</li>
-            <li>Surat Pengantar dari Ketua RT/RW</li>
+            <li>Scan KTP</li>
+            <li>Scan Kartu Keluarga</li>
+            <li>Scan Surat Pengantar RT/RW</li>
           </ul>
           <p className="service-estimate"><strong>Waktu pelayanan:</strong> {item.time}</p>
           <p className="service-example"><strong>Contoh keperluan:</strong> {item.example}</p>
-          <p className="service-example">Bawa dokumen asli saat mengambil surat.</p>
+          <p className="service-example">Surat bertanda tangan basah dan stempel dapat diunduh melalui Cek Status Surat selama 30 hari sejak scan surat diunggah.</p>
           <p className="service-example">Persyaratan ini belum menjadi ketentuan resmi desa.</p>
+          <HubungiPetugas />
         </aside>
         <ApplicationForm code={item.code} />
       </section>

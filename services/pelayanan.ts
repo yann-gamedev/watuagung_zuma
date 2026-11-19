@@ -15,12 +15,16 @@ export class SubmissionValidationError extends Error {
     this.name = "SubmissionValidationError";
   }
 }
-export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function apiRequest<T>(path: string, options: RequestInit = {}, pdf = false): Promise<T> {
   if (!apiBase) throw new Error("API tidak tersedia dalam mode simulasi.");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
   try {
     const response = await fetch(`${apiBase}${path}`, { ...options, headers: { Accept: "application/json", "Content-Type": "application/json", ...options.headers }, signal: controller.signal, cache: "no-store" });
+    if (pdf && response.ok) {
+      if (!response.headers.get("Content-Type")?.includes("application/pdf")) throw new Error("Berkas surat tidak dapat dibaca. Coba lagi atau hubungi petugas.");
+      return await response.blob() as T;
+    }
     const body = (await response.json().catch(() => ({}))) as { message?: string; errors?: Record<string, string[]> };
     if (!response.ok) {
       if (response.status === 422 && body.errors) throw new Error(Object.values(body.errors).flat().join(" "));
@@ -70,7 +74,31 @@ function uploadMultipart<T>(path: string, form: FormData, schema: z.ZodType<T>, 
     xhr.send(form);
   });
 }
+const demoDownloaded = new Set<string>();
+const demoDeadline = new Date(Date.now() + 30 * 86400000).toISOString();
 export const pelayananService = {
+  async downloadLetter(id: string, secret?: string): Promise<Blob> {
+    if (apiBase) {
+      if (!secret?.trim()) throw new Error('Masukkan kode akses pengajuan.');
+      return apiRequest<Blob>('/applications/letter', { method: 'POST', body: JSON.stringify({ request_id: id, lookup_secret: secret }) }, true);
+    }
+    if (!['REQ-2026-000005', 'REQ-2026-000006'].includes(id)) throw new Error('Surat belum tersedia untuk diunduh.');
+    // Demo PDF contains no citizen data, signature, stamp, or operational QR.
+    const stream = 'BT /F1 18 Tf 50 780 Td (SIMULASI - BUKAN SURAT RESMI) Tj 0 -30 Td (Contoh unduhan Desa Watuagung. Data fiktif.) Tj ET';
+    const objects = [
+      '<< /Type /Catalog /Pages 2 0 R >>',
+      '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+      '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+      '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+      `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+    ];
+    let pdf = '%PDF-1.4\n';
+    const offsets = objects.map((object, index) => { const offset = pdf.length; pdf += `${index + 1} 0 obj\n${object}\nendobj\n`; return offset; });
+    const xref = pdf.length;
+    pdf += `xref\n0 6\n0000000000 65535 f \n${offsets.map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+    demoDownloaded.add(id);
+    return new Blob([pdf], { type: 'application/pdf' });
+  },
   async submit(data: Submission, attachments: SubmissionAttachments, onProgress?: (percent: number | null) => void): Promise<Receipt> {
     // Demo checks form fields first, matching the existing validation contract.
     const parsed = !apiBase ? submissionSchema.safeParse(data) : undefined;
@@ -115,13 +143,13 @@ export const pelayananService = {
   async getStatus(id: string, secret?: string): Promise<StatusReceipt> {
     if (apiBase) {
       if (!secret) throw new Error('Masukkan kode akses pengajuan.');
-      return receiptSchema.extend({ requires_neighborhood_approval: z.boolean(), jenis_surat: z.enum(serviceCodes), lampiran: attachmentListSchema.optional(), catatan: z.string().nullable().optional(), letter_number: z.string().nullable().optional() }).parse(await apiRequest('/applications/status', { method: 'POST', body: JSON.stringify({ request_id: id, lookup_secret: secret }) }));
+      return receiptSchema.extend({ requires_neighborhood_approval: z.boolean(), jenis_surat: z.enum(serviceCodes), lampiran: attachmentListSchema.optional(), catatan: z.string().nullable().optional(), letter_number: z.string().nullable().optional(), letter_available: z.boolean(), letter_available_until: z.string().datetime({ offset: true }).nullable() }).parse(await apiRequest('/applications/status', { method: 'POST', body: JSON.stringify({ request_id: id, lookup_secret: secret }) }));
     }
     await new Promise((resolve) => setTimeout(resolve, 650));
     const record = demoRecords().find((item) => item.request_id === id);
     if (record) return record;
     const examples: Record<string, (typeof statuses)[number]> = { 'REQ-2026-000001': 'PROCESSING', 'REQ-2026-000002': 'NEED_REVISION', 'REQ-2026-000003': 'APPROVED', 'REQ-2026-000004': 'REJECTED', 'REQ-2026-000005': 'READY_FOR_PICKUP', 'REQ-2026-000006': 'COMPLETED', 'REQ-2026-000007': 'SUBMITTED', 'REQ-2026-000008': 'VERIFIED' };
-    if (examples[id]) return { success: true, request_id: id, status: examples[id], requires_neighborhood_approval: false, jenis_surat: id.endsWith('000007') ? 'SKTM' : 'DOMISILI', catatan: examples[id] === 'NEED_REVISION' ? 'Contoh: dusun dan alamat perlu dilengkapi.' : examples[id] === 'REJECTED' ? 'Contoh: pengajuan tidak memenuhi persyaratan.' : undefined };
+    if (examples[id]) return { success: true, request_id: id, status: demoDownloaded.has(id) ? 'COMPLETED' : examples[id], letter_available: ['REQ-2026-000005', 'REQ-2026-000006'].includes(id), letter_available_until: ['REQ-2026-000005', 'REQ-2026-000006'].includes(id) ? demoDeadline : null, requires_neighborhood_approval: false, jenis_surat: id.endsWith('000007') ? 'SKTM' : 'DOMISILI', catatan: examples[id] === 'NEED_REVISION' ? 'Contoh: dusun dan alamat perlu dilengkapi.' : examples[id] === 'REJECTED' ? 'Contoh: pengajuan tidak memenuhi persyaratan.' : undefined };
     throw new Error('Nomor pengajuan tidak ditemukan. Periksa kembali nomor Anda.');
   },
 };

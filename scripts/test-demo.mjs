@@ -42,7 +42,7 @@ const { offeredServiceCodes, dusunOptions, agamaOptions, kewarganegaraanOptions,
 const { services } = await source("lib/data.ts");
 assert.deepEqual(services.map((service) => service.code).sort(), [...offeredServiceCodes].sort());
 for (const service of services) {
-  assert.deepEqual(service.requirements, ["Bawa KTP dan KK asli saat mengambil surat."]);
+  assert.deepEqual(service.requirements, ["Scan KTP", "Scan Kartu Keluarga", "Scan Surat Pengantar RT/RW"]);
   assert.ok(service.description && service.example);
 }
 for (const file of ["components/service-list.tsx", "components/site.tsx", "app/page.tsx"]) {
@@ -183,6 +183,17 @@ await assert.rejects(pelayananService.submit(valid, attachments), /Penyimpanan s
 const { letterSteps } = await source("lib/letter-workflow.ts");
 assert.deepEqual(letterSteps().map(([status]) => status), ["SUBMITTED", "VERIFIED", "PROCESSING", "WAITING_APPROVAL", "APPROVED", "READY_FOR_PICKUP", "COMPLETED"]);
 assert.deepEqual(letterSteps(true).map(([status]) => status), ["SUBMITTED", "RT_APPROVED", "RW_APPROVED", ...letterSteps().slice(1).map(([status]) => status)]);
+assert.equal(letterSteps().find(([code]) => code === "READY_FOR_PICKUP")[1], "Siap diunduh");
+const beforeDownload = stored;
+assert.equal((await pelayananService.getStatus("REQ-2026-000005")).letter_available, true);
+const demoPdf = await pelayananService.downloadLetter("REQ-2026-000005");
+assert.equal(demoPdf.type, "application/pdf");
+assert.match(await demoPdf.text(), /SIMULASI - BUKAN SURAT RESMI/);
+assert.equal((await pelayananService.getStatus("REQ-2026-000005")).status, "COMPLETED");
+assert.equal((await pelayananService.getStatus("REQ-2026-000005")).letter_available, true);
+assert.equal((await pelayananService.downloadLetter("REQ-2026-000005")).size, demoPdf.size, "Repeat download allowed");
+await assert.rejects(pelayananService.downloadLetter("REQ-2026-000003"), /belum tersedia/);
+assert.equal(stored, beforeDownload, "Demo PDF and completion remain in memory, no private data stored");
 const form = readFileSync("features/pelayanan/application-form.tsx", "utf8");
 assert.doesNotMatch(form, /dummy-residents|dummyPreview|autofill/);
 for (const field of ["rt", "rw"]) assert.ok(form.includes(`field("${field}"`), "Keep address territory fields");
@@ -196,7 +207,7 @@ for (const url of [undefined, "", "https://forms.gle/", "http://forms.gle/Abc", 
 process.env.NEXT_PUBLIC_DEMO_MODE = "false";
 modules.delete("services/pelayanan.ts");
 const { pelayananService: apiService, SubmissionValidationError: ApiSubmissionValidationError } = await source("services/pelayanan.ts");
-let apiReceipt = { success: true, request_id: "REQ-2026-APITEST", status: "SUBMITTED", jenis_surat: "SKTM", requires_neighborhood_approval: true, lookup_secret: "test-only", lampiran: Object.keys(attachments) };
+let apiReceipt = { success: true, request_id: "REQ-2026-APITEST", status: "SUBMITTED", jenis_surat: "SKTM", requires_neighborhood_approval: true, lookup_secret: "test-only", lampiran: Object.keys(attachments), letter_available: false, letter_available_until: null };
 let outcome = { status: 201 };
 const xhrs = [];
 let xhrCount = 0;
@@ -328,7 +339,30 @@ apiReceipt = { ...apiReceipt, lampiran: [] };
 delete apiReceipt.requires_neighborhood_approval;
 await assert.rejects(apiService.submit(valid, attachments), /requires_neighborhood_approval/);
 await assert.rejects(apiService.getStatus(apiReceipt.request_id, "test-only"), /requires_neighborhood_approval/);
+apiReceipt = { ...apiReceipt, requires_neighborhood_approval: false, letter_available: true, letter_available_until: "2026-12-19T13:00:00+07:00" };
+assert.equal((await apiService.getStatus(apiReceipt.request_id, "test-only")).letter_available, true);
+assert.equal((await apiService.getStatus(apiReceipt.request_id, "test-only")).letter_available_until, apiReceipt.letter_available_until);
+const pdfBytes = new Blob(["%PDF-1.4 fictional signed scan"], { type: "application/pdf" });
+let downloadOutcome = 200;
+globalThis.fetch = async (url, options) => {
+  assert.equal(url, "http://127.0.0.1:8000/api/v1/applications/letter");
+  assert.equal(options.method, "POST");
+  assert.equal(options.cache, "no-store");
+  assert.deepEqual(JSON.parse(options.body), { request_id: apiReceipt.request_id, lookup_secret: "download-test-only" });
+  assert.ok(!url.includes("download-test-only"));
+  return downloadOutcome === 200
+    ? new Response(pdfBytes, { headers: { "Content-Type": "application/pdf" } })
+    : Response.json({ message: downloadOutcome === 410 ? "Masa unduh sudah berakhir." : "Gagal mengunduh." }, { status: downloadOutcome });
+};
+await assert.rejects(apiService.downloadLetter(apiReceipt.request_id, " "), /Masukkan kode akses/);
+assert.equal(await (await apiService.downloadLetter(apiReceipt.request_id, "download-test-only")).text(), await pdfBytes.text());
+assert.equal(await (await apiService.downloadLetter(apiReceipt.request_id, "download-test-only")).text(), await pdfBytes.text());
+for (const code of [404, 410, 429, 500]) {
+  downloadOutcome = code;
+  await assert.rejects(apiService.downloadLetter(apiReceipt.request_id, "download-test-only"), code === 410 ? /Masa unduh/ : /Gagal mengunduh/);
+}
+assert.equal(stored, storageBeforeApi, "Download credentials and PDF never persisted");
 execFileSync(process.execPath, ["scripts/test-attachments.mjs"], { stdio: "inherit" });
 execFileSync(process.execPath, ["scripts/test-public-news.mjs"], { stdio: "inherit" });
 execFileSync(process.execPath, ["scripts/test-public-businesses.mjs"], { stdio: "inherit" });
-console.log("PASS: demo/API isolation, three required attachments, native XHR multipart fields/files, revision subsets with body-only secret and unchanged NEED_REVISION, demo revision blocked, upload progress, structured 422, timeout/network/413 errors, validated attachment receipts, six final payloads, per-type required/prohibited fields, enums and text limits, retired types rejected, valid calendar dates and Jakarta midnight, 1..7 inclusive event days, storage privacy/legacy sanitization without files, server workflow metadata, removed autofill, complaint URL, public news, public UMKM.");
+console.log("PASS: citizen POST/blob downloads, body-only secret, first/repeat demo PDF, availability/deadline parsing, 404/410/429/500 errors; demo/API isolation, three required attachments, native XHR multipart fields/files, revision subsets with body-only secret and unchanged NEED_REVISION, demo revision blocked, upload progress, structured 422, timeout/network/413 errors, validated attachment receipts, six final payloads, per-type required/prohibited fields, enums and text limits, retired types rejected, valid calendar dates and Jakarta midnight, 1..7 inclusive event days, storage privacy/legacy sanitization without files, server workflow metadata, removed autofill, complaint URL, public news, public UMKM.");
