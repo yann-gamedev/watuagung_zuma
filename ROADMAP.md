@@ -202,7 +202,7 @@ Bergantung pada K5 dan M2.
 - [x] Template enam jenis sesuai format resmi desa (S2, 8 Nov 2026): logo/kop, identitas, keterangan, tanggal acara, tanda tangan dan QR; enam contoh fiktif satu A4, teks PDF diuji. Review kesamaan dengan surat asli oleh pengguna masih tertunda; unggah manual tetap tersedia
 - [x] Format penomoran surat resmi dari contoh surat desa: `{kode_klasifikasi}/{urut}/{kode_desa}/{tahun}`, klasifikasi `470` semua jenis, kode desa `424.314.2.02`, tanpa bulan romawi (S1, 8 Nov 2026). Mesin penomoran/register tetap di M3a. Kode `35.314.10.2.02` pada contoh Izin Keramaian dianggap salah ketik sampai desa menjawab.
 - [x] Draf PDF bertanda DRAF untuk staff/admin/village_head saat PROCESSING/WAITING_APPROVAL; PDF final ber-QR saat `APPROVED`, disimpan terenkripsi di storage privat dengan SHA-256; siapa/kapan Kepala Desa menyetujui dicatat; setiap unduhan diaudit
-- [x] Unggah surat manual hasil pindaian (staff/admin) yang menggantikan PDF otomatis dengan kode QR yang sama; unduh PNG QR untuk ditempel
+- [x] Unggah surat manual hasil scan (staff/admin) yang menggantikan PDF otomatis dengan kode QR yang sama; unduh PNG QR untuk ditempel
 - [x] Verifikasi publik `GET /verify/{kode}` (30/menit) dan halaman statis `/verifikasi/`: nomor, jenis, tanggal terbit, nama tersamar, sah/dibatalkan; catatan hukum TTE/BSrE di `PRODUCT.md`
 - [x] Verifikasi teknis sesi PDF: `php artisan test` (177 tes, 1.838 assertions), lint, tsc, build, build demo, test:demo dan `test-admin-filters` lulus; PDF contoh empat jenis + draf diperiksa visual. Bukti di `docs/progres-2026-10-21.md`.
 - [ ] Uji manual end-to-end dengan Laravel lokal (alur persetujuan → unduh → unggah → pindai QR dengan ponsel) dan pemeriksaan visual halaman terkait pada 390px/1440px — menunggu pengguna. Pastikan migration dan `LETTER_VERIFY_URL` pada lingkungan uji sudah sesuai.
@@ -217,6 +217,11 @@ Enam jenis surat tetap: DOMISILI, SKTM, BELUM_MENIKAH, KERAMAIAN, KEHILANGAN, UM
 - [x] **S3 — Formulir warga dan halaman layanan** (`feat/letters-final-form`, 8 Nov 2026): katalog enam jenis, data diri tambahan/pilihan baku, isian khusus per jenis, ringkasan sebelum kirim, Zod selaras backend, label sukses/status/verifikasi, privasi dan demo. Lint, tsc, build, build:demo, test:demo dan regresi filter admin lulus; enam pengajuan fiktif melalui browser ke Laravel lokal tersimpan, agama/status perkawinan terenkripsi; formulir SKTM/KERAMAIAN/UMUM 390px/1440px diperiksa. Lihat `docs/progres-2026-11-08-s3.md`.
 - [x] **S4 — Panel petugas untuk jenis baru** (`feat/letters-final-admin`, 8 Nov 2026): detail data diri baru, agama/status perkawinan disamarkan dengan "Tampilkan" (memuat ulang detail, tercatat `application.viewed`), detail permintaan per jenis, sunting isi keterangan UMUM sampai `WAITING_APPROVAL` dengan teks asli warga, riwayat `STATEMENT_EDITED`, filter/ringkasan/register enam jenis baru plus label jenis lama. Lint, tsc, build, build:demo, test:demo, regresi filter, `php artisan test` (PHP 8.3) dan E2E browser Laravel lokal UMUM/KERAMAIAN 390px/1440px lulus. Lihat `docs/progres-2026-11-08-s4.md`.
 - [ ] TTE tersertifikasi (BSrE) — di luar lingkup sampai ada kerja sama resmi
+
+### Alur online O1–O2 — 19 November 2026
+
+- [x] O1 — API unggah scan otomatis Siap diunduh, POST unduh warga 30 hari, unduhan pertama Selesai, unduh ulang dan audit; lihat `docs/integrasi.md`.
+- [x] O2 — Layar unduh warga, bantuan HubungiPetugas, panel scan/tenggat/riwayat, istilah scan, privasi dan demo; lint, tsc, build, build:demo, test:demo, 472 tes backend dan E2E Laravel SQLite terisolasi + 390px/1440px lulus (20 November 2026). Verifikasi sesi dicatat di `docs/progres-2026-11-19-online-letter-ui.md`.
 
 ## M8 — Kesiapan produksi
 

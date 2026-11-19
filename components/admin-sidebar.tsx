@@ -15,7 +15,7 @@ export const adminLinks = [
   { title: "Persetujuan", href: "/admin/persetujuan", Icon: FileCheck2 },
   { title: "Antrean RT", href: "/admin/antrean-rt", Icon: ClipboardList },
   { title: "Antrean RW", href: "/admin/antrean-rw", Icon: ClipboardList },
-  { title: "Siap diambil", href: "/admin/surat", Icon: FileCheck2 },
+  { title: "Siap diunduh", href: "/admin/surat", Icon: FileCheck2 },
   { title: "Buku registrasi", href: "/admin/register", Icon: ClipboardList },
   { title: "Berita", href: "/admin/berita", Icon: Newspaper },
   { title: "UMKM", href: "/admin/umkm", Icon: Store },

@@ -4,7 +4,7 @@ Branch: `feat/attachments-form`. Commit diminta: `feat(web): document upload on 
 
 ## Lingkup
 
-- `app/pelayanan/[service]/page.tsx`: Siapkan dulu memuat foto/pindaian KTP, KK, pengantar Ketua RT/RW, dan pengingat membawa dokumen asli. Label sementara dipertahankan; kalimat data fiktif di kartu dihapus. DOM/grid persyaratan sebelum formulir pada HP tidak diubah.
+- `app/pelayanan/[service]/page.tsx`: Siapkan dulu memuat Scan KTP, Scan Kartu Keluarga, Scan Surat Pengantar RT/RW, dan pengingat membawa dokumen asli. Label sementara dipertahankan; kalimat data fiktif di kartu dihapus. DOM/grid persyaratan sebelum formulir pada HP tidak diubah.
 - `features/pelayanan/application-form.tsx`, `document-upload.tsx`: tiga langkah isian → unggah → ringkasan; kartu per dokumen, kamera belakang, pilih file, pratinjau, Ganti/Hapus, tips, wajib tiga dokumen, daftar terlampir, progres dan galat 422 per kartu. Data isian/file tetap saat koreksi; file dilepas setelah sukses.
 - `lib/attachments.ts`: canvas JPEG kualitas 0,85, sisi panjang ≤2.000 px tanpa memperbesar; sisi pendek <600 px ditolak agar tetap terbaca. Hasil foto ≥1.500.000 byte ditolak dengan petunjuk, bukan dikirim besar diam-diam. PDF ≤5 MiB, header `%PDF-`, isi tidak diubah. Nama netral; file tidak masuk browser storage, object URL dibersihkan.
 - `services/pelayanan.ts`, `types/pelayanan.ts`: XHR multipart native bersama untuk submit/revisi, timeout 120 detik, persen bila tersedia, galat terstruktur, validasi Zod; demo tidak mengirim file dan tidak menyimpannya.

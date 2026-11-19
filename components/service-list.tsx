@@ -11,7 +11,7 @@ export function ServiceList({ fullRequirements = false }: { fullRequirements?: b
       <div className="home-section-heading">
         <div>
           <h2 id="services-title">Layanan surat yang tersedia</h2>
-          <p>Pilih jenis surat dan baca persyaratan pengambilannya.</p>
+          <p>Pilih jenis surat dan baca persyaratan pengajuannya.</p>
         </div>
         {!fullRequirements && (
           <Link className="home-all-services" href="/pelayanan">
@@ -51,7 +51,7 @@ export function ServiceList({ fullRequirements = false }: { fullRequirements?: b
           </li>
         ))}
       </ul>
-      <p className="home-service-note">Persyaratan sementara dan waktu pelayanan menunggu konfirmasi desa.</p>
+      <p className="home-service-note">Unggah tiga dokumen persyaratan, lalu unduh surat melalui Cek Status Surat setelah tersedia.</p>
     </section>
   );
 }

@@ -17,7 +17,7 @@ Portal informasi desa dan prototipe pelayanan administrasi: frontend Next.js dan
 - Lima peran panel: Ketua RT, Ketua RW, Petugas, Kepala Desa, dan Admin. RT/RW dibatasi wilayahnya.
 - Daftar/detail pengajuan, pencarian/filter, riwayat status, audit akses, serta antrean persetujuan.
 - Manajemen akun oleh Admin: tambah/ubah/nonaktifkan, reset kata sandi sementara, dan wajib ganti kata sandi. Sesi bertahan saat refresh melalui `sessionStorage` tab, dengan validasi server dan batas kedaluwarsa.
-- Penomoran otomatis, buku register, draf/final PDF, unggah surat manual hasil pindaian, dan verifikasi QR. **Template dan format nomor masih sementara; QR bukan TTE tersertifikasi.** Warga tetap mengambil surat fisik.
+- Penomoran otomatis, buku register, draf/final PDF, unggah scan surat bertanda tangan, dan verifikasi QR. **QR bukan TTE tersertifikasi.** Setelah scan diunggah, warga mengunduh melalui cek status dengan nomor pengajuan dan kode akses selama 30 hari.
 - Bantuan buat ulang kode akses melalui petugas/RT/RW setelah pemeriksaan identitas; bukan pemulihan mandiri melalui OTP.
 
 Domisili, SKTM, dan KTP/KK: **warga → RT → RW → petugas desa → Kepala Desa → petugas menyiapkan surat → diambil warga**. SKU langsung ke petugas desa tanpa RT/RW. Hanya Kepala Desa yang memutuskan persetujuan akhir.

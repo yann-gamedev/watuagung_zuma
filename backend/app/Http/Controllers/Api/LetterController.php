@@ -108,7 +108,11 @@ class LetterController extends Controller {
     }
 
     public static function summary(?object $letter): ?array {
-        return $letter ? [
+        if (! $letter) return null;
+        $downloads = DB::table('audit_logs')->where('action', 'letter.downloaded')
+            ->where('subject_type', 'application')->where('subject_id', $letter->application_id)->whereNull('user_id')
+            ->selectRaw('COUNT(*) as download_count, MAX(created_at) as last_downloaded_at')->first();
+        return [
             'approved_at'=>Carbon::parse($letter->approved_at)->toISOString(),
             'source'=>$letter->source,
             'sha256'=>$letter->sha256,
@@ -116,7 +120,9 @@ class LetterController extends Controller {
             'file_purged_at'=>$letter->file_purged_at ? Carbon::parse($letter->file_purged_at)->toISOString() : null,
             'ready_at'=>$letter->ready_at ? Carbon::parse($letter->ready_at)->toISOString() : null,
             'download_until'=>Letter::downloadUntil($letter)?->toISOString(),
-        ] : null;
+            'download_count'=>(int) $downloads->download_count,
+            'last_downloaded_at'=>$downloads->last_downloaded_at ? Carbon::parse($downloads->last_downloaded_at)->toISOString() : null,
+        ];
     }
 
     private function allowed(User $user, array $roles): bool {

@@ -47,7 +47,7 @@ export function AdminDashboard() {
     { label: "Perlu tindakan Anda", value: summary.my_queue, query: "my_queue=1" },
     { label: "Masuk hari ini", value: summary.today, query: "today=1" },
     { label: "Menunggu persetujuan Kepala Desa", value: summary.by_status.WAITING_APPROVAL, query: "status=WAITING_APPROVAL" },
-    { label: "Siap diambil", value: summary.by_status.READY_FOR_PICKUP, query: "status=READY_FOR_PICKUP" },
+    { label: "Siap diunduh", value: summary.by_status.READY_FOR_PICKUP, query: "status=READY_FOR_PICKUP" },
   ] : [];
 
   return <div className={styles.list}>

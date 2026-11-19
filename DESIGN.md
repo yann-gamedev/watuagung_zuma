@@ -58,7 +58,7 @@ Simpan sebagai CSS variable di `app/globals.css` (`:root`) dan petakan ke `@them
 | Disetujui RT, menunggu RW (`RT_APPROVED`, ikon `UserCheck`) | `--sage` | `--leaf` |
 | Pengantar RT/RW sah, menunggu kantor desa (`RW_APPROVED`, ikon `ShieldCheck`) | `--sage` | `--leaf` |
 | Menunggu persetujuan | `--sand` | `--earth` |
-| Siap diambil / Selesai | `--leaf` | putih |
+| Siap diunduh / Selesai | `--leaf` | putih |
 | Perlu perbaikan | `--status-revision-bg` | `--status-revision-text` |
 | Ditolak | `--status-rejected-bg` | `--status-rejected-text` |
 
@@ -147,6 +147,12 @@ Di bawah panel tampil jam **Hari kerja, 08.00–13.00 WIB** dan tautan kontak ka
 
 3 langkah bernomor. Teksnya harus sesuai fitur yang tersedia; selama unggah dokumen belum ada, jangan menulis "unggah dokumen".
 
+### Bantuan dan unduh surat — 19 November 2026
+
+- `HubungiPetugas` memakai `useContact()`, pola kartu dan tombol yang sudah ada: judul Hubungi Petugas, nama kontak, jam, Chat WhatsApp dengan pesan bantuan pengajuan. Nomor pengajuan boleh disertakan; kode akses tidak boleh. Nomor belum tersedia: tampil alamat kantor.
+- Cek status menampilkan tombol utama Unduh surat (PDF) hanya bila server menyatakan `letter_available`; tenggat, catatan A4/QR, pesan kedaluwarsa, dan bantuan tetap terbaca. Unduh melalui POST/blob, bukan URL berkode akses.
+- Pesan Disetujui: surat sedang ditandatangani Kepala Desa, cek lagi 1–2 hari kerja. Siap diunduh: tenggat unduh. Selesai: surat sudah diunduh; kasus masa unduh berakhir ditampilkan terpisah.
+
 ### Badge "Segera hadir"
 
 Pill kecil berlatar `--sand`, teks `--earth` 14px berat 700. Wajib ada di setiap pintu masuk fitur yang belum tersedia.
@@ -161,9 +167,9 @@ Pill kecil berlatar `--sand`, teks `--earth` 14px berat 700. Wajib ada di setiap
 ### Kerangka panel admin — 17 Oktober 2026
 
 - Tiga bagian: sidebar `--forest` (256px), bilah atas putih bergaris bawah `--line` (judul halaman 28px/800, nama + peran petugas, tombol "Lihat website" dan "Keluar"), dan area isi berlatar `--cream`.
-- Menu sidebar hanya berisi halaman yang berfungsi: Dashboard, Permohonan, Persetujuan (hanya tampil untuk kepala desa), Siap diambil. Item aktif memakai `aria-current="page"`.
-- Tombol aksi status di detail permohonan hanya muncul bila diizinkan server (`allowed_transitions`). Label: Verifikasi, Proses, Ajukan ke Kepala Desa, Setujui, Tandai siap diambil, Tandai sudah diambil, Minta perbaikan, Tolak. Bila tidak ada aksi, tampilkan kalimat "Tidak ada tindakan yang tersedia untuk peran Anda pada status ini."
-- **Keputusan klien 2 November 2026:** linimasa bawaan semua jenis surat (`lib/letter-workflow.ts`) berisi tujuh tahap: Diterima → Diverifikasi desa → Diproses → Menunggu tanda tangan Kepala Desa → Disetujui → Siap diambil → Selesai. Tahap Disetujui RT dan Disetujui RW hanya ditambahkan bila `requires_neighborhood_approval` pada respons pengajuan/cek status bernilai true. Nilai berasal dari `LetterType` backend, bukan tabel jenis surat duplikat atau sakelar frontend. Bukti demo lama tanpa jenis surat tetap tidak menampilkan linimasa.
+- Menu sidebar hanya berisi halaman yang berfungsi: Dashboard, Permohonan, Persetujuan (hanya tampil untuk kepala desa), Siap diunduh. Item aktif memakai `aria-current="page"`.
+- Tombol aksi status di detail permohonan hanya muncul bila diizinkan server (`allowed_transitions`). Label: Verifikasi, Proses, Ajukan ke Kepala Desa, Setujui, Minta perbaikan, Tolak. Keputusan 19 November 2026: sembunyikan transisi manual READY_FOR_PICKUP dan COMPLETED. Kartu Surat bertanda tangan memakai pola kartu/tombol yang ada: Cetak draf → Tanda tangan Kepala Desa → Unggah scan (PDF ≤5 MB), lalu tenggat dan jumlah/waktu unduhan terakhir. Bila tidak ada aksi, tampilkan kalimat "Tidak ada tindakan yang tersedia untuk peran Anda pada status ini."
+- **Keputusan klien 2 November 2026:** linimasa bawaan semua jenis surat (`lib/letter-workflow.ts`) berisi tujuh tahap: Diterima → Diverifikasi desa → Diproses → Menunggu persetujuan Kepala Desa → Disetujui → Siap diunduh → Selesai. Tahap Disetujui RT dan Disetujui RW hanya ditambahkan bila `requires_neighborhood_approval` pada respons pengajuan/cek status bernilai true. Nilai berasal dari `LetterType` backend, bukan tabel jenis surat duplikat atau sakelar frontend. Bukti demo lama tanpa jenis surat tetap tidak menampilkan linimasa.
 - Teks publik statis menjelaskan alur bawaan langsung ke petugas desa lalu Kepala Desa; jangan menjanjikan verifikasi RT/RW. Formulir publik tidak mengimpor atau menampilkan autofill identitas dummy, tetapi kolom alamat RT/RW tetap ada; file fixture dan tesnya dipertahankan. Tidak ada perubahan token visual atau tata letak baru.
 - Pada ≤ 900px sidebar menjadi panel geser dari kiri (lebar `min(320px, 86vw)`) dengan lapisan `--forest` 55% di belakangnya. Tombol "Menu" (ikon + teks) di bilah atas; pola aksesibilitas sama dengan header publik: `aria-expanded`, fokus masuk panel, Tab terjebak di panel, Esc dan tombol tutup (`aria-label`) menutup, fokus kembali ke "Menu", scroll halaman dikunci. Panel tertutup saat berpindah halaman.
 - Pada ≤ 600px tombol bilah atas selebar layar dan bertumpuk.
@@ -175,7 +181,7 @@ Disetujui pengguna untuk M3:
 
 - Daftar permohonan: pencarian nomor/nama, filter status dan layanan dengan label Indonesia, urutan terbaru/terlama; kolom Nomor, Pemohon, Layanan, Tanggal, Status. Pada ≤600px menjadi kartu dengan tautan detail yang dapat diakses keyboard.
 - Detail: ringkasan di atas; desktop memakai kolom utama (data dan riwayat) dan panel aksi di kanan; layar sempit menjadi satu kolom dengan panel aksi setelah data dan riwayat. Kelompok Data diri, Alamat, Usaha (SKU), Keperluan; riwayat berbentuk linimasa.
-- NIK dan KK tampil utuh untuk semua peran panel karena dibutuhkan untuk verifikasi. Konfirmasi untuk Tolak, Setujui, dan Tandai sudah diambil. Catatan wajib untuk Tolak/Minta perbaikan.
+- NIK dan KK tampil utuh untuk semua peran panel karena dibutuhkan untuk verifikasi. Konfirmasi untuk Tolak dan Setujui; pengambilan fisik diganti unduhan warga (19 November 2026). Catatan wajib untuk Tolak/Minta perbaikan.
 - Semua warna, font, radius, spasi, dan ukuran tetap memakai token dokumen ini; gaya dibatasi ke fitur admin, tidak mengubah halaman publik.
 
 ### Antrean RT/RW — 20 Oktober 2026 (nonaktif bawaan sejak 2 November 2026)
@@ -196,7 +202,7 @@ Aturan bila aktif:
 Disetujui pengguna untuk kelima peran:
 
 - Empat kartu sejajar pada desktop, satu kolom pada ≤900px; angka 32px, label 16px (RT/RW tetap 18px mengikuti aturan teks minimum panel wilayah), radius 14px dan token panel admin yang ada.
-- Label: **Perlu tindakan Anda**, **Masuk hari ini**, **Menunggu persetujuan Kepala Desa**, **Siap diambil**. Setiap kartu menaut ke daftar dengan filter yang sama dengan hitungannya; RT/RW menuju antrean wilayahnya dalam mode semua pengajuan.
+- Label: **Perlu tindakan Anda**, **Masuk hari ini**, **Menunggu persetujuan Kepala Desa**, **Siap diunduh**. Setiap kartu menaut ke daftar dengan filter yang sama dengan hitungannya; RT/RW menuju antrean wilayahnya dalam mode semua pengajuan.
 - **Antrean terlama** berisi maksimal lima baris bertaut detail, memakai pola kartu daftar; keadaan kosong: "Belum ada permohonan yang perlu ditangani." Tanpa grafik atau komponen baru.
 - Filter `my_queue=1` dan `today=1` ditampilkan sebagai keterangan filter aktif, dipertahankan pada pagination/detail/kembali, dan dibuang oleh Hapus filter. Mode semua pengajuan wilayah dapat memakai filter status.
 

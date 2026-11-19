@@ -255,7 +255,7 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | PATCH | `/staff/applications/{request_id}/isi-keterangan` | Staff, admin (30/menit) | Body `isi_keterangan` (2–500); hanya UMUM sebelum `WAITING_APPROVAL`; riwayat `STATEMENT_EDITED`, audit `application.statement_edited` tanpa isi |
 | PATCH | `/staff/applications/{request_id}/status` | `applications:manage` (bukan kim) | Body `status` dan `catatan` opsional; respons memuat `status`, `catatan`, dan `allowed_transitions` baru |
 | GET | `/staff/applications/{request_id}/letter.pdf` | Staff, admin, village_head (30/menit) | Draf (PROCESSING/WAITING_APPROVAL) atau surat final (sejak APPROVED); diaudit |
-| POST | `/staff/applications/{request_id}/letter.pdf` | Staff, admin (10/menit) | Multipart `file` PDF ≤ 5 MB; mengganti PDF otomatis dengan surat hasil pindaian |
+| POST | `/staff/applications/{request_id}/letter.pdf` | Staff, admin (10/menit) | Multipart `file` PDF ≤ 5 MB; mengganti PDF otomatis dengan scan surat bertanda tangan |
 | GET | `/staff/applications/{request_id}/letter-qr.png` | Staff, admin | Gambar QR verifikasi untuk ditempel pada surat manual |
 | GET | `/staff/applications/{request_id}/attachments/{id}` | Staff, admin, village_head (60/menit) | Isi lampiran didekripsi, header aman, audit `attachment.viewed` setiap kali (§ Lampiran persyaratan) |
 | GET | `/verify/{kode}` | Publik, 30 permintaan/menit | Metadata surat tersamar untuk halaman verifikasi QR |

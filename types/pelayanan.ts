@@ -134,6 +134,10 @@ export interface LetterFile {
   ready_at?: string | null;
   /** Batas unduhan warga (`ready_at` + LETTER_DOWNLOAD_DAYS); null bila bukan scan unggahan. */
   download_until?: string | null;
+  /** Jumlah unduhan warga dari audit; tidak termasuk unduhan petugas. */
+  download_count: number;
+  /** Unduhan warga terakhir (ISO 8601); null bila belum pernah diunduh. */
+  last_downloaded_at: string | null;
 }
 /** GET /verify/{kode}, publik: tanpa NIK, alamat, isi surat, atau nomor pengajuan. */
 export interface LetterVerification {

@@ -18,7 +18,7 @@ const blocks = [
   },
   {
     title: "Dokumen persyaratan",
-    text: "Foto/pindaian KTP, KK, dan surat pengantar RT/RW dikumpulkan untuk verifikasi permohonan; disimpan terenkripsi, hanya dilihat petugas desa (termasuk admin pelayanan) dan kepala desa. Sistem menyediakan penghapusan otomatis 30 hari setelah permohonan selesai atau ditolak. Pelaksanaannya membutuhkan penjadwal server dan konfigurasi retensi aktif; penerapan pada server produksi belum diverifikasi. Pada mode simulasi, file hanya diproses di memori browser, tidak disimpan atau dikirim ke mana pun.",
+    text: "Scan KTP, Scan Kartu Keluarga, dan Scan Surat Pengantar RT/RW dikumpulkan untuk verifikasi permohonan; disimpan terenkripsi, hanya dilihat petugas desa (termasuk admin pelayanan) dan kepala desa. Sistem menyediakan penghapusan otomatis 30 hari setelah permohonan selesai atau ditolak. Pelaksanaannya membutuhkan penjadwal server dan konfigurasi retensi aktif; penerapan pada server produksi belum diverifikasi. Pada mode simulasi, file hanya diproses di memori browser, tidak disimpan atau dikirim ke mana pun.",
   },
   {
     title: "Tujuan pengolahan",
@@ -31,6 +31,10 @@ const blocks = [
   {
     title: "Keamanan data",
     text: "NIK, nomor KK, nomor telepon, alamat, tempat lahir, tanggal lahir, agama, dan status perkawinan disimpan terenkripsi. Kode akses hanya disimpan dalam bentuk hash, bukan sebagai kode asli. Jangan bagikan kode akses Anda kepada orang lain.",
+  },
+  {
+    title: "Unduh surat dan kerahasiaan akses",
+    text: "Scan surat bertanda tangan basah dan stempel dapat diunduh dengan nomor pengajuan dan kode akses rahasia selama 30 hari sejak scan surat terakhir diunggah. Unduhan pertama menyelesaikan permohonan; unduhan ulang tetap tersedia selama masa unduh. Setiap unduhan dicatat. Setelah masa unduh berakhir, hubungi petugas desa. Scan surat bukan Tanda Tangan Elektronik tersertifikasi.\nJaga nomor pengajuan dan kode akses di tempat aman. Jangan bagikan kode akses kepada siapa pun, termasuk melalui WhatsApp. Bantuan WhatsApp hanya menyertakan nomor pengajuan, tidak pernah kode akses.",
   },
   {
     title: "Masa simpan",

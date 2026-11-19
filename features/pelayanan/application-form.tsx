@@ -11,6 +11,7 @@ import { submissionSchema, type SubmissionValues } from "@/lib/validation";
 import { agamaOptions, dusunOptions, kewarganegaraanOptions, pendidikanOptions, statusPerkawinanOptions, attachmentKinds, attachmentKindLabels, type AttachmentKind, type SubmissionAttachments } from "@/types/pelayanan";
 import { pelayananService, isDemo, SubmissionValidationError } from "@/services/pelayanan";
 import { DocumentUpload } from "./document-upload";
+import { HubungiPetugas } from "@/components/hubungi-petugas";
 
 const labels: Partial<Record<keyof SubmissionValues, string>> = {
   nama: "Nama lengkap", nik: "NIK", no_kk: "Nomor KK", tempat_lahir: "Tempat lahir", tanggal_lahir: "Tanggal lahir",
@@ -188,7 +189,7 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
               })}
             </dl>
             <h3>Dokumen terlampir</h3>
-            <ul className="my-4 list-disc pl-6">{attachmentKinds.map((kind) => <li key={kind}>{attachmentKindLabels[kind]} — {files[kind]?.type === "application/pdf" ? "PDF terpilih" : "Foto JPG"}</li>)}</ul>
+            <ul className="my-4 list-disc pl-6">{attachmentKinds.map((kind) => <li key={kind}>{attachmentKindLabels[kind]} — {files[kind]?.type === "application/pdf" ? "Scan PDF terpilih" : "Scan JPG terpilih"}</li>)}</ul>
             <div className="flex flex-wrap gap-3">
               <button className="btn btn-secondary" type="button" disabled={isSubmitting || !!acceptedId} onClick={() => { setStep("data"); setError(""); }}>Ubah isian</button>
               <button className="btn btn-secondary" type="button" disabled={isSubmitting || !!acceptedId} onClick={() => { setStep("documents"); setError(""); }}>Ubah dokumen</button>
@@ -212,11 +213,12 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
             </button>
           </div>
         </form>
+        {error && <HubungiPetugas requestId={acceptedId || undefined} />}
       </div>
       <aside className="form-aside">
         <h3>Alur pengajuan</h3>
-        <ol><li>Lengkapi formulir, unggah tiga dokumen, dan periksa ringkasan.</li><li>Simpan nomor pengajuan.</li><li>Pantau proses verifikasi.</li><li>Tunggu persetujuan Kepala Desa.</li></ol>
-        <p>Bawa dokumen asli saat mengambil surat. Persyaratan sementara: menunggu konfirmasi desa.</p>
+        <ol><li>Lengkapi formulir, unggah Scan KTP, Scan Kartu Keluarga, dan Scan Surat Pengantar RT/RW, lalu periksa ringkasan.</li><li>Simpan nomor pengajuan dan kode akses rahasia.</li><li>Pantau proses verifikasi petugas dan persetujuan Kepala Desa.</li><li>Unduh surat melalui Cek Status Surat.</li></ol>
+        <p>Setelah status Disetujui, cek lagi dalam 1–2 hari kerja. Scan surat bertanda tangan basah dan stempel tersedia untuk diunduh selama 30 hari sejak unggahan terakhir.</p>
       </aside>
     </div>
   );
