@@ -4,6 +4,8 @@ namespace Tests;
 
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Testing\TestResponse;
 use Illuminate\Support\Facades\DB;
 use PDOException;
 
@@ -13,6 +15,16 @@ abstract class TestCase extends BaseTestCase
     private array $failingInsertTables = [];
 
     private bool $failInsertHooked = false;
+
+    /** PDF fiktif minimal pengganti scan surat bertanda tangan. */
+    protected const SCAN_PDF = "%PDF-1.4\n% scan surat fiktif\n%%EOF\n";
+
+    /** Unggah scan surat sebagai pengguna yang sedang login (APPROVED → READY_FOR_PICKUP otomatis). */
+    protected function uploadScan(string $requestId, string $pdf = self::SCAN_PDF): TestResponse
+    {
+        return $this->post('/api/v1/staff/applications/'.$requestId.'/letter.pdf',
+            ['file' => UploadedFile::fake()->createWithContent('scan-fiktif.pdf', $pdf)], ['Accept' => 'application/json']);
+    }
 
     protected function usesMysql(): bool
     {

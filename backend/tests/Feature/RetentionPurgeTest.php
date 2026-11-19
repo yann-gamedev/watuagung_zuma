@@ -51,9 +51,13 @@ class RetentionPurgeTest extends TestCase
         $flow = [['staff', 'WAITING_APPROVAL'], ['village_head', 'APPROVED'], ['staff', 'READY_FOR_PICKUP'], ['staff', 'COMPLETED']];
         foreach ($flow as [$role, $status]) {
             Sanctum::actingAs(User::factory()->create(['role' => $role]), ['applications:manage']);
-            $this->patchJson('/api/v1/staff/applications/'.$application->request_id.'/status', ['status' => $status])->assertOk();
+            $status === 'READY_FOR_PICKUP'
+                ? $this->uploadScan($application->request_id)->assertOk()
+                : $this->patchJson('/api/v1/staff/applications/'.$application->request_id.'/status', ['status' => $status])->assertOk();
         }
         DB::table('applications')->where('id', $application->id)->update(['updated_at' => now()->subDays(400)]);
+        // Masa unduh warga sudah lama berakhir; selama masih berjalan, retensi melewatinya.
+        DB::table('letters')->where('application_id', $application->id)->update(['ready_at' => now()->subDays(400)]);
         $this->assertNotNull(DB::table('letters')->value('path'));
 
         return $application->fresh();

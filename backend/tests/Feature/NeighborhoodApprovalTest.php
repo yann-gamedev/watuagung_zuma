@@ -103,7 +103,7 @@ class NeighborhoodApprovalTest extends TestCase
         foreach ($accounts as [$user, $to]) {
             $from = $application->fresh()->status;
             $this->actAs($user);
-            $this->change($application, $to)->assertOk()->assertJsonPath('status', $to);
+            ($to === 'READY_FOR_PICKUP' ? $this->uploadScan($application->request_id) : $this->change($application, $to))->assertOk()->assertJsonPath('status', $to);
             $this->assertDatabaseHas('application_events', ['application_id' => $application->id, 'user_id' => $user->id, 'from_status' => $from, 'to_status' => $to]);
         }
         $this->assertSame(5, count(array_unique(array_map(fn ($pair) => $pair[0]->role, $accounts))));
@@ -216,7 +216,7 @@ class NeighborhoodApprovalTest extends TestCase
         // Message follows the recorded stage, not the account's current role.
         $rt->forceFill(['role' => 'staff', 'rt' => null, 'rw' => null])->save();
         $this->lookup($rtRejected)->assertOk()->assertExactJson([
-            'success' => true, 'request_id' => $rtRejected->request_id, 'jenis_surat' => 'DOMISILI', 'lampiran' => [], 'status' => 'REJECTED',
+            'success' => true, 'request_id' => $rtRejected->request_id, 'jenis_surat' => 'DOMISILI', 'lampiran' => [], 'letter_available' => false, 'letter_available_until' => null, 'status' => 'REJECTED',
             'catatan' => 'Ditolak oleh Ketua RT: Alamat belum sesuai. Silakan ajukan ulang setelah data diperbaiki.',
             'letter_number' => null, 'requires_neighborhood_approval' => true,
         ]);

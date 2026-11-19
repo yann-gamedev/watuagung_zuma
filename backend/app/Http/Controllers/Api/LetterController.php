@@ -1,5 +1,6 @@
 <?php
 namespace App\Http\Controllers\Api;
+use App\Domain\ApplicationStatus;
 use App\Domain\Letter;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
@@ -7,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
@@ -46,16 +48,30 @@ class LetterController extends Controller {
             if (! str_starts_with((string) file_get_contents($file->getRealPath(), false, null, 0, 5), '%PDF-')) $fail('Berkas harus PDF.');
         }]]);
         $application = $this->application($request_id);
-        $letter = Letter::find($application);
-        if (! $letter || ! in_array($application->status, Letter::UPLOAD_STATUSES, true)) {
-            return response()->json(['message'=>'Surat hanya dapat diunggah setelah disetujui Kepala Desa dan sebelum diambil.'], 422);
-        }
         $pdf = $request->file('file')->get();
-        DB::transaction(function () use ($letter, $pdf, $user, $application) {
+        // Status dibaca ulang dengan kunci: unggahan bersamaan atau perubahan status tidak boleh saling menimpa.
+        $result = DB::transaction(function () use ($pdf, $user, $application) {
+            $fresh = Application::whereKey($application->id)->lockForUpdate()->firstOrFail();
+            $letter = Letter::find($fresh);
+            if (! $letter || ! ApplicationStatus::canUploadLetter($fresh->status, $user->role)) return null;
             Letter::store($letter, $pdf, 'uploaded', $user);
-            $this->audit($user, 'letter.uploaded', $application);
+            DB::table('letters')->where('id', $letter->id)->update(['ready_at'=>now()]);
+            $next = ApplicationStatus::afterLetterUpload($fresh->status);
+            if ($next !== $fresh->status) {
+                $from = $fresh->status;
+                $fresh->update(['status'=>$next, 'catatan'=>null]);
+                DB::table('application_events')->insert([
+                    'application_id'=>$fresh->id, 'user_id'=>$user->id, 'from_status'=>$from, 'to_status'=>$next,
+                    'note'=>Crypt::encryptString('Scan surat bertanda tangan diunggah'), 'created_at'=>now(),
+                ]);
+            }
+            $this->audit($user, 'letter.uploaded', $fresh);
+            return $fresh;
         });
-        return response()->json(['success'=>true,'letter'=>self::summary(Letter::find($application))]);
+        if ($result === null) {
+            return response()->json(['message'=>'Surat hanya dapat diunggah setelah disetujui Kepala Desa dan sebelum selesai.'], 422);
+        }
+        return response()->json(['success'=>true,'status'=>$result->status,'letter'=>self::summary(Letter::find($result))]);
     }
 
     /** Gambar QR untuk ditempel pada surat yang disusun manual. */
@@ -98,6 +114,8 @@ class LetterController extends Controller {
             'sha256'=>$letter->sha256,
             'file_updated_at'=>$letter->file_updated_at ? Carbon::parse($letter->file_updated_at)->toISOString() : null,
             'file_purged_at'=>$letter->file_purged_at ? Carbon::parse($letter->file_purged_at)->toISOString() : null,
+            'ready_at'=>$letter->ready_at ? Carbon::parse($letter->ready_at)->toISOString() : null,
+            'download_until'=>Letter::downloadUntil($letter)?->toISOString(),
         ] : null;
     }
 
