@@ -153,7 +153,7 @@ for cmd in composer rsync; do
     printf '#!/usr/bin/env bash\nprintf "UNEXPECTED COMMAND\\n" >&2\nexit 99\n' > "$tmp/bin/$cmd"
 done
 chmod +x "$tmp/bin/composer" "$tmp/bin/rsync"
-run_hdeploy() { PATH="$tmp/bin:$PATH" PHP_BIN="$php_path" "$@" > "$tmp/log" 2>&1; }
+run_hdeploy() { PATH="$tmp/bin:$PATH" PHP_BIN="$php_path" DEPLOY_BACKUP_CONFIRMED=1 DEPLOY_WRITERS_PAUSED=1 "$@" > "$tmp/log" 2>&1; }
 if run_hdeploy env APP_DIR="$tmp/home/public_html" PUBLIC_HTML="$tmp/home/public_html" bash "$root/deploy/hostinger-deploy.sh" release; then
     printf 'GAGAL hostinger-deploy menerima repo di public_html\n' >&2; exit 1
 fi
@@ -182,4 +182,123 @@ grep -q 'GAGAL \[fetch dan checkout rilis\]' "$tmp/log"
 if grep -q 'UNEXPECTED COMMAND' "$tmp/log"; then cat "$tmp/log"; exit 1; fi
 [[ -z $(ls -A "$tmp/home/public_html") ]] || { printf 'GAGAL public_html berubah sebelum deploy berhasil\n' >&2; exit 1; }
 
-printf 'LULUS: smoke sukses + 9 kegagalan, validasi domain, deploy berhenti saat fetch gagal, backup pgsql terenkripsi/rotasi/tolak passphrase longgar/pg_dump gagal, backup mysql gpg+openssl/tolak dump gagal-kosong, hostinger-deploy tolak repo di public_html/arsip salah/API localhost/fetch gagal.\n'
+# Hostinger: bukti urutan maintenance/migration, lock, dan fail-closed tanpa server/database nyata.
+mkdir -p "$tmp/home/repo/deploy/hostinger" "$tmp/home/repo/backend/storage/app/public" "$tmp/home/repo/backend/storage/framework"
+cp "$root/deploy/hostinger/.htaccess" "$root/deploy/hostinger/laravel.php" "$tmp/home/repo/deploy/hostinger/"
+printf x > "$tmp/home/public_html/index.html"
+touch "$tmp/home/repo/backend/artisan"
+cat > "$tmp/home/repo/deploy/smoke-test.sh" <<'STUB'
+#!/usr/bin/env bash
+printf 'smoke\n' >> "$EVENTS"
+[[ ${DEPLOY_FAULT:-} != smoke ]]
+STUB
+cat > "$tmp/bin/git" <<'STUB'
+#!/usr/bin/env bash
+set -euo pipefail
+case $1 in
+    rev-parse) [[ $* == *--show-toplevel* ]] && pwd || printf 'commit-uji\n' ;;
+    diff|fetch|show-ref) exit 0 ;;
+    checkout)
+        [[ -f backend/storage/framework/down ]] || exit 90
+        printf 'checkout\n' >> "$EVENTS"
+        [[ ${DEPLOY_FAULT:-} != checkout ]] ;;
+    *) exit 91 ;;
+esac
+STUB
+cat > "$tmp/bin/php-deploy" <<'STUB'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ $1 == -r ]]; then
+    printf 'validate\n' >> "$EVENTS"
+    [[ ${DEPLOY_FAULT:-} != config ]] || exit 45
+    printf 'https://desa.example.test'
+    exit 0
+fi
+case $2 in
+    down)
+        printf 'down\n' >> "$EVENTS"
+        [[ ${DEPLOY_FAULT:-} != down ]] || exit 46
+        touch "$APP_DIR/backend/storage/framework/down" ;;
+    up)
+        printf 'up\n' >> "$EVENTS"
+        rm -f "$APP_DIR/backend/storage/framework/down"
+        [[ ${DEPLOY_FAULT:-} != up ]] || exit 47 ;;
+    migrate)
+        [[ -f "$APP_DIR/backend/storage/framework/down" ]] || exit 90
+        printf 'migrate\n' >> "$EVENTS"
+        [[ ${DEPLOY_FAULT:-} != migrate ]] || exit 48 ;;
+    *)
+        printf '%s\n' "$2" >> "$EVENTS"
+        [[ ${DEPLOY_FAULT:-} != cache || $2 != route:cache ]] || exit 49 ;;
+esac
+STUB
+cat > "$tmp/bin/composer" <<'STUB'
+#!/usr/bin/env bash
+printf 'composer\n' >> "$EVENTS"
+[[ -f "$APP_DIR/backend/storage/framework/down" && ${DEPLOY_FAULT:-} != composer ]]
+STUB
+cat > "$tmp/bin/sleep" <<'STUB'
+#!/usr/bin/env bash
+printf 'drain %s\n' "$1" >> "$EVENTS"
+STUB
+cat > "$tmp/bin/rsync" <<'STUB'
+#!/usr/bin/env bash
+printf 'rsync\n' >> "$EVENTS"
+[[ ${DEPLOY_FAULT:-} != files ]]
+STUB
+chmod +x "$tmp/bin/"*
+run_safe_deploy() {
+    : > "$tmp/events"
+    run_hdeploy env APP_DIR="$tmp/home/repo" PUBLIC_HTML="$tmp/home/public_html" EVENTS="$tmp/events" \
+        PHP_BIN="$tmp/bin/php-deploy" "$@" bash "$root/deploy/hostinger-deploy.sh" release
+}
+if run_safe_deploy DEPLOY_BACKUP_CONFIRMED=0; then printf 'GAGAL backup tidak dikonfirmasi diterima\n' >&2; exit 1; fi
+[[ ! -s $tmp/events ]]
+if run_safe_deploy DEPLOY_WRITERS_PAUSED=0; then printf 'GAGAL penulis aktif diterima\n' >&2; exit 1; fi
+[[ ! -s $tmp/events ]]
+mkdir "$tmp/home/repo/.hostinger-deploy.lock"
+if run_safe_deploy; then printf 'GAGAL deploy bersamaan diterima\n' >&2; exit 1; fi
+[[ ! -s $tmp/events && -d $tmp/home/repo/.hostinger-deploy.lock ]]
+rmdir "$tmp/home/repo/.hostinger-deploy.lock"
+run_safe_deploy || { cat "$tmp/log"; exit 1; }
+printf '%s\n' down 'drain 120' checkout composer config:clear validate migrate config:cache route:cache view:cache up smoke > "$tmp/expected"
+diff -u "$tmp/expected" "$tmp/events"
+[[ ! -e $tmp/home/repo/backend/storage/framework/down && ! -e $tmp/home/repo/.hostinger-deploy.lock ]]
+for fault in down checkout composer config migrate cache files up smoke; do
+    rm -f "$tmp/home/repo/backend/storage/framework/down"
+    if [[ $fault == files ]]; then
+        rm -rf -- "$tmp/home/public_html/storage"
+        mkdir "$tmp/home/public_html/storage"
+    fi
+    if run_safe_deploy DEPLOY_FAULT="$fault"; then printf 'GAGAL deploy menerima fault %s\n' "$fault" >&2; exit 1; fi
+    [[ ! -e $tmp/home/repo/.hostinger-deploy.lock ]]
+    if [[ $fault == down ]]; then
+        [[ $(cat "$tmp/events") == down ]]
+    else
+        [[ -f $tmp/home/repo/backend/storage/framework/down && $(tail -1 "$tmp/events") == down ]]
+    fi
+    if [[ $fault != up && $fault != smoke ]]; then
+        if grep -qx up "$tmp/events"; then printf 'GAGAL layanan dibuka setelah fault %s\n' "$fault" >&2; exit 1; fi
+    fi
+    if [[ $fault == migrate ]] && grep -qx config:cache "$tmp/events"; then printf 'GAGAL deploy lanjut setelah migration gagal\n' >&2; exit 1; fi
+    if [[ $fault == files ]]; then rmdir "$tmp/home/public_html/storage"; fi
+done
+# Frontend rsync gagal juga harus menutup layanan; arsip valid tanpa API localhost.
+mkdir -p "$tmp/web-valid/pelayanan"
+printf x | tee "$tmp/web-valid/index.html" "$tmp/web-valid/404.html" "$tmp/web-valid/pelayanan/index.html" > /dev/null
+tar -C "$tmp/web-valid" -czf "$tmp/valid.tar.gz" .
+: > "$tmp/events"
+if run_hdeploy env APP_DIR="$tmp/home/repo" PUBLIC_HTML="$tmp/home/public_html" EVENTS="$tmp/events" \
+    PHP_BIN="$tmp/bin/php-deploy" DEPLOY_FAULT=files bash "$root/deploy/hostinger-deploy.sh" release --frontend "$tmp/valid.tar.gz"; then
+    printf 'GAGAL deploy mengabaikan rsync gagal\n' >&2; exit 1
+fi
+grep -qx rsync "$tmp/events"
+[[ -f $tmp/home/repo/backend/storage/framework/down && $(tail -1 "$tmp/events") == down && ! -e $tmp/home/repo/.hostinger-deploy.lock ]]
+if grep -qx up "$tmp/events"; then printf 'GAGAL layanan dibuka setelah rsync gagal\n' >&2; exit 1; fi
+: > "$tmp/events"
+run_hdeploy env APP_DIR="$tmp/home/repo" PUBLIC_HTML="$tmp/home/public_html" EVENTS="$tmp/events" \
+    PHP_BIN="$tmp/bin/php-deploy" bash "$root/deploy/hostinger-deploy.sh" release --frontend "$tmp/valid.tar.gz" || { cat "$tmp/log"; exit 1; }
+printf '%s\n' down 'drain 120' checkout composer config:clear validate migrate config:cache route:cache view:cache rsync up smoke > "$tmp/expected"
+diff -u "$tmp/expected" "$tmp/events"
+[[ ! -e $tmp/home/repo/backend/storage/framework/down && ! -e $tmp/home/repo/.hostinger-deploy.lock ]]
+printf 'LULUS: smoke + backup pgsql/mysql + validasi Hostinger; konfirmasi backup/penulis, lock deploy, maintenance sebelum checkout, drain request, migrate sebelum up, 9 fault fail-closed.\n'

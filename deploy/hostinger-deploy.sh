@@ -14,8 +14,24 @@ PUBLIC_HTML="${PUBLIC_HTML:-}"
 PHP_BIN="${PHP_BIN:-php}"
 COMPOSER_BIN="${COMPOSER_BIN:-composer}"
 
-staging='' managed=''
-trap 'rm -rf -- ${staging:+"$staging"} ${managed:+"$managed"}' EXIT
+staging='' managed='' maintenance_started=0 deploy_succeeded=0 lock_acquired=0
+cleanup() {
+    code=$?
+    trap - EXIT
+    if [[ $maintenance_started == 1 && $deploy_succeeded == 0 ]]; then
+        if ! (cd "$APP_DIR/backend" && "$PHP_BIN" artisan down --retry=60); then
+            printf 'BAHAYA: gagal mengaktifkan maintenance. Blokir akses HTTP lewat hPanel sebelum pemulihan.\n' >&2
+        fi
+        printf 'Deploy belum selesai. Tetap hentikan cron/worker; jangan artisan up sebelum penyebab dan migration diperiksa.\n' >&2
+    fi
+    rm -rf -- ${staging:+"$staging"} ${managed:+"$managed"}
+    if [[ $lock_acquired == 1 ]]; then rmdir -- "$APP_DIR/.hostinger-deploy.lock"; fi
+    exit "$code"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 step='validasi awal'
 trap 'code=$?; printf "GAGAL [%s], baris %s (exit %s). Deploy berhenti; periksa sebelum mengulang.\n" "$step" "$LINENO" "$code" >&2; exit "$code"' ERR
 fail() { printf 'GAGAL [%s]: %s\n' "$step" "$1" >&2; exit 1; }
@@ -43,6 +59,10 @@ cd "$APP_DIR"
 [[ $(git rev-parse --show-toplevel) == "$APP_DIR" ]] || fail 'APP_DIR bukan root repo.'
 git diff --quiet && git diff --cached --quiet || fail 'Ada perubahan tracked lokal; jangan ditimpa.'
 [[ -f backend/.env ]] || fail 'Siapkan backend/.env dan bootstrap pertama sesuai deploy/hostinger.md.'
+[[ ${DEPLOY_BACKUP_CONFIRMED:-} == 1 && ${DEPLOY_WRITERS_PAUSED:-} == 1 ]] \
+    || fail 'Buat dan verifikasi backup + APP_KEY, hentikan cron/worker dan tunggu penulis aktif selesai; isi DEPLOY_BACKUP_CONFIRMED=1 DEPLOY_WRITERS_PAUSED=1.'
+mkdir -- "$APP_DIR/.hostinger-deploy.lock" 2>/dev/null || fail 'Deploy lain aktif atau lock tertinggal; periksa sebelum menghapus .hostinger-deploy.lock.'
+lock_acquired=1
 
 if [[ -n $archive ]]; then
     step='periksa arsip frontend'
@@ -65,6 +85,14 @@ if git show-ref --verify --quiet "refs/tags/$ref"; then
 else
     commit=$(git rev-parse --verify "refs/remotes/origin/$ref^{commit}")
 fi
+step='maintenance sebelum pergantian kode'
+"$PHP_BIN" "$APP_DIR/backend/artisan" down --retry=60
+maintenance_started=1
+printf 'Maintenance aktif. Tunggu request HTTP lama selesai sebelum melanjutkan (bawaan 120 detik).\n'
+drain_seconds=${DEPLOY_DRAIN_SECONDS:-120}
+[[ $drain_seconds =~ ^[0-9]+$ && ${#drain_seconds} -le 5 ]] || fail 'DEPLOY_DRAIN_SECONDS harus bilangan detik 0..99999.'
+sleep "$drain_seconds"
+step='checkout rilis'
 git checkout --detach "$commit"
 
 step='composer install'
@@ -108,7 +136,10 @@ else
 fi
 [[ -f $PUBLIC_HTML/index.html ]] || fail 'public_html belum berisi frontend; jalankan dengan --frontend.'
 
+step='buka layanan untuk smoke test'
+"$PHP_BIN" artisan up
 step='smoke test'
 domain=${app_url#https://}
 PHP_BIN="$PHP_BIN" bash "$APP_DIR/deploy/smoke-test.sh" "$domain"
-printf 'Deploy selesai: %s\n' "$commit"
+deploy_succeeded=1
+printf 'Deploy selesai: %s. Aktifkan kembali cron/worker setelah pemeriksaan pascadeploy.\n' "$commit"
