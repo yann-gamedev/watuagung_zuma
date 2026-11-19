@@ -121,7 +121,7 @@ class NeighborhoodApprovalDisabledTest extends TestCase
         config()->set('letters.neighborhood_approval', false);
         $this->app['auth']->forgetGuards();
         $this->postJson('/api/v1/staff/login', ['username' => $user->username, 'password' => 'password'])
-            ->assertUnauthorized()->assertExactJson(['message' => 'Kredensial tidak valid.']);
+            ->assertUnauthorized()->assertExactJson(['message' => 'Username atau kata sandi salah.']);
         $this->app['auth']->forgetGuards();
         foreach (['me', 'applications', 'summary', 'users'] as $path) {
             $this->withToken($token)->getJson('/api/v1/staff/'.$path)->assertForbidden();

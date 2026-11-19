@@ -37,6 +37,16 @@ export type Agama = (typeof agamaOptions)[number];
 export type Kewarganegaraan = (typeof kewarganegaraanOptions)[number];
 export type StatusPerkawinan = (typeof statusPerkawinanOptions)[number];
 export type Pendidikan = (typeof pendidikanOptions)[number];
+/**
+ * Body 429 dari batas laju rute (bukan kunci kode akses warga, yang memakai `{ success: false, message }`).
+ * `message` sudah berbahasa Indonesia dengan waktu tunggu; `retry_after` dalam detik (header Retry-After
+ * tidak terbaca lintas origin). Login petugas: 5/menit per username + IP dan 20/menit per IP.
+ */
+export interface ApiThrottleError {
+  message: string;
+  retry_after: number;
+}
+/** 401 login: `{ message: "Username atau kata sandi salah." }`, juga untuk akun nonaktif. */
 export type StaffLoginRequest = { password: string } & (
   | { username: string; email?: never }
   | { email: string; username?: never }

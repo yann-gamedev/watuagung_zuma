@@ -202,7 +202,15 @@ Pemroses `App\\Support\\ImageProcessor` dipakai berita dan structure dengan para
 
 ### Login username
 
-Frontend mengirim `{ username, password }`. Username unik, 1–64 karakter, diawali huruf kecil/angka, selanjutnya huruf kecil, angka, `_`, atau `-`. Spasi luar dibuang; huruf besar ditolak. Klien lama masih dapat mengirim `{ email, password }`, tetapi kedua identitas tidak boleh dikirim bersama. Identitas tidak dikenal, kata sandi salah, peran di luar enam peran panel, ketua RT/RW tanpa wilayah lengkap, serta akun RT/RW saat fitur mati menghasilkan pesan 401 generik yang sama. Token RT/RW lama yang belum dicabut tetap ditolak 403 pada endpoint panel saat fitur mati. Validasi gagal menghasilkan 422; rate limit tetap 5/menit.
+Frontend mengirim `{ username, password }`. Username unik, 1–64 karakter, diawali huruf kecil/angka, selanjutnya huruf kecil, angka, `_`, atau `-`. Spasi luar dibuang; huruf besar ditolak. Klien lama masih dapat mengirim `{ email, password }`, tetapi kedua identitas tidak boleh dikirim bersama. Identitas tidak dikenal, kata sandi salah, peran di luar enam peran panel, ketua RT/RW tanpa wilayah lengkap, serta akun RT/RW saat fitur mati menghasilkan pesan 401 generik yang sama: `{ "message": "Username atau kata sandi salah." }`. Token RT/RW lama yang belum dicabut tetap ditolak 403 pada endpoint panel saat fitur mati. Validasi gagal menghasilkan 422.
+
+**Batas laju login (20 November 2026):** limiter bernama `staff-login`, 5 percobaan/menit per username (huruf kecil, tanpa spasi luar) + IP, dan 20/menit per IP. Petugas lain di kantor yang sama (IP sama) tidak ikut terkunci oleh salah ketik rekannya. Sebelumnya login berbagi satu penghitung per IP dengan semua rute publik bertanda `throttle:N,1` tanpa nama, sehingga membuka beranda (berita, bagian situs, UMKM) bisa membuat login yang benar langsung 429 "Too Many Attempts.".
+
+### Respons 429 batas laju
+
+Semua 429 dari middleware `throttle` di `/api/*` berbentuk `ApiThrottleError` (`types/pelayanan.ts`): `{ "message": "Terlalu banyak percobaan. Tunggu 45 detik, lalu coba lagi.", "retry_after": 45 }`, plus header `Retry-After` dan `X-RateLimit-*`. Waktu ≥ 60 detik ditulis dalam menit (dibulatkan ke atas). `retry_after` ada di body karena header `Retry-After` tidak terbaca lintas origin tanpa `Access-Control-Expose-Headers`. Kunci kode akses warga (`lookup:{request_id}`) tetap memakai bentuk lamanya, `{ "success": false, "message": "Terlalu banyak percobaan kode akses. Coba lagi dalam 15 menit." }`. Frontend (`apiRequest` dan `adminFetch`) menampilkan pesan server; 429 tanpa pesan atau dengan pesan bawaan Inggris diganti "Terlalu banyak percobaan. Tunggu sekitar 1 menit, lalu coba lagi.", dan kegagalan jaringan `apiRequest` menjadi "Server belum dapat dihubungi. Periksa koneksi internet lalu coba lagi.".
+
+Setiap throttle rute wajib bernama (argumen ketiga `throttle:N,1,nama` atau limiter bernama); `ThrottleIsolationTest` gagal bila ada rute tanpa nama.
 
 Jalankan migration penambahan username sebelum memakai frontend baru. Akun lama tetap memiliki username nullable dan bisa memakai API login email; untuk form baru, administrator perlu menetapkan username unik pada akun tersebut. Tidak ada akun/kata sandi bawaan atau endpoint pendaftaran publik. Tipe frontend: `StaffLoginRequest` dan `StaffLoginResponse` di `types/pelayanan.ts`.
 

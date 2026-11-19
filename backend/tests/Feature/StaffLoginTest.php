@@ -58,7 +58,7 @@ class StaffLoginTest extends TestCase
         $user = $this->staff();
         foreach ([['petugas-fiktif', 'wrong'], ['unknown', 'test-password-only']] as [$username, $password]) {
             $this->postJson('/api/v1/staff/login', compact('username', 'password'))
-                ->assertUnauthorized()->assertExactJson(['message' => 'Kredensial tidak valid.']);
+                ->assertUnauthorized()->assertExactJson(['message' => 'Username atau kata sandi salah.']);
         }
         $user->update(['role' => 'resident']);
         $this->postJson('/api/v1/staff/login', [
