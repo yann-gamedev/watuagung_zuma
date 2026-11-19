@@ -205,18 +205,30 @@ Backup otomatis Hostinger (mingguan pada Premium; cek di hPanel → Files → Ba
 
 ## I. Deploy rutin
 
-Sebelum tiap rilis: jalankan backup manual, tinjau migration, jadwalkan di luar jam layanan. Deploy in-place, **bukan atomik**.
+Sebelum tiap rilis (deploy in-place, **bukan atomik**):
+
+1. Jadwalkan di luar jam layanan, tinjau migration dan uji pada salinan database target. Pastikan rilis tidak mengganti `APP_KEY`.
+2. Nonaktifkan sementara seluruh cron penulis di hPanel (§ H), worker antrean, dan scheduler jika ada. Dengan kode lama masih terpasang, jalankan `php artisan down --retry=60` dari `backend/` memakai biner PHP produksi (§ C); tunggu request HTTP dan proses CLI yang sedang berjalan selesai. Maintenance HTTP **tidak** menghentikan perintah CLI/cron.
+3. Dalam keadaan tanpa penulis aktif, jalankan backup manual database + `storage/app`, verifikasi arsip dapat didekripsi dan `APP_KEY` asli tersimpan terpisah. Jangan lanjut bila backup gagal. Dua variabel konfirmasi di bawah adalah pernyataan operator, **bukan** pemeriksaan backup/cron otomatis.
+4. Jalankan skrip berikut dari rilis yang sudah memiliki pengaman ini. Skrip lama pada server tidak menjadi aman hanya karena tag tujuan berisi versi baru: perbarui skrip yang ditinjau terlebih dahulu, tanpa mengaktifkan kode aplikasi baru.
 
 ```bash
 cd ~/watuagung
 APP_DIR=$HOME/watuagung PUBLIC_HTML=$HOME/domains/example.id/public_html \
 PHP_BIN=/opt/alt/php83/usr/bin/php COMPOSER_BIN=$HOME/bin/composer-cli \
+DEPLOY_BACKUP_CONFIRMED=1 DEPLOY_WRITERS_PAUSED=1 \
 bash deploy/hostinger-deploy.sh v1.0.0 --frontend ~/watuagung-web.tar.gz
 ```
 
 Tanpa `--frontend`, hanya backend yang diperbarui dan `.htaccess`/`laravel.php`/symlink dipasang ulang; frontend lama di `public_html` harus cocok dengan commit backend. Dengan `--frontend`, `public_html` diselaraskan penuh (`rsync --delete`, kecuali `.well-known/`): file lain yang ditaruh manual di sana terhapus.
 
-Urutan skrip: validasi (repo di luar `public_html`, arsip berisi isi `out/` tanpa API localhost), fetch tag, `composer install --no-dev`, validasi `.env` produksi (`APP_ENV`, `APP_DEBUG=false`, `APP_KEY`, `DB_CONNECTION=mysql|mariadb`, `APP_URL` https), `migrate --force`, cache config/route/view, pasang `public_html`, smoke test. Tidak ada reload PHP; bila perubahan kode tidak terlihat, tunggu beberapa menit (opcache) atau restart PHP dari hPanel bila ada menunya. Hapus arsip setelah selesai: `rm ~/watuagung-web.tar.gz`.
+Urutan skrip: validasi (repo di luar `public_html`, konfirmasi backup/penulis, arsip berisi isi `out/` tanpa API localhost), lock satu deploy, fetch/resolve tag tanpa mengganti kode, `artisan down`, tunggu request lama (bawaan **120 detik**), checkout rilis, `composer install --no-dev`, validasi `.env` produksi (`APP_ENV`, `APP_DEBUG=false`, `APP_KEY`, `DB_CONNECTION=mysql|mariadb`, `APP_URL` https), `migrate --force`, cache config/route/view, pasang `public_html`, `artisan up`, smoke test. `DEPLOY_DRAIN_SECONDS` boleh diperbesar sesuai batas waktu request server; 120 detik bukan bukti semua request selesai. Operator wajib memastikan tidak ada penulis lama tersisa sebelum checkout. Tidak ada reload PHP; bila perubahan kode tidak terlihat, tunggu beberapa menit (opcache) atau restart PHP dari hPanel bila ada menunya.
+
+Kegagalan setelah maintenance aktif menghentikan deploy dan mempertahankan/mengaktifkan ulang maintenance; kegagalan smoke test menutup layanan kembali. Ada jendela singkat layanan terbuka untuk smoke test; ini bukan deployment atomik. Jangan otomatis rollback migration, mengganti `APP_KEY`, mengaktifkan cron, atau menjalankan `artisan up` saat gagal. Periksa tahap gagal, pulihkan backup bila diperlukan, lalu uji ulang sebelum membuka layanan. Bila maintenance gagal diaktifkan ulang, blokir HTTP lewat hPanel. Frontend statis tetap bisa dibuka saat API maintenance.
+
+Lock `.hostinger-deploy.lock` menolak deploy bersamaan dan dilepas saat skrip keluar normal/gagal. Setelah proses dibunuh paksa atau mesin mati, lock bisa tertinggal; pastikan tidak ada proses deploy sebelum menghapus direktori lock secara manual. `SIGKILL`/listrik mati tidak dapat ditangani trap. Bila kode/vendor rusak, maintenance Laravel sendiri belum tentu dapat berjalan; pemblokiran HTTP di tingkat hosting diperlukan.
+
+Setelah skrip sukses, lakukan uji § J, baru aktifkan kembali cron/worker yang tadi dijeda. Hapus arsip setelah selesai: `rm ~/watuagung-web.tar.gz`. Pengaman ini tidak menjamin semua migration kompatibel: campuran plaintext/ciphertext tetap harus ditinjau dan dipulihkan pada salinan database, bukan dilewati pengamannya.
 
 ## J. Uji setelah deploy
 
