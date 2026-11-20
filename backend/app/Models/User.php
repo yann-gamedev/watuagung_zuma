@@ -12,7 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 #[Fillable(['name', 'username', 'email', 'password', 'role', 'rt', 'rw', 'is_active', 'must_change_password', 'last_login_at'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'notification_email', 'approval_pin_hash'])]
 class User extends Authenticatable {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
@@ -22,7 +22,7 @@ class User extends Authenticatable {
      * @return array<string, string>
      */
     protected function casts(): array {
-        return ['email_verified_at'=>'datetime','password'=>'hashed','rt'=>AreaCode::class,'rw'=>AreaCode::class,'is_active'=>'boolean','must_change_password'=>'boolean','last_login_at'=>'datetime'];
+        return ['email_verified_at'=>'datetime','password'=>'hashed','rt'=>AreaCode::class,'rw'=>AreaCode::class,'is_active'=>'boolean','must_change_password'=>'boolean','last_login_at'=>'datetime','notification_email'=>'encrypted','notification_email_verified_at'=>'datetime','approval_pin_set_at'=>'datetime'];
     }
 
     protected static function booted(): void {
@@ -31,6 +31,16 @@ class User extends Authenticatable {
                 throw ValidationException::withMessages(['rw' => 'Ketua RT memerlukan RT dan RW; Ketua RW memerlukan RW yang valid.']);
             }
         });
+    }
+
+    /**
+     * E3: kepala desa aktif dengan email notifikasi terverifikasi dan PIN. Hanya akun seperti ini yang menerima
+     * dan boleh memakai tautan persetujuan lewat email (diperiksa saat tautan dibuat DAN saat dipakai).
+     */
+    public function canApproveByEmail(): bool {
+        return $this->role === 'village_head' && $this->canAccessPanel()
+            && filled($this->notification_email) && $this->notification_email_verified_at !== null
+            && $this->approval_pin_hash !== null;
     }
 
     public function isNeighborhoodHead(): bool {

@@ -238,6 +238,9 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | POST | `/applications` | Publik, 5 permintaan/menit | Mengajukan layanan (multipart, lampiran KTP/KK/pengantar RT/RW wajib; lihat § Lampiran persyaratan); mengembalikan `request_id`, `status`, `jenis_surat`, `requires_neighborhood_approval: boolean` dari `LetterType`, `lampiran` (jenis yang diterima), dan `lookup_secret` (HTTP 201) |
 | POST | `/applications/letter` | Publik, 10/menit per IP; kunci kode akses bersama cek status | Warga mengunduh scan surat bertanda tangan (`request_id`, `lookup_secret`); unduhan pertama → `COMPLETED` (§ Surat PDF) |
 | POST | `/applications/attachments` | Publik, 5 permintaan/menit; kunci kode akses bersama cek status | Warga mengganti lampiran saat `NEED_REVISION` (multipart `request_id`, `lookup_secret`, `lampiran[KIND]`) |
+| POST | `/approvals/preview`, `/approvals/draft`, `/approvals/decide` | Publik, limiter `approval-link`; token di body | Persetujuan Kepala Desa lewat email dengan PIN (§ Persetujuan kepala desa lewat email) |
+| POST | `/notifications/verify` | Publik, URL bertanda tangan 24 jam | Verifikasi email notifikasi akun |
+| GET/PUT | `/staff/me/notifications`, PUT `/staff/me/notifications/pin` | Token petugas; PIN hanya `village_head` | Email notifikasi dan PIN persetujuan |
 | POST | `/applications/unsubscribe` | Publik, 10/menit; URL bertanda tangan (`id`, `signature`) | Berhenti menerima email status (§ Notifikasi email pemohon); mengosongkan email; 403 tanda tangan salah |
 | POST | `/applications/status` | Publik, 10 permintaan/menit; 5 kode salah per nomor → 429 selama 15 menit | Body: `request_id` dan `lookup_secret`; mengembalikan `jenis_surat`, `requires_neighborhood_approval: boolean` dari `LetterType`, status, `lampiran` (jenis yang diterima, tanpa path/ukuran/hash), dan catatan (penolakan RT/RW historis tetap diberi awalan "Ditolak oleh Ketua RT/RW") |
 | POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `username` dan `password` (atau `email` untuk klien lama); mengembalikan bearer token |
@@ -306,6 +309,15 @@ Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Validasi yang g
 - `POST /applications/unsubscribe` memakai `hasValidSignature(false)` (tanda tangan relatif, tanpa kedaluwarsa); mengosongkan email, audit `application.email_unsubscribed`.
 - Antrean: `QUEUE_CONNECTION=database`. Lokal: `php artisan queue:work --stop-when-empty` (atau `schedule:work`), `MAIL_MAILER=log`. Hostinger: cron langsung tiap menit (`deploy/hostinger.md` § H).
 - Tes: `tests/Feature/ApplicantStatusEmailTest.php`. Kontrak lengkap: [docs/integrasi.md § Notifikasi email pemohon](../docs/integrasi.md#notifikasi-email-pemohon-e1-20-november-2026).
+
+### Persetujuan kepala desa lewat email (E3, 20 November 2026)
+
+- Migration `2026_11_20_000001_add_email_approval`: `users.notification_email` (encrypted, hidden), `notification_email_verified_at`, `approval_pin_hash`, `approval_pin_set_at`; tabel `approval_links`; `application_events.via`. Ada `down()`.
+- `App\Domain\ApplicationTransition::apply()` = satu-satunya jalur transisi manual (panel dan email); `TransitionRejected` membawa status HTTP + pesan yang sama seperti sebelumnya.
+- `App\Support\ApprovalLinks` (issue/resolve/revoke, SHA-256, 72 jam, 5 PIN), `App\Support\NotificationEmails` (URL verifikasi bertanda tangan 24 jam, PIN lemah).
+- Listener: `SendHeadApprovalLinks` (antrean, token dibuat di dalam job), `RevokeApprovalLinks` (sinkron). Job: `SendNotificationEmailVerification`, `SendPinLockedEmail` (payload hanya ID).
+- Controller: `NotificationSettingsController` (`/staff/me/notifications`, `/notifications/verify`), `ApprovalController` (`/approvals/preview|draft|decide`). Limiter bernama `approval-link` di `AppServiceProvider`.
+- Tes: `tests/Feature/HeadEmailApprovalTest.php`, `tests/Feature/NotificationSettingsTest.php`. Kontrak: [docs/integrasi.md § Persetujuan kepala desa lewat email](../docs/integrasi.md#persetujuan-kepala-desa-lewat-email-e3-20-november-2026).
 
 ### Berita
 
