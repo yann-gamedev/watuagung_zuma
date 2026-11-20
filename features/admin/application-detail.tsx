@@ -43,7 +43,7 @@ const detailSchema = z.object({
   attachments: z.array(z.object({ id: z.number().int().positive(), kind: z.enum(attachmentKinds), label: z.string(),
     stored_mime: z.enum(["image/webp", "image/jpeg", "application/pdf"]), size_bytes: z.number().int().nonnegative(), uploaded_at: z.string(), purged: z.boolean() })).optional(),
   history: z.array(z.object({ action: z.enum(["ACCESS_CODE_RESET", "STATEMENT_EDITED", "ATTACHMENTS_UPDATED"]).nullable(), from_status: z.enum(statuses).nullable(), to_status: z.enum(statuses),
-    note: z.string().nullable(), staff_name: z.string().nullable(), created_at: z.string() })),
+    note: z.string().nullable(), staff_name: z.string().nullable(), via: z.enum(["email"]).nullable().optional(), created_at: z.string() })),
 });
 function lowerLabel(status: Status) {
   return actionLabels[status].replace(/^./, (letter) => letter.toLowerCase());
@@ -404,7 +404,7 @@ function DetailContent({ id }: { id: string }) {
             <section className={styles.card}><h2>Riwayat status</h2>
               {detail.history.length ? <ol className={styles.timeline}>{detail.history.map((event, index) => <li key={`${event.created_at}-${index}`}>
                 <h3>{event.action === "ACCESS_CODE_RESET" ? "Kode akses dibuat ulang" : event.action === "STATEMENT_EDITED" ? "Isi keterangan disunting" : event.action === "ATTACHMENTS_UPDATED" ? "Lampiran diganti pemohon" : <>{event.from_status ? `${statusLabels[event.from_status]} → ` : ""}{statusLabels[event.to_status]}</>}</h3>
-                <p>{event.staff_name ?? "Pengajuan warga / sistem"}</p>
+                <p>{event.staff_name ?? "Pengajuan warga / sistem"}{event.via === "email" ? ` · ${event.to_status === "APPROVED" ? "disetujui" : event.to_status === "REJECTED" ? "ditolak" : "diputuskan"} melalui email` : ""}</p>
                 <time dateTime={event.created_at}>{dateTime(event.created_at)}</time>
                 {event.note && <p className={styles.multiline}>{event.note}</p>}
               </li>)}</ol> : <p>Belum ada riwayat status.</p>}

@@ -266,6 +266,9 @@ Dari laptop:
 ```bash
 bash deploy/smoke-test.sh example.id
 curl -sI https://example.id/ | grep -Ei 'strict-transport|content-security|x-frame|cache-control'
+for p in /persetujuan/ /verifikasi-email/ /berhenti-email/; do   # E4: harus no-referrer (token di URL)
+  printf '%s ' "$p"; curl -sI "https://example.id$p" | grep -i '^referrer-policy'
+done
 for p in /.env /.htaccess /laravel.php /storage/x.php /storage/; do
   printf '%s ' "$p"; curl -s -o /dev/null -w '%{http_code}\n' "https://example.id$p"   # semua 403/404
 done
