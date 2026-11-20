@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\Api;
 use App\Domain\ApplicationStatus;
+use App\Domain\ApplicationStatusChanged;
 use App\Domain\Letter;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
@@ -60,10 +61,11 @@ class LetterController extends Controller {
             if ($next !== $fresh->status) {
                 $from = $fresh->status;
                 $fresh->update(['status'=>$next, 'catatan'=>null]);
-                DB::table('application_events')->insert([
+                $eventId = DB::table('application_events')->insertGetId([
                     'application_id'=>$fresh->id, 'user_id'=>$user->id, 'from_status'=>$from, 'to_status'=>$next,
                     'note'=>Crypt::encryptString('Scan surat bertanda tangan diunggah'), 'created_at'=>now(),
                 ]);
+                ApplicationStatusChanged::dispatch($fresh->id, $from, $next, $eventId);
             }
             $this->audit($user, 'letter.uploaded', $fresh);
             return $fresh;

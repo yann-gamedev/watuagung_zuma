@@ -279,6 +279,20 @@ export interface Submission {
   /** UMUM, maksimal 500. */
   isi_keterangan?: string;
   keperluan: string;
+  /**
+   * E1: email opsional untuk notifikasi status (RFC, maks 120). Disimpan terenkripsi, tidak pernah dikembalikan API.
+   * Bila diisi, `email_consent` wajib bernilai diterima ("1"/"true"); tanpa email, centang diabaikan. Form: E2.
+   */
+  email?: string;
+  email_consent?: boolean | "1" | "0";
+}
+/**
+ * POST /applications/unsubscribe?id=…&signature=… (query bertanda tangan dari tautan email, diteruskan halaman
+ * /berhenti-email/ apa adanya). 200 idempoten; 403 tanda tangan salah/hilang; 404 permohonan tidak ada.
+ */
+export interface EmailUnsubscribeResponse {
+  success: boolean;
+  message: string;
 }
 /** Dokumen lampiran pengajuan (cermin `AttachmentKind.php`); daftar wajib per jenis di `LetterType::requiredAttachments()`. */
 export const attachmentKinds = ["KTP", "KK", "PENGANTAR_RT_RW"] as const;
