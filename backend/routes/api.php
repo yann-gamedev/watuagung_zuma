@@ -1,5 +1,7 @@
 <?php
 use App\Http\Controllers\Api\ApplicationController;
+use App\Http\Controllers\Api\ApprovalController;
+use App\Http\Controllers\Api\NotificationSettingsController;
 use App\Http\Controllers\Api\AttachmentController;
 use App\Http\Controllers\Api\LetterController;
 use App\Http\Controllers\Api\BusinessController;
@@ -16,6 +18,12 @@ Route::post('/v1/applications/status', [ApplicationController::class, 'status'])
 Route::post('/v1/applications/letter', [ApplicationController::class, 'letter'])->middleware('throttle:10,1,application-letter');
 Route::post('/v1/applications/attachments', [ApplicationController::class, 'replaceAttachments'])->middleware('throttle:5,1,application-attachments');
 // Berhenti menerima email status; URL bertanda tangan (relatif, tanpa kedaluwarsa) dibuat ApplicantEmail::unsubscribeUrl.
+// E3: persetujuan kepala desa lewat tautan email. Token di body (bukan URL); limiter `approval-link` per IP + per tautan.
+Route::post('/v1/approvals/preview', [ApprovalController::class, 'preview'])->middleware('throttle:approval-link');
+Route::post('/v1/approvals/draft', [ApprovalController::class, 'draft'])->middleware('throttle:approval-link');
+Route::post('/v1/approvals/decide', [ApprovalController::class, 'decide'])->middleware('throttle:approval-link');
+// Verifikasi email notifikasi akun; URL bertanda tangan 24 jam, tanpa login agar bisa dibuka dari ponsel.
+Route::post('/v1/notifications/verify', [NotificationSettingsController::class, 'verify'])->middleware('throttle:10,1,notification-verify')->name('notifications.verify');
 Route::post('/v1/applications/unsubscribe', [ApplicationController::class, 'unsubscribe'])->middleware('throttle:10,1,application-unsubscribe')->name('applications.unsubscribe');
 // Limiter bernama `staff-login` (AppServiceProvider): 5/menit per username + IP dan 20/menit per IP.
 Route::post('/v1/staff/login', [StaffController::class, 'login'])->middleware('throttle:staff-login');
@@ -30,6 +38,9 @@ Route::middleware(['auth:sanctum','abilities:panel'])->prefix('v1/staff')->group
     Route::post('/logout', [StaffController::class, 'logout']);
     Route::get('/me', [StaffController::class, 'me']);
     Route::post('/me/password', [StaffUserController::class, 'changeOwnPassword']);
+    Route::get('/me/notifications', [NotificationSettingsController::class, 'show']);
+    Route::put('/me/notifications', [NotificationSettingsController::class, 'updateEmail'])->middleware('throttle:5,1,notification-email');
+    Route::put('/me/notifications/pin', [NotificationSettingsController::class, 'updatePin'])->middleware('throttle:5,1,approval-pin');
 });
 Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/staff')->group(function () {
     Route::get('/letter-register', [StaffController::class, 'letterRegister']);

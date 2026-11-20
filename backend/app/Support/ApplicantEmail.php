@@ -36,7 +36,7 @@ final class ApplicantEmail
             ApplicationStatus::WaitingApproval => 'Surat Anda menunggu persetujuan Kepala Desa.',
             ApplicationStatus::Approved => 'Surat Anda disetujui dan sedang ditandatangani Kepala Desa.',
             ApplicationStatus::ReadyForPickup => $downloadUntil
-                ? 'Surat Anda sudah bisa diunduh di halaman cek status sampai '.self::date($downloadUntil).'.'
+                ? 'Surat Anda sudah bisa diunduh di halaman cek status sampai '.self::indonesianDate($downloadUntil).'.'
                 : 'Surat Anda sudah bisa diunduh di halaman cek status.',
             ApplicationStatus::Completed => 'Permohonan Anda sudah selesai.',
             ApplicationStatus::Rejected => 'Permohonan Anda ditolak. Baca catatan petugas dan hubungi kantor desa untuk penjelasan.',
@@ -70,13 +70,13 @@ final class ApplicantEmail
         return mb_substr($local, 0, 1).'•••@'.$domain;
     }
 
-    /** "20 November 2026" (WIB). APP_LOCALE bawaan "en", jadi nama bulan ditulis sendiri. */
-    private static function date(Carbon $date): string
+    /** "20 November 2026" atau "20 November 2026 14.05" (WIB). APP_LOCALE bawaan "en", jadi nama bulan ditulis sendiri. */
+    public static function indonesianDate(Carbon $date, bool $withTime = false): string
     {
         $months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
         $local = $date->copy()->timezone('Asia/Jakarta');
 
-        return $local->day.' '.$months[$local->month - 1].' '.$local->year;
+        return $local->day.' '.$months[$local->month - 1].' '.$local->year.($withTime ? ' '.$local->format('H.i') : '');
     }
 
     private static function siteUrl(): string
