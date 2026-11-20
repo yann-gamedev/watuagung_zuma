@@ -281,7 +281,7 @@ export interface Submission {
   keperluan: string;
   /**
    * E1: email opsional untuk notifikasi status (RFC, maks 120). Disimpan terenkripsi, tidak pernah dikembalikan API.
-   * Bila diisi, `email_consent` wajib bernilai diterima ("1"/"true"); tanpa email, centang diabaikan. Form: E2.
+   * Bila diisi, `email_consent` wajib bernilai diterima ("1"/"true"); tanpa email, centang diabaikan. Form E2 memakai boolean; multipart mengirim "true"/"false".
    */
   email?: string;
   email_consent?: boolean | "1" | "0";

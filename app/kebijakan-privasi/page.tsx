@@ -17,6 +17,10 @@ const blocks = [
     text: "Jenis surat dan keperluan surat.\nNama lengkap, NIK, nomor KK, tempat lahir, tanggal lahir, jenis kelamin, dan kewarganegaraan.\nAlamat lengkap, dusun, RT, RW, dan nomor telepon.\nAgama, status perkawinan, pendidikan, dan pekerjaan untuk surat selain Izin Keramaian.\nSesuai jenis surat: barang atau dokumen yang hilang; rincian acara (acara, tempat, tanggal mulai dan selesai, jenis hiburan); atau isi keterangan tentang diri pemohon.\nData pengajuan Surat Keterangan Usaha lama tetap dapat memuat nama usaha, jenis usaha, dan alamat usaha; layanan ini tidak menerima pengajuan online baru.",
   },
   {
+    title: "Email pemberitahuan (opsional)",
+    text: "Email hanya dikumpulkan bila Anda mengisinya dan menyetujui pemberitahuan status permohonan. Email disimpan terenkripsi dan dihapus bersama data permohonan saat retensi dijalankan. Masa simpan masih menunggu keputusan desa; retensi belum aktif secara bawaan. Anda dapat berhenti melalui tautan di setiap email; alamat email kemudian dihapus dan permohonan tetap diproses. Email berisi nomor pengajuan, jenis surat, status, catatan perbaikan atau penolakan bila ada, serta tautan cek status; tanpa NIK, alamat, kode akses, atau tautan unduh langsung. Pada mode simulasi, email tidak disimpan atau dikirim.",
+  },
+  {
     title: "Dokumen persyaratan",
     text: "Scan KTP, Scan Kartu Keluarga, dan Scan Surat Pengantar RT/RW dikumpulkan untuk verifikasi permohonan; disimpan terenkripsi, hanya dilihat petugas desa (termasuk admin pelayanan) dan kepala desa. Sistem menyediakan penghapusan otomatis 30 hari setelah permohonan selesai atau ditolak. Pelaksanaannya membutuhkan penjadwal server dan konfigurasi retensi aktif; penerapan pada server produksi belum diverifikasi. Pada mode simulasi, file hanya diproses di memori browser, tidak disimpan atau dikirim ke mana pun.",
   },

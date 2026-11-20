@@ -81,6 +81,18 @@ async function rejected(data, field, message) {
   await assert.rejects(pelayananService.submit(data), message ? (error) => error.message.includes(message) : undefined);
   assert.equal(stored, before, "Invalid submission must not create receipt");
 }
+const { maskApplicantEmail } = await source("lib/applicant-email.ts");
+for (const [email, masked] of [["email@example.test", "e•••@example.test"], ['"a@b"@example.test', '"•••@example.test'], ["ü@例子.广告", "ü•••@例子.广告"]]) assert.equal(maskApplicantEmail(email), masked);
+for (const email of ["", "  "]) assert.equal(submissionSchema.safeParse({ ...valid, email, email_consent: false }).success, true);
+for (const email of ["e@example.test", '"a b"@example.test', "ü@例子.广告", "a@localhost", `${"a".repeat(107)}@example.test`]) {
+  assert.equal(submissionSchema.safeParse({ ...valid, email, email_consent: true }).success, true);
+  await rejected({ ...valid, email, email_consent: false }, "email_consent");
+  await rejected({ ...valid, email }, "email_consent");
+}
+for (const email of ["bukan-email", "@example.test", "a@", "a\r\n@example.test", `${"a".repeat(108)}@example.test`]) await rejected({ ...valid, email, email_consent: true }, "email");
+await pelayananService.submit({ ...valid, email: "fictional@example.test", email_consent: true }, attachments);
+assert.ok(!stored.includes("fictional@example.test") && !stored.includes("email_consent"), "Demo never stores email or consent");
+await assert.rejects(pelayananService.unsubscribeEmail("?id=test&signature=test"), /simulasi/);
 const commonRequired = ["jenis_surat", "nama", "nik", "no_kk", "tempat_lahir", "tanggal_lahir", "jenis_kelamin", "dusun", "alamat", "rt", "rw", "telepon", "keperluan"];
 const foreign = { nama_usaha: "Usaha contoh", jenis_usaha: "Jenis contoh", alamat_usaha: "Alamat usaha contoh", ...specific.KERAMAIAN, ...specific.KEHILANGAN, ...specific.UMUM };
 for (const data of payloads) {
@@ -228,6 +240,9 @@ globalThis.XMLHttpRequest = class {
     });
   }
 };
+await apiService.submit({ ...valid, email: "fictional@example.test", email_consent: true }, attachments);
+assert.equal(xhrs.at(-1).body.get("email"), "fictional@example.test");
+assert.equal(xhrs.at(-1).body.get("email_consent"), "true");
 let fetchCount = 0;
 globalThis.fetch = async (_url, options) => {
   fetchCount++;
@@ -362,6 +377,24 @@ for (const code of [404, 410, 429, 500]) {
   await assert.rejects(apiService.downloadLetter(apiReceipt.request_id, "download-test-only"), code === 410 ? /Masa unduh/ : /Gagal mengunduh/);
 }
 assert.equal(stored, storageBeforeApi, "Download credentials and PDF never persisted");
+const signedQuery = "?id=REQ-2026-FICTIONAL&signature=abc%2Bdef";
+let unsubscribeStatus = 200;
+let unsubscribeCalls = 0;
+globalThis.fetch = async (url, options) => {
+  unsubscribeCalls++;
+  assert.equal(url, `http://127.0.0.1:8000/api/v1/applications/unsubscribe${signedQuery}`, "Preserve raw signed query");
+  assert.equal(options.method, "POST");
+  assert.equal(options.cache, "no-store");
+  return Response.json(unsubscribeStatus === 200 ? { success: true, message: "Email dihentikan." } : { message: "Tautan tidak berlaku." }, { status: unsubscribeStatus });
+};
+for (const query of ["", "?id=x", "?signature=x"]) await assert.rejects(apiService.unsubscribeEmail(query), /Tautan tidak lengkap/);
+assert.equal(unsubscribeCalls, 0);
+for (let repeat = 0; repeat < 2; repeat++) assert.equal((await apiService.unsubscribeEmail(signedQuery)).success, true);
+for (const code of [403, 404, 429, 500]) {
+  unsubscribeStatus = code;
+  await assert.rejects(apiService.unsubscribeEmail(signedQuery), /Tautan tidak berlaku/);
+}
+console.log("PASS: optional email precheck/120-character limit/consent, masking, demo no email network/storage, multipart consent, signed POST unsubscribe and errors.");
 execFileSync(process.execPath, ["scripts/test-attachments.mjs"], { stdio: "inherit" });
 execFileSync(process.execPath, ["scripts/test-public-news.mjs"], { stdio: "inherit" });
 execFileSync(process.execPath, ["scripts/test-public-businesses.mjs"], { stdio: "inherit" });

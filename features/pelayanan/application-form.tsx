@@ -11,11 +11,12 @@ import { submissionSchema, type SubmissionValues } from "@/lib/validation";
 import { agamaOptions, dusunOptions, kewarganegaraanOptions, pendidikanOptions, statusPerkawinanOptions, attachmentKinds, attachmentKindLabels, type AttachmentKind, type SubmissionAttachments } from "@/types/pelayanan";
 import { pelayananService, isDemo, SubmissionValidationError } from "@/services/pelayanan";
 import { DocumentUpload } from "./document-upload";
+import { maskApplicantEmail } from "@/lib/applicant-email";
 import { HubungiPetugas } from "@/components/hubungi-petugas";
 
 const labels: Partial<Record<keyof SubmissionValues, string>> = {
   nama: "Nama lengkap", nik: "NIK", no_kk: "Nomor KK", tempat_lahir: "Tempat lahir", tanggal_lahir: "Tanggal lahir",
-  jenis_kelamin: "Jenis kelamin", telepon: "Nomor telepon", dusun: "Dusun", agama: "Agama", kewarganegaraan: "Kewarganegaraan",
+  email: "Email", email_consent: "Persetujuan email", jenis_kelamin: "Jenis kelamin", telepon: "Nomor telepon", dusun: "Dusun", agama: "Agama", kewarganegaraan: "Kewarganegaraan",
   status_perkawinan: "Status perkawinan", pendidikan: "Pendidikan", pekerjaan: "Pekerjaan", alamat: "Alamat lengkap", rt: "RT", rw: "RW",
   keperluan: "Keperluan surat", barang_hilang: "Barang atau dokumen yang hilang", acara: "Acara", tempat_acara: "Tempat acara",
   tanggal_mulai: "Tanggal mulai", tanggal_selesai: "Tanggal selesai", jenis_hiburan: "Jenis hiburan", isi_keterangan: "Isi keterangan",
@@ -37,7 +38,7 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
   const errorSummary = useRef<HTMLDivElement>(null);
   const { register, handleSubmit, setFocus, setError: setFieldError, formState: { errors, isSubmitting } } = useForm<SubmissionValues>({
     resolver: zodResolver(submissionSchema),
-    defaultValues: { jenis_surat: code, kewarganegaraan: "WNI" },
+    defaultValues: { jenis_surat: code, kewarganegaraan: "WNI", email: "", email_consent: false },
     mode: "onBlur",
   });
   useEffect(() => { stepHeading.current?.querySelector<HTMLElement>("h2")?.focus(); }, [step]);
@@ -71,8 +72,9 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
       const result = await pelayananService.submit(values, files as SubmissionAttachments, setProgress);
       setFiles({});
       setAcceptedId(result.request_id);
-      // Nomor/jenis saja; identitas formulir tidak disimpan di browser.
+      // Email utuh tidak disimpan di browser/URL; hanya versi tersamar pada bukti tab ini.
       try {
+        if (!isDemo && values.email) sessionStorage.setItem(`watuagung-receipt-email-${result.request_id}`, maskApplicantEmail(values.email));
         sessionStorage.setItem(`watuagung-receipt-type-${result.request_id}`, result.jenis_surat || code);
       } catch { /* Jenis tetap tersedia melalui cek status. */ }
       if (result.lookup_secret) {
@@ -107,7 +109,7 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
     <div className="form-layout application-form">
       <div>
         <div className="notice">{isDemo
-          ? "Mode simulasi. Gunakan data fiktif. Data identitas tidak disimpan atau dikirim ke pemerintah desa."
+          ? "Mode simulasi. Gunakan data fiktif. Data identitas tidak disimpan atau dikirim ke pemerintah desa. Email pemberitahuan tidak dikirim."
           : "Periksa data sebelum mengirim. Permohonan akan diteruskan ke layanan administrasi desa."}</div>
         <form className="form-card" method="post" onSubmit={handleSubmit(submit, (invalid) => {
           setStep("data");
@@ -132,7 +134,20 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
                 {field("tempat_lahir", "Tempat lahir")}
                 {field("tanggal_lahir", "Tanggal lahir", "date")}
                 {select("jenis_kelamin", ["Laki-laki", "Perempuan"])}
+              </div>
+            </fieldset>
+            <fieldset disabled={isSubmitting}>
+              <legend>Kontak</legend>
+              <div className="fields">
                 {field("telepon", "Nomor telepon", "tel")}
+                <FormField name="email" label="Email (opsional)" type="email" required={false} register={register} errors={errors} hint="Kami kirim kabar setiap status surat berubah. Isi email yang aktif." />
+                <div className="wide">
+                  <label className="flex min-h-12 items-center gap-3" htmlFor="email_consent">
+                    <input id="email_consent" type="checkbox" className="size-6 shrink-0 accent-[var(--leaf)]" {...register("email_consent")} aria-invalid={!!errors.email_consent} aria-describedby={errors.email_consent ? "email_consent-error" : undefined} />
+                    Saya bersedia menerima email pemberitahuan
+                  </label>
+                  {errors.email_consent && <p id="email_consent-error" className="field-error" role="alert">{errors.email_consent.message}</p>}
+                </div>
               </div>
             </fieldset>
             <fieldset disabled={isSubmitting}>
@@ -185,7 +200,7 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
               <div><dt>Jenis surat</dt><dd>{item?.title}</dd></div>
               {Object.entries(labels).map(([name, label]) => {
                 const value = review[name as keyof SubmissionValues];
-                return value ? <div key={name}><dt>{label}</dt><dd>{value}</dd></div> : null;
+                return value ? <div key={name}><dt>{label}</dt><dd>{typeof value === "boolean" ? "Ya" : value}</dd></div> : null;
               })}
             </dl>
             <h3>Dokumen terlampir</h3>
