@@ -87,8 +87,8 @@ class StaffApplicationsTest extends TestCase
             'letter' => null,
             'attachments' => [],
             'history' => [
-                ['action' => null, 'from_status' => null, 'to_status' => 'SUBMITTED', 'note' => null, 'staff_name' => null, 'created_at' => now()->toISOString()],
-                ['action' => null, 'from_status' => 'PROCESSING', 'to_status' => 'WAITING_APPROVAL', 'note' => 'Riwayat fiktif', 'staff_name' => 'Petugas Fiktif', 'created_at' => now()->toISOString()],
+                ['action' => null, 'from_status' => null, 'to_status' => 'SUBMITTED', 'note' => null, 'staff_name' => null, 'via' => null, 'created_at' => now()->toISOString()],
+                ['action' => null, 'from_status' => 'PROCESSING', 'to_status' => 'WAITING_APPROVAL', 'note' => 'Riwayat fiktif', 'staff_name' => 'Petugas Fiktif', 'via' => null, 'created_at' => now()->toISOString()],
             ],
         ];
         $response = $this->getJson($this->url($application))->assertOk()->assertExactJson($expected);

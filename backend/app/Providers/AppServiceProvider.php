@@ -33,5 +33,16 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(20)->by('ip:'.$request->ip()),
             ];
         });
+
+        // E3: tautan persetujuan email publik. Per tautan membatasi tebakan PIN (selain kunci 5 PIN salah);
+        // per IP membatasi tebakan token.
+        RateLimiter::for('approval-link', function (Request $request) {
+            $token = $request->input('token');
+
+            return [
+                Limit::perMinute(20)->by('ip:'.$request->ip()),
+                Limit::perMinute(10)->by('link:'.hash('sha256', is_string($token) ? $token : '')),
+            ];
+        });
     }
 }
