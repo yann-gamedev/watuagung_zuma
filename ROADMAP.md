@@ -223,6 +223,11 @@ Enam jenis surat tetap: DOMISILI, SKTM, BELUM_MENIKAH, KERAMAIAN, KEHILANGAN, UM
 - [x] O1 — API unggah scan otomatis Siap diunduh, POST unduh warga 30 hari, unduhan pertama Selesai, unduh ulang dan audit; lihat `docs/integrasi.md`.
 - [x] O2 — Layar unduh warga, bantuan HubungiPetugas, panel scan/tenggat/riwayat, istilah scan, privasi dan demo; lint, tsc, build, build:demo, test:demo, 472 tes backend dan E2E Laravel SQLite terisolasi + 390px/1440px lulus (20 November 2026). Verifikasi sesi dicatat di `docs/progres-2026-11-19-online-letter-ui.md`.
 
+### Email pemohon E1–E2 — 20 November 2026
+
+- [x] E1 — Infrastruktur antrean dan notifikasi setiap perubahan status, email terenkripsi/consent/retensi dan POST unsubscribe bertanda tangan (`b757017`); rancangan `docs/PROMPTS-EMAIL.md`.
+- [x] E2 — Formulir email opsional/persetujuan, ringkasan, sukses tersamar/spam, `/berhenti-email/` POST setelah konfirmasi, privasi, demo tanpa kirim/simpan email. Zod pemeriksaan awal; Laravel RFC penentu akhir sesuai keputusan pengguna. Lint, tsc, build, build:demo, test:demo serta Chromium 390px/1440px lulus; Laravel log mailer 76 email seluruh jalur status dan suite E1 13 tes lulus. Batas: browser memakai API mock, Laravel diverifikasi terpisah dalam proses; bukan SMTP/deploy. Lihat `docs/progres-2026-11-20-email-form.md`.
+
 ## M8 — Kesiapan produksi
 
 Wajib selesai sebelum menerima data warga nyata.

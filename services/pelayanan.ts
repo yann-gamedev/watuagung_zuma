@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { attachmentKinds, attachmentKindLabels, serviceCodes, statuses, type Submission, type SubmissionAttachments, type Receipt, type StatusReceipt } from "@/types/pelayanan";
+import { attachmentKinds, attachmentKindLabels, serviceCodes, statuses, type Submission, type SubmissionAttachments, type Receipt, type StatusReceipt, type EmailUnsubscribeResponse } from "@/types/pelayanan";
 import { submissionSchema } from "@/lib/validation";
 // An explicit demo build must never contact an API, even with a stale API URL.
 export const apiBase = process.env.NEXT_PUBLIC_DEMO_MODE === "true"
@@ -82,6 +82,13 @@ function uploadMultipart<T>(path: string, form: FormData, schema: z.ZodType<T>, 
 const demoDownloaded = new Set<string>();
 const demoDeadline = new Date(Date.now() + 30 * 86400000).toISOString();
 export const pelayananService = {
+  async unsubscribeEmail(query: string): Promise<EmailUnsubscribeResponse> {
+    if (!apiBase) throw new Error('Berhenti menerima email tidak tersedia dalam mode simulasi. Email pemberitahuan tidak dikirim.');
+    const params = new URLSearchParams(query);
+    if (!params.get('id') || !params.get('signature')) throw new Error('Tautan tidak lengkap. Gunakan tautan berhenti menerima email dari email pemberitahuan.');
+    // Jangan susun ulang query: tanda tangan Laravel bergantung pada urutan/encoding aslinya.
+    return z.object({ success: z.literal(true), message: z.string() }).parse(await apiRequest(`/applications/unsubscribe${query}`, { method: 'POST' }));
+  },
   async downloadLetter(id: string, secret?: string): Promise<Blob> {
     if (apiBase) {
       if (!secret?.trim()) throw new Error('Masukkan kode akses pengajuan.');
