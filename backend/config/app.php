@@ -54,6 +54,10 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // Asal situs warga (frontend statis) untuk tautan di email: cek status, berhenti berlangganan.
+    // Produksi Hostinger: sama dengan APP_URL. Lokal: http://127.0.0.1:3000.
+    'site_url' => env('SITE_URL', env('APP_URL', 'http://localhost')),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

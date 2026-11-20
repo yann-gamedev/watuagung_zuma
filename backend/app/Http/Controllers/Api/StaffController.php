@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Api;
 use App\Domain\AccessCode;
 use App\Domain\ApplicationStatus;
+use App\Domain\ApplicationStatusChanged;
 use App\Domain\Letter;
 use App\Domain\LetterType;
 use App\Domain\LetterNumber;
@@ -233,7 +234,8 @@ class StaffController extends Controller {
             // Siapa dan kapan Kepala Desa menyetujui, beserta kode verifikasi QR.
             if ($data['status'] === 'APPROVED') Letter::approve($fresh, $user);
             $fresh->update(['status'=>$data['status'],'catatan'=>$note]);
-            DB::table('application_events')->insert(['application_id'=>$fresh->id,'user_id'=>$user->id,'from_status'=>$from,'to_status'=>$data['status'],'note'=>$note === null ? null : Crypt::encryptString($note),'created_at'=>now()]);
+            $eventId = DB::table('application_events')->insertGetId(['application_id'=>$fresh->id,'user_id'=>$user->id,'from_status'=>$from,'to_status'=>$data['status'],'note'=>$note === null ? null : Crypt::encryptString($note),'created_at'=>now()]);
+            ApplicationStatusChanged::dispatch($fresh->id, $from, $data['status'], $eventId);
             return $fresh;
         }, 3);
         if ($result instanceof JsonResponse) return $result;

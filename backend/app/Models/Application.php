@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 class Application extends Model
 {
     protected $guarded = ['id'];
-    protected $hidden = ['id', 'lookup_secret_hash', 'nik', 'no_kk', 'telepon', 'alamat', 'alamat_usaha', 'tempat_lahir', 'tanggal_lahir', 'agama', 'status_perkawinan'];
+    protected $hidden = ['id', 'lookup_secret_hash', 'nik', 'no_kk', 'telepon', 'alamat', 'alamat_usaha', 'tempat_lahir', 'tanggal_lahir', 'agama', 'status_perkawinan', 'email', 'email_consent_at', 'email_unsubscribed_at'];
     protected function casts(): array {
         // tanggal_lahir is an encrypted "Y-m-d" string (validated on submit), not a Carbon date.
         // tanggal_mulai/tanggal_selesai stay plain "Y-m-d" strings for the same reason.
@@ -21,6 +21,7 @@ class Application extends Model
             'agama' => 'encrypted', 'status_perkawinan' => 'encrypted', 'keperluan' => 'encrypted',
             'isi_keterangan' => 'encrypted', 'isi_keterangan_awal' => 'encrypted', 'barang_hilang' => 'encrypted',
             'pekerjaan' => 'encrypted', 'pendidikan' => 'encrypted', 'catatan' => 'encrypted',
+            'email' => 'encrypted', 'email_consent_at' => 'datetime', 'email_unsubscribed_at' => 'datetime',
             'rt' => AreaCode::class, 'rw' => AreaCode::class,
         ];
     }

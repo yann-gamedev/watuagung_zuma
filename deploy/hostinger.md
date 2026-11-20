@@ -40,7 +40,7 @@ hPanel → Advanced → PHP Configuration:
 
 1. Versi **PHP 8.3** (`backend/composer.json` meminta `^8.3`).
 2. Ekstensi aktif: `pdo_mysql`, `mysqli`, `mbstring`, `xml`/`dom`, `gd` (JPEG, PNG, WebP), `intl`, `bcmath`, `zip`, `curl`, `fileinfo`, `openssl`, `sodium`.
-3. Opsi: `upload_max_filesize = 20M`, `post_max_size = 20M` (pengajuan surat membawa 3 lampiran ≤ 5 MB per file; 12M tidak cukup bahkan untuk 3 × 4 MB + overhead multipart, lihat `docs/integrasi.md` § Lampiran), `memory_limit = 256M` (foto 6000×6000 butuh ±170 MB saat diolah), `max_execution_time` minimal 60, `display_errors = Off`, `expose_php = Off` bila ada.
+3. Opsi: `upload_max_filesize` dan `post_max_size` minimal 20M (Web Hosting Premium hanya menawarkan 1024M/1536M dan sudah 1536M saat dicek 20 November 2026; cukup) (pengajuan surat membawa 3 lampiran ≤ 5 MB per file; 12M tidak cukup bahkan untuk 3 × 4 MB + overhead multipart, lihat `docs/integrasi.md` § Lampiran), `memory_limit = 256M` (foto 6000×6000 butuh ±170 MB saat diolah), `max_execution_time` minimal 60, `display_errors = Off`, `expose_php = Off` bila ada.
 
 PHP **CLI** lewat SSH bisa berbeda versi dari PHP web. Cek setelah SSH aktif (§ E):
 
@@ -168,7 +168,10 @@ hPanel → Advanced → Cron Jobs → Custom. **Jadwal cron Hostinger memakai UT
 | Retensi 00.05 WIB | `5 17 * * *` | `cd /home/u123456789/watuagung/backend && /opt/alt/php83/usr/bin/php artisan applications:purge >/dev/null 2>&1` |
 | Retensi lampiran 00.10 WIB | `10 17 * * *` | `cd /home/u123456789/watuagung/backend && /opt/alt/php83/usr/bin/php artisan attachments:purge >/dev/null 2>&1` |
 | Masa unduh surat 00.15 WIB | `15 17 * * *` | `cd /home/u123456789/watuagung/backend && /opt/alt/php83/usr/bin/php artisan letters:expire-downloads >/dev/null 2>&1` |
+| Antrean email tiap menit | `* * * * *` | `cd /home/u123456789/watuagung/backend && /opt/alt/php83/usr/bin/php artisan queue:work --stop-when-empty --max-time=50 --tries=3 >/dev/null 2>&1` |
 | Backup 02.00 WIB | `0 19 * * *` | `/home/u123456789/bin/watuagung-backup.sh >> /home/u123456789/backups/watuagung/backup.log 2>&1` |
+
+**Antrean email** (E1): `--max-time=50` membuat worker berhenti sebelum cron berikutnya; bila sesekali tumpang tindih, antrean database mengunci job per baris sehingga satu job tidak diproses dua kali. Pasang cron ini baru setelah § Email notifikasi selesai; tanpa job, perintah langsung keluar.
 
 **Jangan pakai `schedule:run`.** Hostinger mematikan `proc_open` (juga di PHP CLI) dan scheduler Laravel menjalankan tiap tugas sebagai proses anak, sehingga tugas terjadwal gagal. Tugas harian di `routes/console.php` dipasang langsung sebagai cron di atas; bila menambah `Schedule::` baru, tambahkan juga cron-nya. `applications:purge` tidak mengubah apa pun selama `RETENTION_APPLICATION_DAYS` kosong. `attachments:purge` **aktif bawaan** (`ATTACHMENT_RETENTION_DAYS=30`): menghapus file lampiran permohonan `COMPLETED`/`REJECTED` setelah 30 hari; `0` mematikannya. (`media:prune` belum dipasang sebagai cron; di luar lingkup perubahan ini.) Perintah cron dibatasi **255 karakter**, sehingga backup memakai skrip pembungkus.
 
@@ -203,12 +206,38 @@ exec bash "$APP_DIR/deploy/backup.sh"
 
 Backup otomatis Hostinger (mingguan pada Premium; cek di hPanel → Files → Backups) boleh dipakai sebagai pelengkap, tetapi **bukan pengganti**: isinya memuat `.env` dengan `APP_KEY` bersama database, dan pemulihannya menimpa file/database seluruhnya.
 
+### Email notifikasi (E1, 20 November 2026)
+
+Email status ke pemohon dikirim lewat SMTP Hostinger dari kotak surat domain sendiri. Rancangan: [docs/PROMPTS-EMAIL.md](../docs/PROMPTS-EMAIL.md); kontrak: `docs/integrasi.md` § Notifikasi email pemohon.
+
+1. **Jangan aktifkan sebelum E2 ter-deploy.** Tautan berhenti berlangganan di email menuju halaman `/berhenti-email/` yang dibuat E2; sebelum itu biarkan `MAIL_MAILER=log`.
+2. hPanel → Emails: buat kotak surat **`notifikasi@desawatuagung.com`** (sesuaikan bila domain diganti, § M). Kata sandi acak panjang, simpan di password manager desa. Kotak surat ini hanya untuk mengirim; balasan warga tetap diarahkan ke kontak kantor.
+3. **SPF, DKIM, DMARC:** hPanel → Emails → kotak surat → bagian DNS/Email authentication. Bila DNS domain dikelola Hostinger, rekaman biasanya terpasang otomatis; pastikan ketiganya berstatus aktif. Tanpa itu email masuk spam. Bila DNS di tempat lain, salin rekaman yang ditampilkan hPanel ke pengelola DNS.
+4. **Batas kirim:** cek hPanel → Emails → Mailboxes → *View limits*. Menurut halaman resmi Hostinger, Business Starter 1.000 email/hari dan Business Premium 3.000 email/hari per kotak surat (24 jam bergulir, maksimal 100 penerima per email). Satu email per perubahan status; permohonan biasa ±6–8 email. `mail()` PHP jauh lebih terbatas (10/menit, 100/hari), jadi wajib SMTP.
+5. `backend/.env` (mode 600), sesuai `.env.production.example`. Nilai SMTP dari dokumentasi resmi Hostinger ([Setting Up Apps & Devices](https://docs.hostinger.com/emails/setup-devices), dicek 20 November 2026): host `smtp.hostinger.com`, port **465** dengan SSL/TLS (`MAIL_SCHEME=smtps`), username = alamat kotak surat lengkap. Cadangan bila 465 diblokir: port 587 STARTTLS (`MAIL_PORT=587`, `MAIL_SCHEME=smtp`). Nilai terbaru per kotak surat juga ada di hPanel → Emails → *Connect Apps & Devices*.
+
+   ```dotenv
+   QUEUE_CONNECTION=database
+   MAIL_MAILER=smtp
+   MAIL_HOST=smtp.hostinger.com
+   MAIL_PORT=465
+   MAIL_SCHEME=smtps
+   MAIL_USERNAME=notifikasi@desawatuagung.com
+   MAIL_PASSWORD=   # isi langsung di server, jangan di chat/Git
+   MAIL_FROM_ADDRESS=notifikasi@desawatuagung.com
+   MAIL_FROM_NAME="Pelayanan Desa Watuagung"
+   SITE_URL=https://desawatuagung.com
+   ```
+
+   Lalu `php artisan config:cache` dan pasang cron *Antrean email* (§ H tabel).
+6. Uji dengan data fiktif: ajukan dengan email uji milik tim, ubah status di panel, tunggu ≤ 1 menit, periksa kotak masuk (dan folder spam) serta header `SPF/DKIM: pass`. Gagal kirim tercatat di `storage/logs` sebagai `Email status pemohon gagal dikirim.` dengan alamat tersamar; status permohonan tidak terpengaruh. Job gagal permanen ada di tabel `failed_jobs`.
+
 ## I. Deploy rutin
 
 Sebelum tiap rilis (deploy in-place, **bukan atomik**):
 
 1. Jadwalkan di luar jam layanan, tinjau migration dan uji pada salinan database target. Pastikan rilis tidak mengganti `APP_KEY`.
-2. Nonaktifkan sementara seluruh cron penulis di hPanel (§ H), worker antrean, dan scheduler jika ada. Dengan kode lama masih terpasang, jalankan `php artisan down --retry=60` dari `backend/` memakai biner PHP produksi (§ C); tunggu request HTTP dan proses CLI yang sedang berjalan selesai. Maintenance HTTP **tidak** menghentikan perintah CLI/cron.
+2. Nonaktifkan sementara seluruh cron penulis di hPanel (§ H), termasuk cron *Antrean email*, dan scheduler jika ada. Dengan kode lama masih terpasang, jalankan `php artisan down --retry=60` dari `backend/` memakai biner PHP produksi (§ C); tunggu request HTTP dan proses CLI yang sedang berjalan selesai. Maintenance HTTP **tidak** menghentikan perintah CLI/cron.
 3. Dalam keadaan tanpa penulis aktif, jalankan backup manual database + `storage/app`, verifikasi arsip dapat didekripsi dan `APP_KEY` asli tersimpan terpisah. Jangan lanjut bila backup gagal. Dua variabel konfirmasi di bawah adalah pernyataan operator, **bukan** pemeriksaan backup/cron otomatis.
 4. Jalankan skrip berikut dari rilis yang sudah memiliki pengaman ini. Skrip lama pada server tidak menjadi aman hanya karena tag tujuan berisi versi baru: perbarui skrip yang ditinjau terlebih dahulu, tanpa mengaktifkan kode aplikasi baru.
 
@@ -307,5 +336,6 @@ Domain awal `desawatuagung.com` (dipilih di onboarding hPanel 12 November 2026) 
 - [ ] Bootstrap § G; `APP_KEY` di password manager.
 - [ ] Deploy § I dan uji § J lulus.
 - [ ] Cron scheduler dan backup (UTC); backup manual dan uji dekripsi lulus; salinan ke luar Hostinger aktif.
+- [ ] Email notifikasi (§ H Email notifikasi) hanya setelah E2: kotak surat, SPF/DKIM/DMARC aktif, batas kirim dicatat, cron antrean, uji kirim lulus.
 - [ ] Uji pemulihan § L lulus.
 - [ ] Keputusan § K dicatat.

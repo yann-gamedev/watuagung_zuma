@@ -238,6 +238,7 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | POST | `/applications` | Publik, 5 permintaan/menit | Mengajukan layanan (multipart, lampiran KTP/KK/pengantar RT/RW wajib; lihat § Lampiran persyaratan); mengembalikan `request_id`, `status`, `jenis_surat`, `requires_neighborhood_approval: boolean` dari `LetterType`, `lampiran` (jenis yang diterima), dan `lookup_secret` (HTTP 201) |
 | POST | `/applications/letter` | Publik, 10/menit per IP; kunci kode akses bersama cek status | Warga mengunduh scan surat bertanda tangan (`request_id`, `lookup_secret`); unduhan pertama → `COMPLETED` (§ Surat PDF) |
 | POST | `/applications/attachments` | Publik, 5 permintaan/menit; kunci kode akses bersama cek status | Warga mengganti lampiran saat `NEED_REVISION` (multipart `request_id`, `lookup_secret`, `lampiran[KIND]`) |
+| POST | `/applications/unsubscribe` | Publik, 10/menit; URL bertanda tangan (`id`, `signature`) | Berhenti menerima email status (§ Notifikasi email pemohon); mengosongkan email; 403 tanda tangan salah |
 | POST | `/applications/status` | Publik, 10 permintaan/menit; 5 kode salah per nomor → 429 selama 15 menit | Body: `request_id` dan `lookup_secret`; mengembalikan `jenis_surat`, `requires_neighborhood_approval: boolean` dari `LetterType`, status, `lampiran` (jenis yang diterima, tanpa path/ukuran/hash), dan catatan (penolakan RT/RW historis tetap diberi awalan "Ditolak oleh Ketua RT/RW") |
 | POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `username` dan `password` (atau `email` untuk klien lama); mengembalikan bearer token |
 | POST | `/staff/logout` | Token petugas | Mencabut token aktif |
@@ -295,6 +296,16 @@ Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Validasi yang g
 - Nama file asli tidak pernah disimpan. Hostinger: `upload_max_filesize`/`post_max_size` 20M (`deploy/hostinger.md` § C).
 - Tes: `tests/Feature/ApplicationAttachmentsTest.php`; tes lain mengajukan lewat `submitLetter()` di `tests/LetterPayloads.php` (gambar polos fiktif, disk `local` palsu).
 - **Akses, penggantian, retensi (17 November 2026):** `AttachmentController::show()` (staff/admin/village_head, `forUser()`, 404/410, audit `attachment.viewed` setiap kali sebelum isi dikirim, header `private, no-store` + `nosniff`, nama netral). `ApplicationController::replaceAttachments()` memakai `authenticate()` yang sama dengan cek status (kunci `lookup:{request_id}`), hanya `NEED_REVISION`, `AttachmentStore::replace()` memperbarui baris yang sama dan mengembalikan path lama untuk `deleteFiles()` setelah commit; event `ATTACHMENTS_UPDATED`. Detail petugas memakai `AttachmentStore::staffList()`. `AttachmentStore::purgeRows()` dipakai `attachments:purge` dan `applications:purge`. Tes: `tests/Feature/AttachmentAccessTest.php`. Kontrak lengkap: [docs/integrasi.md § Akses petugas, penggantian, dan retensi lampiran](../docs/integrasi.md#akses-petugas-penggantian-dan-retensi-lampiran-17-november-2026).
+
+### Notifikasi email pemohon (E1, 20 November 2026)
+
+- Kolom `applications.email` (text, cast `encrypted`, `$hidden`), `email_consent_at`, `email_unsubscribed_at` (migration `2026_11_20_000000_add_email_notifications_to_applications`, ada `down()`). Validasi di `LetterSubmission::rules()`: `email` opsional `email:rfc` maks 120; `email_consent` wajib diterima hanya bila email diisi.
+- `App\Domain\ApplicationStatusChanged` (after commit) dikirim di keempat tempat status berubah: `StaffController::update`, `LetterController::upload`, `ApplicationController::letter` (unduhan pertama), `letters:expire-downloads`. **Tempat baru yang mengubah status wajib mengirim event yang sama** setelah menulis `application_events` (`insertGetId`).
+- `App\Listeners\SendApplicantStatusEmail` (ditemukan otomatis, `ShouldQueue`, 3 percobaan): `shouldQueue()` dan `handle()` memeriksa `ApplicantEmail::canNotify()` (email + persetujuan + belum berhenti + belum dianonimkan). Mailable dikirim langsung dari listener agar isinya tidak tersimpan di tabel `jobs`. Gagal kirim → `Log::warning` dengan email tersamar; koneksi `sync` tidak melempar sehingga respons petugas tetap 200.
+- `App\Support\ApplicantEmail`: kalimat status, nama jenis surat, URL cek status dan berhenti (`SITE_URL`), penyamaran email. Label status di `ApplicationStatus::citizenLabel()` (cermin `components/site.tsx`).
+- `POST /applications/unsubscribe` memakai `hasValidSignature(false)` (tanda tangan relatif, tanpa kedaluwarsa); mengosongkan email, audit `application.email_unsubscribed`.
+- Antrean: `QUEUE_CONNECTION=database`. Lokal: `php artisan queue:work --stop-when-empty` (atau `schedule:work`), `MAIL_MAILER=log`. Hostinger: cron langsung tiap menit (`deploy/hostinger.md` § H).
+- Tes: `tests/Feature/ApplicantStatusEmailTest.php`. Kontrak lengkap: [docs/integrasi.md § Notifikasi email pemohon](../docs/integrasi.md#notifikasi-email-pemohon-e1-20-november-2026).
 
 ### Berita
 
@@ -514,6 +525,7 @@ Migration `2026_10_20_000000_add_neighborhood_territories` menambah kolom `rt`/`
   - Idempoten: permohonan yang sudah memiliki `purged_at` dilewati. Nilai bukan bilangan bulat ≥ 1 → keluar dengan error tanpa perubahan.
   - Dijadwalkan harian di `routes/console.php`; aman karena mati bawaan. Backup lama tetap berisi data sebelum anonimisasi sampai rotasinya habis.
   - Lampiran persyaratan permohonan yang dianonimkan ikut dihapus (`AttachmentStore::purgeRows()`, audit `attachment.purged` per lampiran).
+  - `email` dan `email_consent_at` dikosongkan (notifikasi email berhenti).
 - **Retensi lampiran (aktif bawaan, 30 hari):** `config/retention.php` `attachment_days` membaca `ATTACHMENT_RETENTION_DAYS` (tidak diset = 30; kosong/`0` = mati). `php artisan attachments:purge --dry-run` menampilkan target. Tanpa opsi: lampiran permohonan `COMPLETED`/`REJECTED` dengan `updated_at` lebih tua dari N hari → `path` null, `purged_at` diisi, audit `attachment.purged`, file dihapus setelah commit. Data permohonan tidak diubah. Dijadwalkan harian; di Hostinger dipasang sebagai cron sendiri (`deploy/hostinger.md` § H).
 - Lampiran persyaratan diterima, dibuka petugas, diganti warga, dan dihapus retensi di API (§ Lampiran persyaratan), tetapi belum ada layar unggah/ganti warga (L3) atau tampilan petugas (L4). Belum ada OTP, TTE, atau pengelolaan konten. Jangan menguji dengan data pribadi nyata.
 

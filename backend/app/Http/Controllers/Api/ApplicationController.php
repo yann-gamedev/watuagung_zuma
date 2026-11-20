@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\Api;
 use App\Domain\AccessCode;
+use App\Domain\ApplicationStatusChanged;
 use App\Domain\AttachmentKind;
 use App\Domain\LetterSubmission;
 use App\Domain\LetterType;
@@ -32,6 +33,13 @@ class ApplicationController extends Controller {
         if ($errors !== []) throw ValidationException::withMessages($errors);
         // Teks asli warga disimpan terpisah agar sunting petugas tetap dapat dibandingkan.
         if (isset($data['isi_keterangan'])) $data['isi_keterangan_awal'] = $data['isi_keterangan'];
+        // Persetujuan disimpan sebagai waktu; tanpa email, centang persetujuan diabaikan.
+        unset($data['email_consent']);
+        if (blank($data['email'] ?? null)) {
+            unset($data['email']);
+        } else {
+            $data['email_consent_at'] = now();
+        }
         $secret = AccessCode::generate();
         $files = $request->file('lampiran');
         $written = [];
@@ -136,10 +144,11 @@ class ApplicationController extends Controller {
             $pdf = Letter::contents($letter);
             if ($fresh->status === 'READY_FOR_PICKUP') {
                 $fresh->update(['status'=>'COMPLETED', 'catatan'=>null]);
-                DB::table('application_events')->insert([
+                $eventId = DB::table('application_events')->insertGetId([
                     'application_id'=>$fresh->id, 'from_status'=>'READY_FOR_PICKUP', 'to_status'=>'COMPLETED',
                     'note'=>Crypt::encryptString('Surat diunduh pemohon'), 'created_at'=>now(),
                 ]);
+                ApplicationStatusChanged::dispatch($fresh->id, 'READY_FOR_PICKUP', 'COMPLETED', $eventId);
             }
             // Setiap unduhan dicatat; gagal mencatat = isi tidak dikirim.
             DB::table('audit_logs')->insert(['user_id'=>null, 'action'=>'letter.downloaded', 'subject_type'=>'application', 'subject_id'=>$fresh->id, 'created_at'=>now()]);
@@ -155,6 +164,26 @@ class ApplicationController extends Controller {
             'Cache-Control'=>'private, no-store',
             'X-Content-Type-Options'=>'nosniff',
         ]);
+    }
+
+    /**
+     * Berhenti menerima email status. Tautan di email adalah URL bertanda tangan Laravel (relatif, tanpa
+     * kedaluwarsa); halaman frontend /berhenti-email/ meneruskan query yang sama ke POST ini. Tanpa kode akses:
+     * pemegang email cukup untuk berhenti. Email ikut dikosongkan karena tujuannya sudah tidak ada. Idempoten.
+     */
+    public function unsubscribe(Request $request): JsonResponse {
+        if (! $request->hasValidSignature(false)) {
+            return response()->json(['success'=>false,'message'=>'Tautan berhenti berlangganan tidak valid. Gunakan tautan terbaru dari email.'], 403);
+        }
+        $application = Application::where('request_id', (string) $request->query('id'))->first();
+        if (! $application) return response()->json(['success'=>false,'message'=>'Permohonan tidak ditemukan.'], 404);
+        DB::transaction(function () use ($application) {
+            $fresh = Application::whereKey($application->id)->lockForUpdate()->firstOrFail();
+            if ($fresh->email_unsubscribed_at !== null && $fresh->email === null) return;
+            $fresh->forceFill(['email'=>null, 'email_unsubscribed_at'=>$fresh->email_unsubscribed_at ?? now()])->save();
+            DB::table('audit_logs')->insert(['user_id'=>null, 'action'=>'application.email_unsubscribed', 'subject_type'=>'application', 'subject_id'=>$fresh->id, 'created_at'=>now()]);
+        });
+        return response()->json(['success'=>true,'message'=>'Anda tidak akan menerima email pemberitahuan lagi untuk permohonan ini.']);
     }
 
     /** Nomor pengajuan + kode akses; 5 kode salah per nomor mengunci 15 menit (dipakai bersama semua endpoint warga). */

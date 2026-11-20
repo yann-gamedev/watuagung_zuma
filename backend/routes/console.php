@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\ApplicationStatus;
+use App\Domain\ApplicationStatusChanged;
 use App\Domain\Letter;
 use App\Models\Application;
 use App\Models\Business;
@@ -88,6 +89,8 @@ Artisan::command('applications:purge {--dry-run}', function () {
                 'dusun' => null, 'agama' => null, 'kewarganegaraan' => null, 'status_perkawinan' => null, 'pendidikan' => null,
                 'pekerjaan' => null, 'barang_hilang' => null, 'acara' => null, 'tempat_acara' => null, 'tanggal_mulai' => null,
                 'tanggal_selesai' => null, 'jenis_hiburan' => null, 'isi_keterangan' => null, 'isi_keterangan_awal' => null,
+                // Email notifikasi ikut dihapus; tanpa email tidak ada lagi notifikasi (ApplicantEmail::canNotify).
+                'email' => null, 'email_consent_at' => null,
             ]);
             $application->timestamps = false; // updated_at asli tetap.
             $application->save();
@@ -157,10 +160,11 @@ Artisan::command('letters:expire-downloads {--dry-run}', function () {
             // Dicek ulang di bawah kunci: warga bisa mengunduh, atau petugas mengunggah ulang, sejak query dijalankan.
             if (! $fresh || $fresh->status !== 'READY_FOR_PICKUP' || $readyAt === null || ! \Illuminate\Support\Carbon::parse($readyAt)->lessThan($cutoff)) return false;
             $fresh->update(['status' => 'COMPLETED', 'catatan' => null]);
-            DB::table('application_events')->insert([
+            $eventId = DB::table('application_events')->insertGetId([
                 'application_id' => $fresh->id, 'from_status' => 'READY_FOR_PICKUP', 'to_status' => 'COMPLETED',
                 'note' => \Illuminate\Support\Facades\Crypt::encryptString('Masa unduh berakhir'), 'created_at' => now(),
             ]);
+            ApplicationStatusChanged::dispatch($fresh->id, 'READY_FOR_PICKUP', 'COMPLETED', $eventId);
             return true;
         });
         if ($changed) $count++;
@@ -203,3 +207,6 @@ Schedule::command('attachments:purge')->daily();
 Schedule::command('letters:expire-downloads')->daily();
 // Hanya menghapus file yang tidak dirujuk berita/UMKM aktif.
 Schedule::command('media:prune')->daily();
+// Antrean email (QUEUE_CONNECTION=database) untuk lokal/VPS. Hostinger tidak memakai schedule:run (proc_open
+// dimatikan); perintah yang sama dipasang langsung sebagai cron tiap menit (deploy/hostinger.md § H).
+Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=3')->everyMinute()->withoutOverlapping();
