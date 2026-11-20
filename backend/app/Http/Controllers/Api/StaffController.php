@@ -56,8 +56,8 @@ class StaffController extends Controller {
         $user = isset($data['username'])
             ? User::where('username', $data['username'])->first()
             : User::where('email', $data['email'])->first();
-        // Akun nonaktif memakai pesan yang sama dengan kredensial salah.
-        if (! $user || ! Hash::check($data['password'], $user->password) || ! $user->canAccessPanel()) return response()->json(['message'=>'Kredensial tidak valid.'], 401);
+        // Akun nonaktif memakai pesan yang sama dengan kata sandi salah (tidak membocorkan keberadaan akun).
+        if (! $user || ! Hash::check($data['password'], $user->password) || ! $user->canAccessPanel()) return response()->json(['message'=>'Username atau kata sandi salah.'], 401);
         $user->forceFill(['last_login_at'=>now()])->save();
         return response()->json(['token'=>$user->createToken('staff', $user->abilities())->plainTextToken,'must_change_password'=>(bool) $user->must_change_password,'user'=>['name'=>$user->name,'role'=>$user->role,'rt'=>$user->rt,'rw'=>$user->rw]]);
     }

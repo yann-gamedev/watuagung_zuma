@@ -167,7 +167,7 @@ php artisan staff:create rt-lokal --role=rt_head --rt=1 --rw=2 --name="Ketua RT 
 php artisan staff:create rw-lokal --role=rw_head --rw=2 --name="Ketua RW Lokal"
 ```
 
-Saat fitur mati, login RT/RW mendapat 401 generik `Kredensial tidak valid.`; token RT/RW lama mendapat 403 pada endpoint panel. API pembuatan/penetapan peran atau wilayah/aktivasi akun RT/RW ditolak 422 dengan pesan jelas bahwa fitur nonaktif. Menonaktifkan akun RT/RW yang sudah ada tetap diizinkan. `staff:create --role=rt_head|rw_head` juga ditolak. `/staff/me` mengirim `features.neighborhood_approval`; otorisasi tetap di server.
+Saat fitur mati, login RT/RW mendapat 401 generik `Username atau kata sandi salah.`; token RT/RW lama mendapat 403 pada endpoint panel. API pembuatan/penetapan peran atau wilayah/aktivasi akun RT/RW ditolak 422 dengan pesan jelas bahwa fitur nonaktif. Menonaktifkan akun RT/RW yang sudah ada tetap diizinkan. `staff:create --role=rt_head|rw_head` juga ditolak. `/staff/me` mengirim `features.neighborhood_approval`; otorisasi tetap di server.
 
 `--email` opsional (bawaan `<username>@example.test`). `rt_head` wajib `--rt` dan `--rw`; `rw_head` wajib `--rw`; isinya 1–3 digit dan disimpan sebagai 3 digit (`1` → `001`). Kolom `rt`/`rw` pada `users` nullable untuk peran lain. Ketua RT/RW tanpa wilayah lengkap tidak bisa masuk panel. Nama, username, dan nomor wilayah di atas hanya contoh, **bukan** akun bawaan. Buat admin pertama melalui CLI; untuk pengelolaan berikutnya gunakan panel **Akun** (`/admin/akun`) agar validasi wilayah, perlindungan admin, dan audit diterapkan.
 
@@ -210,9 +210,9 @@ Akun tersimpan di tabel `users` pada **database aktif Laravel**. Git push/pull t
 |---|---|
 | Panel petugas tidak aktif pada demo | Mode demo/API URL kosong atau build demo. Bukan kegagalan kata sandi. |
 | Server belum dapat dihubungi / gagal jaringan | Cek `/up`, port/API URL, dan `FRONTEND_ORIGINS`. Origin mencakup protokol, host, port; `http://localhost:3000` berbeda dari `http://127.0.0.1:3000`. |
-| 401 / `Kredensial tidak valid.` saat login | Username/kata sandi salah, akun nonaktif, peran tidak diizinkan, RT/RW nonaktif, atau wilayah RT/RW tidak lengkap. Pesan sengaja generik; cek metadata akun secara lokal. |
+| 401 / `Username atau kata sandi salah.` saat login | Username/kata sandi salah, akun nonaktif, peran tidak diizinkan, RT/RW nonaktif, atau wilayah RT/RW tidak lengkap. Pesan sengaja generik; cek metadata akun secara lokal. |
 | 422 saat login | Format username/isian salah. Username 1–64 karakter, diawali huruf kecil/angka; sisanya huruf kecil/angka, `_`, `-`. Bukan nama tampilan/email. Akun lama username null perlu ditetapkan oleh admin berwenang; API email lama tidak berarti form username menerima email. |
-| 429 | Batas login 5 percobaan/menit. Hentikan percobaan, tunggu sampai batas pulih; jangan mengakali rate limit. |
+| 429 / `Terlalu banyak percobaan. Tunggu … lalu coba lagi.` | Limiter `staff-login`: 5 percobaan/menit per username + IP, 20/menit per IP (`AppServiceProvider`). Tunggu sesuai `retry_after`; jangan mengakali rate limit. Halaman publik tidak lagi menghabiskan jatah login (throttle rute bernama, lihat `docs/integrasi.md` § Respons 429 batas laju). |
 | Sesi berakhir | Token kedaluwarsa/dicabut; masuk ulang. Sesi disimpan per tab/origin, bukan bukti akun terhapus. |
 | Diminta ganti kata sandi | Login berhasil, akun memakai kata sandi sementara. Selesaikan penggantian sebelum memakai fitur lain. |
 | 403 setelah login | Periksa peran/akun aktif/ability dan konfigurasi RT/RW. Admin/staff boleh mengelola media dan konten situs; KIM hanya berita/UMKM termasuk foto; Kepala Desa tidak boleh mengelola keduanya. |
@@ -356,7 +356,7 @@ Tipe baru `types/site.ts`, re-export `types/pelayanan.ts`; dokumentasi lengkap d
 - `warnings` berisi `{ role, rt, rw, pending }` untuk permohonan `SUBMITTED` di RT/RW tanpa `rt_head` aktif atau `RT_APPROVED` di RW tanpa `rw_head` aktif. Angka `pending` adalah jumlah permohonan yang tertahan.
 - Saat fitur mati, buat akun RT/RW, tetapkan peran/wilayah RT/RW, atau aktifkan akun RT/RW → 422 dengan pesan jelas bahwa fitur nonaktif. Menonaktifkan akun RT/RW lama tetap boleh. Login RT/RW → 401 generik; token lama yang belum dicabut → 403 pada endpoint panel.
 - `PATCH` mengikuti aturan: admin tidak bisa menonaktifkan/menurunkan dirinya sendiri; admin aktif terakhir tidak bisa dihapus; satu RT hanya satu `rt_head` aktif dan satu RW hanya satu `rw_head` aktif. Melanggar aturan → 422 dengan `errors`.
-- Login akun nonaktif → 401 `Kredensial tidak valid.` (pesan sama dengan kata sandi salah). Login berhasil mengisi `last_login_at` dan mengembalikan `must_change_password`.
+- Login akun nonaktif → 401 `Username atau kata sandi salah.` (pesan sama dengan kata sandi salah). Login berhasil mengisi `last_login_at` dan mengembalikan `must_change_password`.
 - `POST /staff/me/password` memverifikasi kata sandi lama, menyimpan kata sandi baru (min. 10), menghapus `must_change_password`, dan mencabut token lain. Token yang sedang dipakai tetap berlaku.
 - Audit akun memakai `subject_type=user` dan `subject_id` = ID akun target. Tidak ada email, kata sandi, atau token di audit.
 

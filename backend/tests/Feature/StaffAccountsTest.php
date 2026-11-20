@@ -173,7 +173,7 @@ class StaffAccountsTest extends TestCase
         $this->forgetGuards();
         $this->withToken($staffToken)->getJson('/api/v1/staff/me')->assertUnauthorized();
         $this->postJson('/api/v1/staff/login', ['username' => $staff->username, 'password' => 'sandi-sementara'])
-            ->assertUnauthorized()->assertExactJson(['message' => 'Kredensial tidak valid.']);
+            ->assertUnauthorized()->assertExactJson(['message' => 'Username atau kata sandi salah.']);
     }
 
     public function test_admin_cannot_deactivate_or_demote_self_and_an_admin_always_remains(): void

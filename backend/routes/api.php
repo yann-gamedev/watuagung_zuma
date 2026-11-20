@@ -8,18 +8,21 @@ use App\Http\Controllers\Api\SiteSectionController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Api\StaffUserController;
 use Illuminate\Support\Facades\Route;
-Route::post('/v1/applications', [ApplicationController::class, 'store'])->middleware('throttle:5,1');
-Route::post('/v1/applications/status', [ApplicationController::class, 'status'])->middleware('throttle:10,1');
+// Setiap throttle wajib bernama (argumen ketiga, atau limiter bernama). Tanpa nama, Laravel memakai kunci
+// domain|IP yang sama untuk semua rute, sehingga membuka beranda ikut menghabiskan jatah login.
+Route::post('/v1/applications', [ApplicationController::class, 'store'])->middleware('throttle:5,1,application-submit');
+Route::post('/v1/applications/status', [ApplicationController::class, 'status'])->middleware('throttle:10,1,application-status');
 // Unduh scan surat oleh warga; kunci kode akses bersama cek status + batas per IP.
 Route::post('/v1/applications/letter', [ApplicationController::class, 'letter'])->middleware('throttle:10,1,application-letter');
 Route::post('/v1/applications/attachments', [ApplicationController::class, 'replaceAttachments'])->middleware('throttle:5,1,application-attachments');
-Route::post('/v1/staff/login', [StaffController::class, 'login'])->middleware('throttle:5,1');
-Route::get('/v1/verify/{code}', [LetterController::class, 'verify'])->middleware('throttle:30,1');
-Route::get('/v1/posts', [PostController::class, 'index'])->middleware('throttle:60,1');
-Route::get('/v1/posts/{slug}', [PostController::class, 'show'])->middleware('throttle:60,1');
-Route::get('/v1/site/{key}', [SiteSectionController::class, 'show'])->middleware('throttle:60,1');
-Route::get('/v1/businesses', [BusinessController::class, 'index'])->middleware('throttle:60,1');
-Route::get('/v1/businesses/{slug}', [BusinessController::class, 'show'])->middleware('throttle:60,1');
+// Limiter bernama `staff-login` (AppServiceProvider): 5/menit per username + IP dan 20/menit per IP.
+Route::post('/v1/staff/login', [StaffController::class, 'login'])->middleware('throttle:staff-login');
+Route::get('/v1/verify/{code}', [LetterController::class, 'verify'])->middleware('throttle:30,1,letter-verify');
+Route::get('/v1/posts', [PostController::class, 'index'])->middleware('throttle:60,1,public-posts');
+Route::get('/v1/posts/{slug}', [PostController::class, 'show'])->middleware('throttle:60,1,public-posts');
+Route::get('/v1/site/{key}', [SiteSectionController::class, 'show'])->middleware('throttle:60,1,public-site');
+Route::get('/v1/businesses', [BusinessController::class, 'index'])->middleware('throttle:60,1,public-businesses');
+Route::get('/v1/businesses/{slug}', [BusinessController::class, 'show'])->middleware('throttle:60,1,public-businesses');
 // Grup per ability: route baru wajib masuk salah satu grup sehingga peran tanpa ability tertolak bawaan.
 Route::middleware(['auth:sanctum','abilities:panel'])->prefix('v1/staff')->group(function () {
     Route::post('/logout', [StaffController::class, 'logout']);
@@ -32,10 +35,10 @@ Route::middleware(['auth:sanctum','abilities:applications:manage'])->prefix('v1/
     Route::get('/applications', [StaffController::class, 'index']);
     Route::get('/applications/{request_id}', [StaffController::class, 'show']);
     Route::patch('/applications/{application:request_id}/status', [StaffController::class, 'update']);
-    Route::patch('/applications/{request_id}/isi-keterangan', [StaffController::class, 'updateStatement'])->middleware('throttle:30,1');
-    Route::post('/applications/{request_id}/lookup-secret', [StaffController::class, 'resetAccessCode'])->middleware('throttle:10,1');
-    Route::get('/applications/{request_id}/letter.pdf', [LetterController::class, 'download'])->middleware('throttle:30,1');
-    Route::post('/applications/{request_id}/letter.pdf', [LetterController::class, 'upload'])->middleware('throttle:10,1');
+    Route::patch('/applications/{request_id}/isi-keterangan', [StaffController::class, 'updateStatement'])->middleware('throttle:30,1,application-statement');
+    Route::post('/applications/{request_id}/lookup-secret', [StaffController::class, 'resetAccessCode'])->middleware('throttle:10,1,access-code-reset');
+    Route::get('/applications/{request_id}/letter.pdf', [LetterController::class, 'download'])->middleware('throttle:30,1,letter-download');
+    Route::post('/applications/{request_id}/letter.pdf', [LetterController::class, 'upload'])->middleware('throttle:10,1,letter-upload');
     Route::get('/applications/{request_id}/letter-qr.png', [LetterController::class, 'qr']);
     Route::get('/applications/{request_id}/attachments/{id}', [AttachmentController::class, 'show'])->whereNumber('id')->middleware('throttle:60,1,attachment-view');
     Route::get('/users', [StaffUserController::class, 'index']);
