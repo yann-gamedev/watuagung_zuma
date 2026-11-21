@@ -158,7 +158,7 @@ class BusinessController extends Controller {
             'file.file'=>'Foto harus berupa file yang valid.',
             'file.uploaded'=>ImageProcessor::UPLOAD_FAILED,
         ]);
-        $path = ImageProcessor::store($request->file('file'), 'businesses', 3072, 1600, minWidth: 1, minHeight: 1);
+        $path = ImageProcessor::store($request->file('file'), 'businesses', 10240, 2000, minWidth: 1, minHeight: 1, maxHeight: 2000);
         try {
             $business = $this->changePhoto($request, $id, $path, $oldPath);
         } catch (\Throwable $e) {

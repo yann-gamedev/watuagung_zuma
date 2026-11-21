@@ -6,12 +6,17 @@ export const categoryLabels = {
   pemberdayaan: "Pemberdayaan", layanan_publik: "Layanan publik", ekonomi_lokal: "Ekonomi lokal", pengumuman: "Pengumuman",
 } as const;
 const mediaUrl = z.string().url().refine((value) => URL.canParse(value) && ["http:", "https:"].includes(new URL(value).protocol)).nullable();
+const postImageSchema = z.object({
+  id: z.number().int().positive(),
+  url: z.string().url().refine((value) => URL.canParse(value) && ["http:", "https:"].includes(new URL(value).protocol)),
+  caption: z.string().nullable(),
+});
 export const postSchema = z.object({
   id: z.number().int().positive(), slug: z.string(), title: z.string(), category: z.enum(postCategories),
   category_label: z.string(), summary: z.string(), status: z.enum(["draft", "published"]),
   published_at: z.string().datetime({ offset: true }).nullable(), updated_at: z.string().datetime({ offset: true }), cover_url: mediaUrl,
 });
-export const postDetailSchema = postSchema.extend({ body: z.string(), created_at: z.string().datetime({ offset: true }) });
+export const postDetailSchema = postSchema.extend({ body: z.string(), images: z.array(postImageSchema).default([]), created_at: z.string().datetime({ offset: true }) });
 export const postsPageSchema = z.object({
   data: z.array(postSchema), current_page: z.number().int().positive(), last_page: z.number().int().positive(), total: z.number().int().nonnegative(),
 });

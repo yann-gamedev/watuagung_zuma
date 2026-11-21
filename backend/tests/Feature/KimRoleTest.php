@@ -37,7 +37,7 @@ class KimRoleTest extends TestCase
     private function hit(Route $route, string $token)
     {
         $this->app['auth']->forgetGuards();
-        $uri = preg_replace(['/\{application(:[a-z_]+)?\}|\{request_id\}/', '/\{id\}/', '/\{key\}/'], ['REQ-2026-FIKTIF', '1', 'profile'], $route->uri());
+        $uri = preg_replace(['/\{application(:[a-z_]+)?\}|\{request_id\}/', '/\{id\}|\{image\}/', '/\{key\}/'], ['REQ-2026-FIKTIF', '1', 'profile'], $route->uri());
         $method = collect($route->methods())->first(fn ($m) => $m !== 'HEAD');
         return $this->withToken($token)->json($method, '/'.$uri);
     }

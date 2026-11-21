@@ -3,12 +3,14 @@ import { news } from "@/lib/data";
 import { apiBase, isDemo } from "@/services/pelayanan";
 import { postCategories, type PublicPost } from "@/types/posts";
 
+const mediaUrl = z.string().url().refine((value) => URL.canParse(value) && ["http:", "https:"].includes(new URL(value).protocol)).nullable();
 const postSchema = z.object({
   slug: z.string().min(1), title: z.string().min(1), category: z.enum(postCategories),
   category_label: z.string().min(1), summary: z.string(), published_at: z.string().datetime({ offset: true }),
-  cover_url: z.string().url().refine((value) => URL.canParse(value) && ["http:", "https:"].includes(new URL(value).protocol)).nullable(),
+  cover_url: mediaUrl,
 });
-const detailSchema = postSchema.extend({ body: z.string() });
+const imageSchema = z.object({ url: z.string().url().refine((value) => URL.canParse(value) && ["http:", "https:"].includes(new URL(value).protocol)), caption: z.string().nullable() });
+const detailSchema = postSchema.extend({ body: z.string(), images: z.array(imageSchema).default([]) });
 const pageSchema = z.object({
   data: z.array(postSchema), current_page: z.number().int().positive(),
   last_page: z.number().int().positive(), total: z.number().int().nonnegative(),
@@ -17,10 +19,11 @@ export type NewsItem = {
   slug: string; title: string; category: string; date: string; summary: string;
   coverUrl: string | null; sample: boolean;
 };
-export type NewsDetail = NewsItem & { body: string };
+export type NewsImage = { url: string; caption: string | null };
+export type NewsDetail = NewsItem & { body: string; images: NewsImage[] };
 export type NewsPage = { data: NewsItem[]; current_page: number; last_page: number; total: number };
 const demoPosts: NewsDetail[] = news.map((item) => ({
-  ...item, body: item.content.join("\n\n"), coverUrl: null, sample: true,
+  ...item, body: item.content.join("\n\n"), coverUrl: null, sample: true, images: [],
 }));
 export const initialNewsPage: NewsPage | null = isDemo
   ? { data: demoPosts, current_page: 1, last_page: 1, total: demoPosts.length }
@@ -60,5 +63,5 @@ export async function getPost(slug: string): Promise<NewsDetail | null> {
   if (!slug.trim()) return null;
   if (isDemo) return demoPosts.find((item) => item.slug === slug) ?? null;
   const post = await request(`/posts/${encodeURIComponent(slug)}`, detailSchema, true);
-  return post ? { ...newsItem(post), body: post.body } : null;
+  return post ? { ...newsItem(post), body: post.body, images: post.images ?? [] } : null;
 }

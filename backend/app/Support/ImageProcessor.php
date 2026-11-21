@@ -11,7 +11,8 @@ class ImageProcessor {
     // PHP menolak file sebelum Laravel (mis. melebihi upload_max_filesize/post_max_size): bukan salah format.
     public const UPLOAD_FAILED = 'Foto gagal diterima server. Ukuran file mungkin melebihi batas unggah server; coba file lebih kecil atau hubungi administrator.';
 
-    public static function store(UploadedFile $file, string $directory, int $maxSizeKiB, int $maxWidth, int $minWidth = 600, int $minHeight = 400, int $maxInputWidth = 6000, int $maxInputHeight = 6000): string {
+    public static function store(UploadedFile $file, string $directory, int $maxSizeKiB, int $maxWidth, int $minWidth = 600, int $minHeight = 400, int $maxInputWidth = 6000, int $maxInputHeight = 6000, int $maxHeight = 0): string {
+        $sizeLabel = self::sizeLabel($maxSizeKiB);
         Validator::make(['file'=>$file], ['file'=>[
             'bail', 'required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:'.$maxSizeKiB,
             "dimensions:min_width={$minWidth},min_height={$minHeight},max_width={$maxInputWidth},max_height={$maxInputHeight}",
@@ -19,10 +20,10 @@ class ImageProcessor {
             'file.required'=>'Pilih foto yang akan diunggah.',
             'file.file'=>'Foto harus berupa file yang valid.',
             'file.mimes'=>'Format foto harus JPG, JPEG, PNG, atau WebP.',
-            'file.max'=>"Ukuran foto maksimal {$maxSizeKiB} KiB.",
+            'file.max'=>"Ukuran foto maksimal {$sizeLabel}.",
             'file.dimensions'=>"Lebar foto harus {$minWidth}–{$maxInputWidth} piksel dan tinggi {$minHeight}–{$maxInputHeight} piksel.",
         ])->validate();
-        [$bytes, $extension] = self::encode($file, $maxWidth);
+        [$bytes, $extension] = self::encode($file, $maxWidth, $maxHeight);
         $path = $directory.'/'.Str::uuid().'.'.$extension;
         try {
             abort_unless(Storage::disk('public')->put($path, $bytes), 500, 'Foto gagal disimpan.');
@@ -34,12 +35,13 @@ class ImageProcessor {
     }
 
     /**
-     * Gambar ulang ke kanvas baru (lebar maksimal $maxWidth) lalu encode WebP, atau JPEG bila GD tanpa WebP.
+     * Gambar ulang ke kanvas baru (lebar maksimal $maxWidth; bila $maxHeight > 0, sisi terpanjang
+     * dibatasi) lalu encode WebP, atau JPEG bila GD tanpa WebP.
      * Pemanggil wajib memvalidasi tipe, ukuran, dan dimensi lebih dulu.
      *
      * @return array{0: string, 1: 'webp'|'jpg'} isi hasil encode dan ekstensinya
      */
-    public static function encode(UploadedFile $file, int $maxWidth): array {
+    public static function encode(UploadedFile $file, int $maxWidth, int $maxHeight = 0): array {
         abort_unless(extension_loaded('gd'), 503, 'Pengolah foto belum tersedia. Hubungi administrator.');
         // GD tanpa dukungan JPEG/WebP gagal membaca file valid; jangan salahkan format foto pengguna.
         $read = [IMAGETYPE_JPEG=>IMG_JPG, IMAGETYPE_PNG=>IMG_PNG, IMAGETYPE_WEBP=>IMG_WEBP][(@getimagesize($file->getRealPath()) ?: [])[2] ?? 0] ?? 0;
@@ -50,8 +52,12 @@ class ImageProcessor {
         $source = @imagecreatefromstring($bytes);
         if ($source === false) throw ValidationException::withMessages(['file'=>'Foto tidak dapat dibaca. Pilih JPG, PNG, atau WebP yang valid.']);
         $webp = function_exists('imagewebp') && (imagetypes() & IMG_WEBP) !== 0;
-        $width = min($maxWidth, imagesx($source));
-        $height = max(1, (int) round(imagesy($source) * $width / imagesx($source)));
+        $sourceWidth = imagesx($source);
+        $sourceHeight = imagesy($source);
+        // Tanpa $maxHeight perilaku lama (batas lebar) dipertahankan untuk gambar struktur situs.
+        $scale = min(1, $maxWidth / $sourceWidth, $maxHeight > 0 ? $maxHeight / $sourceHeight : 1);
+        $width = max(1, (int) round($sourceWidth * $scale));
+        $height = max(1, (int) round($sourceHeight * $scale));
         $image = imagecreatetruecolor($width, $height);
         $stream = tmpfile();
         try {
@@ -76,5 +82,10 @@ class ImageProcessor {
             if ($image !== false) imagedestroy($image);
             if (is_resource($stream)) fclose($stream);
         }
+    }
+
+    /** Batas ukuran yang ramah dibaca: 10240 KiB → "10 MB", 5121 KiB tetap "5121 KiB". */
+    private static function sizeLabel(int $kib): string {
+        return $kib % 1024 === 0 ? intdiv($kib, 1024).' MB' : $kib.' KiB';
     }
 }

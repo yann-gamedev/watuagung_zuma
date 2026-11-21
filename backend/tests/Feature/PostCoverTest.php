@@ -93,7 +93,7 @@ class PostCoverTest extends TestCase
         $this->assertMatchesRegularExpression('~^posts/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.'.($webp ? 'webp' : 'jpg').'$~', $path);
         Storage::disk('public')->assertExists($path);
         $info = getimagesizefromstring(Storage::disk('public')->get($path));
-        $this->assertSame([1600, 800, $webp ? IMAGETYPE_WEBP : IMAGETYPE_JPEG], array_slice($info, 0, 3));
+        $this->assertSame([2000, 1000, $webp ? IMAGETYPE_WEBP : IMAGETYPE_JPEG], array_slice($info, 0, 3));
         $url = 'https://desa.example/media/'.$path;
         $response->assertJsonPath('cover_url', $url);
         $this->getJson('/api/v1/posts')->assertJsonPath('data.0.cover_url', $url)->assertJsonMissingPath('data.0.cover_path');
@@ -139,13 +139,13 @@ class PostCoverTest extends TestCase
         $file = match ($case) {
             'text'=>UploadedFile::fake()->createWithContent('fake.jpg', '<?php echo "not an image";'),
             'gif'=>$this->image('gif'),
-            'large'=>$this->image()->size(3073),
+            'large'=>$this->image()->size(10241),
             'wide'=>$this->image('jpg', 6001, 400),
             'tall'=>$this->image('jpg', 600, 6001),
             'corrupt'=>UploadedFile::fake()->createWithContent('broken.jpg', "\xff\xd8\xff\xe0".str_repeat("\0", 100)),
         };
         $message = match ($case) {
-            'large'=>'Ukuran foto maksimal 3072 KiB.',
+            'large'=>'Ukuran foto maksimal 10 MB.',
             'text', 'wide', 'tall', 'corrupt'=>'Lebar foto harus 1–6000 piksel dan tinggi 1–6000 piksel.',
             default=>'Format foto harus JPG, JPEG, PNG, atau WebP.',
         };
@@ -182,8 +182,17 @@ class PostCoverTest extends TestCase
     {
         $this->act();
         $post = $this->makePost();
-        $this->upload($post, $this->image('png', 6000, 400)->size(3072))->assertOk();
+        $this->upload($post, $this->image('png', 6000, 400)->size(10240))->assertOk();
         $this->upload($post, $this->image('jpg', 600, 6000))->assertOk();
+    }
+
+    public function test_upload_caps_longest_side_and_keeps_aspect_ratio(): void
+    {
+        $this->act();
+        $post = $this->makePost();
+        $this->upload($post, $this->image('jpg', 1200, 2400))->assertOk();
+        $path = $post->refresh()->cover_path;
+        $this->assertSame([1000, 2000], array_slice(getimagesizefromstring(Storage::disk('public')->get($path)), 0, 2));
     }
 
     public function test_reencoding_removes_real_exif_and_fictional_gps(): void

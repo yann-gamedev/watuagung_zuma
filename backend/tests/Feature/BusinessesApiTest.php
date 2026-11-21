@@ -276,7 +276,7 @@ class BusinessesApiTest extends TestCase
         $path = $business->fresh()->photo_path;
         $this->assertMatchesRegularExpression('/\Abusinesses\/[0-9a-f-]{36}\.(webp|jpg)\z/', $path);
         Storage::disk('public')->assertExists($path);
-        $this->assertSame(1600, getimagesizefromstring(Storage::disk('public')->get($path))[0]);
+        $this->assertSame(2000, getimagesizefromstring(Storage::disk('public')->get($path))[0]);
         $this->assertSame(Storage::disk('public')->url($path), $first->json('photo_url'));
         $this->getJson('/api/v1/businesses/foto')->assertJsonPath('photo_url', Storage::disk('public')->url($path));
 
@@ -332,7 +332,7 @@ class BusinessesApiTest extends TestCase
     {
         $this->act();
         $business = $this->make();
-        foreach ([$this->image(6000, 400)->size(3072), $this->image(600, 6000)] as $file) {
+        foreach ([$this->image(6000, 400)->size(10240), $this->image(600, 6000)] as $file) {
             $this->post("/api/v1/staff/businesses/{$business->id}/photo", ['file' => $file], ['Accept' => 'application/json'])->assertOk();
         }
     }
@@ -350,7 +350,7 @@ class BusinessesApiTest extends TestCase
             [UploadedFile::fake()->image('foto.gif', 600, 400), 'Format foto harus JPG, JPEG, PNG, atau WebP.'],
             [$this->image(6001, 400), 'Lebar foto harus 1–6000 piksel dan tinggi 1–6000 piksel.'],
             [$this->image(600, 6001), 'Lebar foto harus 1–6000 piksel dan tinggi 1–6000 piksel.'],
-            [$this->image()->size(3073), 'Ukuran foto maksimal 3072 KiB.'],
+            [$this->image()->size(10241), 'Ukuran foto maksimal 10 MB.'],
         ] as [$file, $message]) {
             $this->post($url, ['file' => $file], ['Accept' => 'application/json'])
                 ->assertUnprocessable()->assertJsonValidationErrors('file')->assertJsonPath('errors.file.0', $message);

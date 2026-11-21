@@ -6,6 +6,7 @@ use App\Domain\Letter;
 use App\Models\Application;
 use App\Models\Business;
 use App\Models\Post;
+use App\Models\PostImage;
 use App\Models\User;
 use App\Support\AttachmentStore;
 use Illuminate\Support\Facades\DB;
@@ -180,12 +181,21 @@ Artisan::command('media:prune {--dry-run}', function () {
     $disk = Storage::disk('public');
     $cutoff = now()->subHour()->getTimestamp();
     $files = 0;
+    // Foto tambahan milik berita terhapus: baris dilepas, file ikut dihitung sebagai yatim.
+    $orphanImages = PostImage::whereIn('post_id', Post::onlyTrashed()->select('id'))->get(['id', 'path']);
+    if ($orphanImages->isNotEmpty()) {
+        $this->line(($dry ? '[dry-run] ' : '')."posts: {$orphanImages->count()} foto tambahan pada berita terhapus dilepas.");
+        if (! $dry) PostImage::whereKey($orphanImages->pluck('id'))->delete();
+    }
+    $inlinePaths = PostImage::whereIn('post_id', Post::query()->select('id'))->pluck('path');
     foreach (['posts' => [Post::class, 'cover_path'], 'businesses' => [Business::class, 'photo_path']] as $directory => [$model, $column]) {
         $trashed = $model::onlyTrashed()->whereNotNull($column);
         // toBase: updated_at baris terhapus tidak berubah.
         $rows = $dry ? $trashed->count() : $trashed->toBase()->update([$column => null]);
         if ($rows > 0) $this->line(($dry ? '[dry-run] ' : '')."$directory: $rows baris terhapus dilepas dari fotonya.");
-        $referenced = $model::query()->whereNotNull($column)->pluck($column)->flip();
+        $referenced = $model::query()->whereNotNull($column)->pluck($column);
+        if ($model === Post::class) $referenced = $referenced->merge($inlinePaths);
+        $referenced = $referenced->flip();
         foreach ($disk->files($directory) as $path) {
             if ($referenced->has($path) || $disk->lastModified($path) > $cutoff) continue;
             $this->line(($dry ? '[dry-run] ' : '')."hapus $path");
@@ -195,7 +205,7 @@ Artisan::command('media:prune {--dry-run}', function () {
     }
     $this->info($dry ? "[dry-run] $files file akan dihapus; tidak ada yang diubah." : "$files file foto yatim dihapus.");
     return 0;
-})->purpose('Hapus foto berita/UMKM yang tidak dirujuk berita/UMKM aktif');
+})->purpose('Hapus foto sampul/tambahan berita dan foto UMKM yang tidak dirujuk data aktif');
 
 // Hapus token petugas yang sudah kedaluwarsa lebih dari 24 jam.
 Schedule::command('sanctum:prune-expired --hours=24')->daily();

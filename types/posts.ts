@@ -22,8 +22,17 @@ export interface PublicPost {
   /** URL publik sampul hasil encode ulang; null bila belum ada atau dihapus. */
   cover_url: string | null;
 }
+/** Foto tambahan di dalam artikel; rasio asli, tampil setelah paragraf ke-1/2/3. */
+export interface PublicPostImage {
+  url: string;
+  caption: string | null;
+}
+export interface StaffPostImage extends PublicPostImage {
+  id: number;
+}
 export interface PublicPostDetail extends PublicPost {
   body: string;
+  images: PublicPostImage[];
 }
 export interface PublicPostsPage {
   data: PublicPost[];
@@ -41,6 +50,7 @@ export interface StaffPost extends Omit<PublicPost, "published_at"> {
 }
 export interface StaffPostDetail extends StaffPost {
   body: string;
+  images: StaffPostImage[];
   created_at: string;
 }
 export interface StaffPostsPage {
@@ -55,6 +65,17 @@ export interface StaffPostCoverInput {
 }
 /** POST dan DELETE /staff/posts/{id}/cover: 200, detail lengkap dengan cover_url terbaru. */
 export type StaffPostCoverResponse = StaffPostDetail;
+/** POST /staff/posts/{id}/images: multipart `file` + `caption` opsional (maks. 3 foto per berita). */
+export interface StaffPostImageInput {
+  file: File;
+  caption?: string;
+}
+/** PATCH /staff/posts/{id}/images/{imageId}: `caption` null atau string ≤200 karakter. */
+export interface StaffPostImageCaptionInput {
+  caption: string | null;
+}
+/** Semua mutasi foto tambahan mengembalikan detail berita terbaru. */
+export type StaffPostImageResponse = StaffPostDetail;
 
 /** POST /staff/posts (semua wajib); PATCH /staff/posts/{id} (sebagian). */
 export interface StaffPostInput {

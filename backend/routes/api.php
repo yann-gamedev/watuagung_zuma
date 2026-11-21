@@ -73,6 +73,9 @@ Route::middleware(['auth:sanctum','abilities:media:manage'])->prefix('v1/staff')
     Route::delete('/posts/{id}', [PostController::class, 'destroy'])->whereNumber('id');
     Route::post('/posts/{id}/cover', [PostController::class, 'uploadCover'])->whereNumber('id')->middleware('throttle:10,1,post-cover');
     Route::delete('/posts/{id}/cover', [PostController::class, 'deleteCover'])->whereNumber('id')->middleware('throttle:10,1,post-cover');
+    Route::post('/posts/{id}/images', [PostController::class, 'uploadImage'])->whereNumber('id')->middleware('throttle:10,1,post-image');
+    Route::patch('/posts/{id}/images/{image}', [PostController::class, 'updateImage'])->whereNumber('id')->whereNumber('image')->middleware('throttle:30,1,post-image');
+    Route::delete('/posts/{id}/images/{image}', [PostController::class, 'deleteImage'])->whereNumber('id')->whereNumber('image')->middleware('throttle:10,1,post-image');
     Route::get('/businesses', [BusinessController::class, 'staffIndex']);
     Route::post('/businesses', [BusinessController::class, 'store']);
     Route::get('/businesses/{id}', [BusinessController::class, 'staffShow'])->whereNumber('id');

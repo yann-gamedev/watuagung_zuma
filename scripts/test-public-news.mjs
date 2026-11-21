@@ -13,7 +13,7 @@ async function source(mode, entry = "services/posts.ts") {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
       fileName: path,
     }).outputText;
-    code = code.replace(/(["'])(@\/[^"']+|zod|react\/jsx-runtime)\1/g, (_match, _quote, name) => {
+    code = code.replace(/(["'])(@\/[^"']+|zod|react(?:\/jsx-runtime)?)\1/g, (_match, _quote, name) => {
       if (!name.startsWith("@/")) return JSON.stringify(import.meta.resolve(name));
       const path = name.slice(2);
       return JSON.stringify(url(existsSync(`${path}.ts`) ? `${path}.ts` : `${path}.tsx`));
@@ -34,7 +34,11 @@ const post = {
   slug, title: "Berita uji fiktif", category: "kegiatan_desa", category_label: "Kegiatan Desa",
   summary: "Ringkasan uji", published_at: "2026-10-31T18:00:00+00:00", cover_url: "https://media.example.test/cover.webp",
 };
-const detail = { ...post, body: "Paragraf satu.\n\nParagraf dua." };
+const images = [
+  { url: "https://media.example.test/inline-1.webp", caption: "Panen raya" },
+  { url: "https://media.example.test/inline-2.jpg", caption: null },
+];
+const detail = { ...post, body: "Paragraf satu.\n\nParagraf dua.", images };
 const page = { data: [post], current_page: 2, last_page: 3, total: 3 };
 const timers = new Map();
 const calls = [];
@@ -103,7 +107,7 @@ try {
   assert.equal((await api.listPosts()).current_page, 1);
   assert.equal(calls.at(-1).url, `${apiBase}/posts?page=1`);
   reply(detail);
-  assert.deepEqual(await api.getPost(slug), { ...result.data[0], body: detail.body });
+  assert.deepEqual(await api.getPost(slug), { ...result.data[0], body: detail.body, images });
   assert.equal(calls.at(-1).url, `${apiBase}/posts/${encodeURIComponent(slug)}`);
   for (const cover_url of [null, "http://media.example.test/cover.jpg"]) {
     reply({ ...detail, cover_url });
@@ -141,6 +145,11 @@ try {
   for (const bad of [post, { ...detail, body: 42 }]) {
     reply(bad);
     await assert.rejects(api.getPost(slug), zodError);
+  }
+  for (const image of [null, {}, { url: "javascript:alert(1)", caption: null }, { url: "data:image/png;base64,AAAA", caption: null },
+    { url: "/inline.webp", caption: null }, { url: "not a URL", caption: null }, { url: images[0].url, caption: 42 }]) {
+    reply({ ...detail, images: [image] });
+    await assert.rejects(api.getPost(slug), zodError, "Invalid inline photos must fail through Zod");
   }
   reply(null, 404);
   assert.equal(await api.getPost(slug), null);
@@ -195,6 +204,32 @@ try {
       "&lt;script&gt;alert(&quot;uji&quot;)&lt;/script&gt;", `Paragraf &amp; dua${newline}baris lanjut`,
     ], "LF/CRLF whitespace-only blank lines split paragraphs; empty paragraphs disappear");
   }
+  const photos = [
+    { url: "https://media.example.test/a.webp", caption: 'Foto <satu> & "uji"' },
+    { url: "https://media.example.test/b.webp", caption: null },
+    { url: "https://media.example.test/c.webp", caption: "Foto tiga" },
+    { url: "https://media.example.test/d.webp", caption: "Tidak tampil" },
+  ];
+  const withPhotos = renderToStaticMarkup(createElement(NewsArticle, {
+    ...articleProps, body: "Satu\n\nDua\n\nTiga", images: photos,
+  }));
+  const labels = ["Satu", "Dua", "Tiga", "a.webp", "b.webp", "c.webp"];
+  const positions = labels.map((needle) => withPhotos.indexOf(needle));
+  assert.ok(positions.every((position) => position >= 0), "Every paragraph and inline photo must render");
+  assert.deepEqual(labels.map((label, index) => [positions[index], label]).sort(([left], [right]) => left - right).map(([, label]) => label),
+    ["Satu", "a.webp", "Dua", "b.webp", "Tiga", "c.webp"], "Photos interleave after paragraphs one, two and three");
+  assert.ok(!withPhotos.includes("d.webp"), "Only three inline photos are shown");
+  assert.equal((withPhotos.match(/<figure class="article-inline-image">/g) ?? []).length, 3);
+  assert.match(withPhotos, /alt="Foto tambahan 2" loading="lazy"/);
+  assert.match(withPhotos, /<figcaption>Foto &lt;satu&gt; &amp; &quot;uji&quot;<\/figcaption>/);
+  assert.doesNotMatch(withPhotos, /<figcaption><\/figcaption>/, "A photo without a caption must not render an empty caption");
+  const oneParagraph = renderToStaticMarkup(createElement(NewsArticle, {
+    ...articleProps, body: "Hanya satu paragraf", images: photos.slice(0, 2),
+  }));
+  const oneParagraphPositions = ["Hanya satu paragraf", "a.webp", "b.webp"].map((needle) => oneParagraph.indexOf(needle));
+  assert.ok(oneParagraphPositions.every((position) => position >= 0));
+  assert.deepEqual([...oneParagraphPositions].sort((left, right) => left - right), oneParagraphPositions,
+    "Extra photos go after the last paragraph when paragraphs run out");
   for (const sample of [undefined, false, true]) {
     const html = renderToStaticMarkup(createElement(NewsArticle, { ...articleProps, body: "Isi uji", sample }));
     assert.equal(html.includes("article-sample-notice"), sample === true);
