@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import { isCitizenFinal } from "@/lib/letter-workflow";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -206,7 +207,7 @@ export const statusDescriptions: Record<Status, string> = {
   WAITING_APPROVAL: "Pengajuan menunggu persetujuan Kepala Desa. Cek status secara berkala.",
   APPROVED: "Surat sudah disetujui Kepala Desa. Hubungi kantor desa untuk mendapatkan surat Anda.",
   READY_FOR_PICKUP: "Surat sudah bisa diunduh dan dicetak. Berlaku sampai {tanggal}.",
-  COMPLETED: "Surat sudah diunduh.",
+  COMPLETED: "Surat sudah disetujui Kepala Desa. Bila masih dalam masa berlaku, surat dapat diunduh ulang di halaman ini.",
   REJECTED: "Baca catatan petugas. Hubungi kantor desa untuk penjelasan dan arahan sebelum mengajukan kembali.",
   NEED_REVISION: "Hubungi kantor desa atau ajukan ulang dengan data yang diperbaiki. Perhatikan catatan petugas di bawah ini.",
 };
@@ -223,12 +224,14 @@ const statusIcons = {
   REJECTED: CircleX,
   NEED_REVISION: CircleAlert,
 };
-export function StatusBadge({ status, neighborhoodApproval = false }: { status: Status; jenisSurat?: ServiceCode; neighborhoodApproval?: boolean }) {
-  const Icon = statusIcons[status];
+/** `citizen`: tampilan warga; disetujui, siap diunduh, dan sudah diunduh semuanya berlabel "Selesai". */
+export function StatusBadge({ status, neighborhoodApproval = false, citizen = false }: { status: Status; jenisSurat?: ServiceCode; neighborhoodApproval?: boolean; citizen?: boolean }) {
+  const final = citizen && isCitizenFinal(status);
+  const Icon = final ? CheckCircle2 : statusIcons[status];
   return (
     <span className={"status-badge status-" + status}>
       <Icon size={22} aria-hidden="true" />
-      {status === "SUBMITTED" && neighborhoodApproval ? "Menunggu verifikasi RT" : statusLabels[status]}
+      {final ? "Selesai" : status === "SUBMITTED" && neighborhoodApproval ? "Menunggu verifikasi RT" : statusLabels[status]}
     </span>
   );
 }

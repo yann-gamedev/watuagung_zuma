@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -24,8 +24,13 @@ const labels: Partial<Record<keyof SubmissionValues, string>> = {
 const sensitiveHint = "Dicetak di surat sesuai format desa. Disimpan terenkripsi.";
 const jobs = ["Pelajar/Mahasiswa", "Karyawan Swasta", "Petani/Pekebun", "Wiraswasta", "Mengurus Rumah Tangga", "Belum/Tidak Bekerja"];
 
+const noSubscribe = () => () => {};
+
 export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"] }) {
   const router = useRouter();
+  // false di HTML statis/server, true setelah hidrasi. Sebelum itu tombol dikunci: form ber-method post akan
+  // terkirim secara bawaan browser dan memuat ulang halaman tanpa pesan (pengajuan tidak terkirim, kode akses tidak tampil).
+  const hydrated = useSyncExternalStore(noSubscribe, () => true, () => false);
   const [error, setError] = useState("");
   const [acceptedId, setAcceptedId] = useState("");
   const [review, setReview] = useState<SubmissionValues | null>(null);
@@ -212,9 +217,9 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
               <progress className="w-full" aria-label={isDemo ? "Progres simulasi unggah" : "Progres unggah dokumen"} max={100} value={progress ?? undefined} />
               <p>Jangan tutup halaman sampai nomor pengajuan diterima.</p>
             </div>}
-            <button className="btn application-submit" type="submit" disabled={isSubmitting || processing || !!acceptedId}>
-              {isSubmitting ? <LoaderCircle className="spin" size={22} aria-hidden="true" /> : <Send size={22} aria-hidden="true" />}{" "}
-              {isSubmitting ? "Mengirim…" : step === "data" ? "Lanjut: Unggah dokumen" : step === "documents" ? "Periksa ringkasan" : isDemo ? "Kirim simulasi" : "Kirim permohonan"}
+            <button className="btn application-submit" type="submit" disabled={!hydrated || isSubmitting || processing || !!acceptedId}>
+              {isSubmitting || !hydrated ? <LoaderCircle className="spin" size={22} aria-hidden="true" /> : <Send size={22} aria-hidden="true" />}{" "}
+              {!hydrated ? "Memuat formulir…" : isSubmitting ? "Mengirim…" : step === "data" ? "Lanjut: Unggah dokumen" : step === "documents" ? "Periksa ringkasan" : isDemo ? "Kirim simulasi" : "Kirim permohonan"}
             </button>
           </div>
         </form>
