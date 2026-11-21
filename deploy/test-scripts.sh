@@ -429,6 +429,15 @@ if run_hdeploy env APP_DIR="$tmp/home/repo" PUBLIC_HTML="$tmp/home/public_html" 
     printf 'GAGAL hostinger-deploy menerima build API localhost\n' >&2; exit 1
 fi
 grep -q 'API localhost' "$tmp/log" || { cat "$tmp/log"; exit 1; }
+# Bentuk URL localhost lain juga ditolak sebelum maintenance.
+for api in 'http://localhost:8000/api/v1' 'https://127.0.0.1/api/v1' 'http://localhost/api/v1' 'http://[::1]:8000/api/v1'; do
+    printf 'const api="%s";' "$api" > "$tmp/web-local/_next/static/a.js"
+    tar -C "$tmp/web-local" -czf "$tmp/local.tar.gz" .
+    if run_hdeploy env APP_DIR="$tmp/home/repo" PUBLIC_HTML="$tmp/home/public_html" bash "$root/deploy/hostinger-deploy.sh" release --frontend "$tmp/local.tar.gz"; then
+        printf 'GAGAL hostinger-deploy menerima build API %s\n' "$api" >&2; exit 1
+    fi
+    grep -q 'API localhost' "$tmp/log" || { cat "$tmp/log"; exit 1; }
+done
 if run_hdeploy env APP_DIR="$tmp/home/repo" PUBLIC_HTML="$tmp/home/public_html" bash "$root/deploy/hostinger-deploy.sh" release; then
     printf 'GAGAL hostinger-deploy mengabaikan fetch gagal\n' >&2; exit 1
 else
@@ -541,8 +550,10 @@ for fault in down checkout composer config migrate cache files up smoke; do
     if [[ $fault == files ]]; then rmdir "$tmp/home/public_html/storage"; fi
 done
 # Frontend rsync gagal juga harus menutup layanan; arsip valid tanpa API localhost.
-mkdir -p "$tmp/web-valid/pelayanan"
+mkdir -p "$tmp/web-valid/pelayanan" "$tmp/web-valid/_next/static"
 printf x | tee "$tmp/web-valid/index.html" "$tmp/web-valid/404.html" "$tmp/web-valid/pelayanan/index.html" > /dev/null
+# Validator origin hasil build (lib/urls.ts) memuat nama host lokal tanpa skema; itu bukan API localhost.
+printf 's=r?.hostname==="localhost"||r?.hostname==="127.0.0.1";fetch("https://desa.example.test/api/v1")' > "$tmp/web-valid/_next/static/valid.js"
 tar -C "$tmp/web-valid" -czf "$tmp/valid.tar.gz" .
 : > "$tmp/events"
 if run_hdeploy env APP_DIR="$tmp/home/repo" PUBLIC_HTML="$tmp/home/public_html" EVENTS="$tmp/events" \
