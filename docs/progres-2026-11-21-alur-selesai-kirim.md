@@ -1,4 +1,4 @@
-# Progres — alur warga selesai saat disetujui + penjaga kirim formulir (22 November 2026)
+# Progres — alur warga selesai saat disetujui + penjaga kirim formulir (21 November 2026)
 
 Branch: `fix/citizen-flow-final-step`, dari `origin/main` @ `aa37436`. Terpisah dari `feat/news-copyright-social-links` (belum di-push).
 
