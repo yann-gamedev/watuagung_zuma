@@ -109,11 +109,14 @@ expect_blocked() {
 }
 csp_enforced_ok() {
     # Hanya Report-Only dari admin.htaccess; header penegak platform Hostinger (upgrade-insecure-requests) dibiarkan.
-    local value
+    # Tanpa process substitution "< <(...)": shell SSH Hostinger tidak punya /dev/fd (deploy 21 November 2026).
+    local value lines
+    lines=$(grep -i '^Content-Security-Policy:' "$tmp/headers" || true)
+    [[ -n $lines ]] || return 0
     while IFS= read -r value; do
         value=$(printf '%s' "$value" | sed -e 's/^[^:]*:[[:space:]]*//' -e 's/[[:space:];]*$//' | tr -d '\r')
         [[ $value == upgrade-insecure-requests ]] || return 1
-    done < <(grep -i '^Content-Security-Policy:' "$tmp/headers" || true)
+    done <<< "$lines"
 }
 if [[ -n $admin_host ]]; then
     panel="https://$admin_host"
