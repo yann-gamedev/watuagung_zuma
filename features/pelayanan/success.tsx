@@ -99,11 +99,11 @@ export function Success() {
           <strong>{isDemo ? "Simpan nomor pengajuan ini." : "Simpan nomor dan kode akses ini."}</strong>
           <p>{isDemo
             ? "Status simulasi hanya tersedia di browser yang sama dan tidak berubah otomatis. Menghapus penyimpanan browser akan menghapus riwayat. Simulasi tidak memerlukan kode akses."
-            : "Simpan di tempat aman; kode hanya tampil di tab ini. Nomor pengajuan dan kode akses diperlukan untuk cek status dan unduh surat selama 30 hari sejak scan surat diunggah. Jangan bagikan kode akses, termasuk melalui WhatsApp. Jika hilang, hubungi petugas untuk arahan."}</p>
+            : "Simpan di tempat aman; kode hanya tampil di tab ini. Nomor pengajuan dan kode akses diperlukan untuk cek status dan unduh surat. Surat berlaku 7 hari sejak disetujui Kepala Desa. Jangan bagikan kode akses, termasuk melalui WhatsApp. Jika hilang, hubungi petugas untuk arahan."}</p>
           {!isDemo && !secret && <p>Kode akses tidak tersedia di tab ini. Gunakan kode yang telah Anda simpan atau hubungi kantor desa untuk arahan.</p>}
         </div>
       </div>
-      {!isDemo && <p className="receipt-intro">Setelah status Disetujui, cek lagi dalam 1–2 hari kerja. Setelah surat ditandatangani basah, distempel, dan scan diunggah petugas, unduh melalui Cek Status Surat.</p>}
+      {!isDemo && <p className="receipt-intro">Setelah Kepala Desa menyetujui, surat langsung bisa diunduh dan dicetak sendiri melalui Cek Status Surat. Surat berlaku 7 hari.</p>}
       <div className="button-row">
         <Link href={"/pelayanan/status/?id=" + encodeURIComponent(id)} className="btn">
           <Search size={22} aria-hidden="true" /> Cek Status Surat

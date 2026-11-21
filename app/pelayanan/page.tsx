@@ -23,7 +23,7 @@ export default function Page() {
               ["Pilih layanan surat", "Baca persyaratan surat yang Anda butuhkan."],
               ["Isi dan kirim pengajuan", "Isi formulir, lalu unggah Scan KTP, Scan Kartu Keluarga, dan Scan Surat Pengantar RT/RW."],
               ["Simpan bukti pengajuan", "Simpan nomor pengajuan dan kode akses rahasia untuk mengecek perkembangan surat."],
-              ["Cek status dan unduh surat", "Unduh sendiri setelah status Siap diunduh."],
+              ["Cek status dan unduh surat", "Kepala desa menyetujui → surat langsung bisa diunduh dan dicetak sendiri. Berlaku 7 hari."],
             ].map(([title, description], index) => (
               <li key={title}>
                 <span className="home-step-number" aria-hidden="true">{index + 1}</span>
@@ -31,7 +31,7 @@ export default function Page() {
               </li>
             ))}
           </ol>
-          <p className="service-steps-note"><strong>Alur pemeriksaan:</strong> Semua jenis surat diverifikasi petugas desa, lalu disetujui Kepala Desa. Kantor mencetak surat untuk ditandatangani basah dan distempel, lalu mengunggah scan surat agar dapat Anda unduh. Setelah status Disetujui, cek lagi dalam 1–2 hari kerja. Masa unduh 30 hari sejak scan surat diunggah.</p>
+          <p className="service-steps-note"><strong>Alur pemeriksaan:</strong> Semua jenis surat diverifikasi petugas desa, lalu disetujui Kepala Desa. Setelah disetujui, surat langsung bisa diunduh dan dicetak sendiri melalui Cek Status Surat. Surat berlaku 7 hari sejak dirilis; keasliannya dapat diperiksa dengan memindai QR pada surat.</p>
         </section>
         <HubungiPetugas />
         <div className="status-strip">

@@ -11,6 +11,7 @@ use App\Models\Application;
 use App\Support\ApplicantEmail;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -40,6 +41,13 @@ class SendApplicantStatusEmail implements ShouldQueue
         return $application !== null && ApplicantEmail::canNotify($application);
     }
 
+    /** Batas berlaku surat; surat lama tanpa `valid_until` memakai batas unduh. */
+    private function validUntil(Application $application): ?Carbon
+    {
+        $letter = Letter::find($application);
+        return $letter?->valid_until ? Carbon::parse($letter->valid_until) : Letter::downloadUntil($letter);
+    }
+
     public function handle(ApplicationStatusChanged $event): void
     {
         // Dibaca ulang: pemohon bisa berhenti berlangganan atau data dihapus retensi sejak job dibuat.
@@ -52,7 +60,7 @@ class SendApplicantStatusEmail implements ShouldQueue
                 requestId: $application->request_id,
                 letterType: ApplicantEmail::letterTypeName(LetterType::from($application->jenis_surat)),
                 statusLabel: $status->citizenLabel(),
-                statusLine: ApplicantEmail::statusLine($status, $status === ApplicationStatus::ReadyForPickup ? Letter::downloadUntil(Letter::find($application)) : null),
+                statusLine: ApplicantEmail::statusLine($status, $status === ApplicationStatus::ReadyForPickup ? $this->validUntil($application) : null),
                 note: in_array($status, [ApplicationStatus::NeedRevision, ApplicationStatus::Rejected], true) ? $this->note($event->eventId) : null,
                 statusUrl: ApplicantEmail::statusUrl($application->request_id),
                 unsubscribeUrl: ApplicantEmail::unsubscribeUrl($application->request_id),

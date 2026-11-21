@@ -60,7 +60,7 @@ export function ApplicationsTable({ section }: { section: ApplicationSection }) 
       <p>{neighborhood
         ? "Periksa pengajuan di wilayah Anda. Pilih Menunggu keputusan untuk memberi persetujuan, atau Semua pengajuan wilayah untuk membaca pengajuan yang sudah diputuskan."
         : section === "surat"
-        ? "Surat yang sudah disetujui dan yang siap diunduh. Buka detail untuk mencetak surat atau mengunggah scan bertanda tangan. Status Siap diunduh diberikan otomatis setelah scan tersimpan."
+        ? "Surat yang sudah disetujui Kepala Desa. Surat langsung dirilis dan bisa diunduh pemohon selama masa berlaku. Buka detail untuk melihat batas berlaku dan riwayat unduhan."
         : section === "persetujuan"
           ? "Pengajuan yang menunggu keputusan Kepala Desa. Buka detail untuk memeriksa pengajuan."
           : "Cari dan periksa pengajuan surat. Buka nomor permohonan untuk melihat detail dan tindakan yang tersedia."}</p>

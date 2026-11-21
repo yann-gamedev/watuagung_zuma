@@ -29,7 +29,7 @@ export default function Home() {
             ],
             [
               "Unduh surat",
-              "Cek status dengan nomor pengajuan dan kode akses. Unduh surat bertanda tangan basah dan stempel selama 30 hari sejak scan surat diunggah.",
+              "Cek status dengan nomor pengajuan dan kode akses. Setelah Kepala Desa menyetujui, surat langsung bisa diunduh dan dicetak sendiri. Berlaku 7 hari.",
             ],
           ].map(([title, description], index) => (
             <li key={title}>

@@ -8,7 +8,7 @@ import { pelayananService, isDemo, SubmissionValidationError } from "@/services/
 import { services } from "@/lib/data";
 import { attachmentKinds, attachmentKindLabels, type AttachmentKind, type SubmissionAttachments, type StatusReceipt } from "@/types/pelayanan";
 import { DocumentUpload } from "./document-upload";
-import { letterSteps } from "@/lib/letter-workflow";
+import { letterSteps, timelineStatus } from "@/lib/letter-workflow";
 import { StatusBadge, statusDescriptions } from "@/components/site";
 export function StatusChecker() {
   const params = useSearchParams();
@@ -69,7 +69,7 @@ export function StatusChecker() {
       document.body.appendChild(link); link.click(); link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
       downloaded = true;
-      setDownloadNotice("Unduhan dimulai. Surat tetap bisa diunduh ulang sampai batas unduh.");
+      setDownloadNotice("Unduhan dimulai. Surat tetap bisa diunduh ulang selama masa berlaku.");
       setResult(await pelayananService.getStatus(result.request_id, verifiedSecret.current));
     } catch (error) {
       setDownloadError(downloaded ? "Unduhan dimulai, tetapi status gagal dimuat ulang. Cek status kembali." : error instanceof Error ? error.message : "Gagal mengunduh surat. Coba lagi atau hubungi petugas.");
@@ -109,12 +109,15 @@ export function StatusChecker() {
       setBusy(false);
     }
   }
-  const deadline = result?.letter_available_until ? new Date(result.letter_available_until).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Jakarta" }) + " WIB" : "";
+  // Batas berlaku (V2) sama dengan batas unduh; demo hanya punya batas unduh.
+  const validUntil = result?.valid_until || result?.letter_available_until || "";
+  const deadline = validUntil ? new Date(validUntil).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Jakarta" }) + " WIB" : "";
   const [checkedAt, setCheckedAt] = useState(() => Date.now());
-  const expired = !!result?.letter_available_until && !result.letter_available && Date.parse(result.letter_available_until) < checkedAt;
-  const describe = (text: string) => text.replace("{tanggal}", deadline || "batas unduh yang ditetapkan petugas");
+  const expired = !!result && !result.letter_available && [result.valid_until, result.letter_available_until].some((value) => !!value && Date.parse(value) < checkedAt);
+  const expiredText = "Masa berlaku surat sudah habis. Ajukan ulang bila masih diperlukan.";
+  const describe = (text: string) => text.replace("{tanggal}", deadline || "tanggal yang tertera pada surat");
   const steps = result?.jenis_surat ? letterSteps(result.requires_neighborhood_approval) : [];
-  const current = result ? steps.findIndex((s) => s[0] === result.status) : -1;
+  const current = result ? steps.findIndex((s) => s[0] === timelineStatus(result.status)) : -1;
   const exception =
     result && ["REJECTED", "NEED_REVISION"].includes(result.status);
   return (
@@ -204,12 +207,12 @@ export function StatusChecker() {
           </div>}
           {result.letter_available && <div className="status-next-step">
             <h3>Unduh surat Anda</h3>
-            {isDemo && <p>PDF simulasi, bukan surat resmi; tanpa tanda tangan, stempel, atau QR resmi.</p>}
+            {isDemo && <p>PDF simulasi, bukan surat resmi; tanpa QR verifikasi resmi.</p>}
             <button type="button" className="btn mt-4" disabled={downloading} onClick={() => void downloadLetter()}><Download size={24} aria-hidden="true" />{downloading ? "Mengunduh…" : "Unduh surat (PDF)"}</button>
-            <p>Batas unduh: <strong>{deadline}</strong>.</p>
-            <p>Cetak di kertas A4. Keaslian surat bisa dicek lewat QR di surat.</p>
+            {deadline && <p>Berlaku sampai <strong>{deadline}</strong>. Unduh dan cetak sebelum tanggal ini.</p>}
+            <p>Cetak di kertas A4. Penerima surat dapat memindai QR di surat untuk memeriksa keasliannya.</p>
           </div>}
-          {expired && <p className="notice mt-4" role="status">Masa unduh sudah berakhir. Hubungi Petugas untuk mendapatkan bantuan.</p>}
+          {expired && <p className="notice mt-4" role="status">{expiredText}</p>}
           {downloadError && <p className="error-box" role="alert">{downloadError}</p>}
           {downloadNotice && <p className="notice mt-4" role="status">{downloadNotice}</p>}
           {exception ? (
@@ -218,7 +221,7 @@ export function StatusChecker() {
                 {result.status === "REJECTED" ? <CircleX size={24} aria-hidden="true" /> : <CircleAlert size={24} aria-hidden="true" />}
                 <h3>{result.status === "REJECTED" ? "Pengajuan ditolak" : "Pengajuan perlu diperbaiki"}</h3>
               </div>
-              <p>{result.status === "SUBMITTED" && result.requires_neighborhood_approval ? "Permohonan menunggu verifikasi Ketua RT, lalu Ketua RW, sebelum masuk kantor desa." : expired ? "Masa unduh sudah berakhir. Hubungi Petugas untuk bantuan." : result.status === "READY_FOR_PICKUP" && !result.letter_available ? "Berkas surat belum tersedia untuk diunduh. Hubungi Petugas untuk bantuan." : describe(statusDescriptions[result.status])}</p>
+              <p>{result.status === "SUBMITTED" && result.requires_neighborhood_approval ? "Permohonan menunggu verifikasi Ketua RT, lalu Ketua RW, sebelum masuk kantor desa." : expired ? expiredText : result.status === "READY_FOR_PICKUP" && !result.letter_available ? "Berkas surat belum tersedia untuk diunduh. Hubungi Petugas untuk bantuan." : describe(statusDescriptions[result.status])}</p>
               <h3>Catatan petugas</h3>
               <p className="officer-note">{result.catatan || "Catatan belum tersedia. Hubungi kantor desa untuk penjelasan."}</p>
               <Link href="/kontak" className="text-link">Lihat Kontak Kantor</Link>
@@ -228,7 +231,7 @@ export function StatusChecker() {
             <>
               <div className="status-next-step">
                 <h3>Langkah berikutnya</h3>
-                <p>{result.status === "SUBMITTED" && result.requires_neighborhood_approval ? "Permohonan menunggu verifikasi Ketua RT, lalu Ketua RW, sebelum masuk kantor desa." : expired ? "Masa unduh sudah berakhir. Hubungi Petugas untuk bantuan." : result.status === "READY_FOR_PICKUP" && !result.letter_available ? "Berkas surat belum tersedia untuk diunduh. Hubungi Petugas untuk bantuan." : describe(statusDescriptions[result.status])}</p>
+                <p>{result.status === "SUBMITTED" && result.requires_neighborhood_approval ? "Permohonan menunggu verifikasi Ketua RT, lalu Ketua RW, sebelum masuk kantor desa." : expired ? expiredText : result.status === "READY_FOR_PICKUP" && !result.letter_available ? "Berkas surat belum tersedia untuk diunduh. Hubungi Petugas untuk bantuan." : describe(statusDescriptions[result.status])}</p>
                 {(result.status === "APPROVED" || result.status === "READY_FOR_PICKUP") && <Link href="/kontak" className="text-link">Lihat Kontak Kantor</Link>}
               </div>
               {!result.jenis_surat && <p>Jenis surat tidak tersimpan pada bukti simulasi lama ini; linimasa tidak tersedia.</p>}
@@ -245,7 +248,7 @@ export function StatusChecker() {
                     <div>
                       <strong>{label}</strong>
                       <span className="timeline-state">{index === current ? "Tahap saat ini" : index < current ? "Sudah dilalui" : "Belum dimulai"}</span>
-                      <p>{code === "COMPLETED" && expired ? "Masa unduh berakhir." : describe(description)}</p>
+                      <p>{code === "COMPLETED" && expired ? "Masa berlaku surat sudah habis." : code === "READY_FOR_PICKUP" && result.status === "APPROVED" ? statusDescriptions.APPROVED : describe(description)}</p>
                     </div>
                   </li>
                 ))}

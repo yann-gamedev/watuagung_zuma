@@ -38,7 +38,11 @@ const blocks = [
   },
   {
     title: "Unduh surat dan kerahasiaan akses",
-    text: "Scan surat bertanda tangan basah dan stempel dapat diunduh dengan nomor pengajuan dan kode akses rahasia selama 30 hari sejak scan surat terakhir diunggah. Unduhan pertama menyelesaikan permohonan; unduhan ulang tetap tersedia selama masa unduh. Setiap unduhan dicatat. Setelah masa unduh berakhir, hubungi petugas desa. Scan surat bukan Tanda Tangan Elektronik tersertifikasi.\nJaga nomor pengajuan dan kode akses di tempat aman. Jangan bagikan kode akses kepada siapa pun, termasuk melalui WhatsApp. Bantuan WhatsApp hanya menyertakan nomor pengajuan, tidak pernah kode akses.",
+    text: "Setelah Kepala Desa menyetujui, surat ber-QR dapat diunduh dengan nomor pengajuan dan kode akses rahasia selama 7 hari, sama dengan masa berlaku surat. Unduhan pertama menyelesaikan permohonan; unduhan ulang tetap tersedia selama masa berlaku. Setiap unduhan dicatat. Setelah masa berlaku habis, ajukan ulang bila surat masih diperlukan. QR verifikasi bukan Tanda Tangan Elektronik tersertifikasi.\nJaga nomor pengajuan dan kode akses di tempat aman. Jangan bagikan kode akses kepada siapa pun, termasuk melalui WhatsApp. Bantuan WhatsApp hanya menyertakan nomor pengajuan, tidak pernah kode akses.",
+  },
+  {
+    title: "Verifikasi QR surat",
+    text: "QR pada surat membuka halaman verifikasi di website resmi desa. Siapa pun yang memindai QR tersebut dapat melihat nama lengkap pemohon, nomor surat, jenis surat, tanggal rilis, batas berlaku, dan status surat (sah, kedaluwarsa, atau dibatalkan), tanpa kode akses. Ini diperlukan agar penerima surat dapat mencocokkan surat cetak dengan catatan desa. Halaman verifikasi tidak menampilkan NIK, nomor KK, alamat, atau isi surat lainnya. Berikan surat hanya kepada pihak yang memerlukannya.",
   },
   {
     title: "Masa simpan",
