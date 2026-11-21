@@ -2,7 +2,12 @@ import { PublicShell, PageHeading, StatisticCard } from "@/components/site";
 import { UsersRound, House, MapPinned, Map as MapIcon } from "lucide-react";
 import { statistics as s } from "@/lib/data";
 import { ProfileLinks } from "@/components/profile-links";
-export const metadata = { title: "Statistik Desa" };
+import { pageMeta } from "@/lib/seo";
+export const metadata = pageMeta({
+  title: "Statistik Desa",
+  description: "Statistik Desa Watuagung: jumlah penduduk, kepala keluarga, dusun, RT/RW, serta kelompok usia, pendidikan, dan mata pencaharian dari pendataan desa 2025.",
+  path: "/statistik/",
+});
 const n = (value: number) => value.toLocaleString("id-ID");
 export default function Page() {
   return (

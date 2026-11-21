@@ -4,6 +4,16 @@ import { PageHeading, PublicShell } from "@/components/site";
 import { ApplicationForm } from "@/features/pelayanan/application-form";
 import { HubungiPetugas } from "@/components/hubungi-petugas";
 import { ContactAddress, ContactHours } from "@/components/office-contact";
+import { pageMeta } from "@/lib/seo";
+
+const descriptions: Record<string, string> = {
+  domisili: "Ajukan Surat Keterangan Domisili Desa Watuagung secara online: keterangan tempat tinggal sesuai alamat pemohon. Siapkan Scan KTP, KK, dan pengantar RT/RW.",
+  sktm: "Ajukan Surat Keterangan Tidak Mampu Desa Watuagung secara online untuk bantuan pendidikan atau bantuan lain. Siapkan Scan KTP, KK, dan pengantar RT/RW.",
+  "belum-menikah": "Ajukan Surat Keterangan Belum Menikah Desa Watuagung secara online: keterangan belum pernah menikah di KUA manapun. Siapkan Scan KTP, KK, dan pengantar RT/RW.",
+  keramaian: "Surat Keterangan Izin Keramaian Desa Watuagung untuk izin acara diurus langsung di Balai Desa. Bawa KTP, Kartu Keluarga, dan Surat Pengantar RT/RW asli.",
+  kehilangan: "Ajukan Surat Keterangan Kehilangan Desa Watuagung secara online untuk barang atau dokumen yang hilang. Siapkan Scan KTP, Kartu Keluarga, dan pengantar RT/RW.",
+  umum: "Ajukan Surat Keterangan Desa Watuagung secara online: keterangan diri pemohon sesuai isi dan tujuan penggunaan. Siapkan Scan KTP, KK, dan pengantar RT/RW.",
+};
 export function generateStaticParams() {
   return services.map((s) => ({ service: s.slug }));
 }
@@ -13,9 +23,9 @@ export async function generateMetadata({
   params: Promise<{ service: string }>;
 }) {
   const { service } = await params;
-  return {
-    title: services.find((s) => s.slug === service)?.title || "Layanan",
-  };
+  const item = services.find((s) => s.slug === service);
+  if (!item) notFound();
+  return pageMeta({ title: item.title, description: descriptions[service], path: `/pelayanan/${service}/` });
 }
 export default async function Page({
   params,

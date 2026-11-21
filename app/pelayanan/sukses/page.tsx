@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { PublicShell } from "@/components/site";
 import { Success } from "@/features/pelayanan/success";
-export const metadata = { title: "Pengajuan Berhasil" };
+export const metadata = { title: "Pengajuan Berhasil", robots: { index: false, follow: false } };
 export default function Page() {
   return (
     <PublicShell>

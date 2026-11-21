@@ -2,10 +2,12 @@ import { PageHeading, PublicShell } from "@/components/site";
 import Link from "next/link";
 import { ContactAddress } from "@/components/office-contact";
 
-export const metadata = {
+import { pageMeta } from "@/lib/seo";
+export const metadata = pageMeta({
   title: "Kebijakan Privasi",
-  description: "Informasi pengolahan data warga untuk permohonan surat di Desa Watuagung.",
-};
+  description: "Kebijakan privasi pelayanan surat Desa Watuagung: data yang dikumpulkan, tujuan pengolahan, siapa yang dapat melihat, keamanan data, dan verifikasi QR surat.",
+  path: "/kebijakan-privasi/",
+});
 
 const blocks = [
   {

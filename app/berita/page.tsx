@@ -1,7 +1,12 @@
 import { PublicNews } from "@/features/news/public-news";
 import { PublicShell, PageHeading } from "@/components/site";
 import { Newspaper } from "lucide-react";
-export const metadata = { title: "Berita Desa" };
+import { pageMeta } from "@/lib/seo";
+export const metadata = pageMeta({
+  title: "Berita Desa",
+  description: "Berita Desa Watuagung: cerita kegiatan, pembangunan, dan kebersamaan warga dari Pemerintah Desa Watuagung, Kecamatan Prigen, Kabupaten Pasuruan.",
+  path: "/berita/",
+});
 export default function Page() {
   return (
     <PublicShell>

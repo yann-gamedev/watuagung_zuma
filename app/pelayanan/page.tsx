@@ -4,7 +4,12 @@ import { PublicShell, PageHeading } from "@/components/site";
 import { ServiceList } from "@/components/service-list";
 import { SiteVideo } from "@/components/site-video";
 import { HubungiPetugas } from "@/components/hubungi-petugas";
-export const metadata: Metadata = { title: "Pelayanan Desa" };
+import { pageMeta } from "@/lib/seo";
+export const metadata: Metadata = pageMeta({
+  title: "Pelayanan Desa",
+  description: "Pelayanan surat keterangan Desa Watuagung secara online: pilih layanan, isi formulir, unggah Scan KTP, KK, dan pengantar RT/RW, lalu pantau status pengajuan.",
+  path: "/pelayanan/",
+});
 export default function Page() {
   return (
     <PublicShell>

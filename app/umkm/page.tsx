@@ -2,7 +2,12 @@ import { Store } from "lucide-react";
 import { PublicShell, PageHeading } from "@/components/site";
 import { PublicBusinesses } from "@/features/umkm/public-businesses";
 
-export const metadata = { title: "UMKM Watuagung", description: "Daftar usaha mikro, kecil, dan menengah warga Desa Watuagung." };
+import { pageMeta } from "@/lib/seo";
+export const metadata = pageMeta({
+  title: "UMKM Watuagung",
+  description: "Daftar UMKM warga Desa Watuagung yang didata Pemerintah Desa. Pilih kategori untuk menyaring daftar usaha mikro, kecil, dan menengah milik warga desa.",
+  path: "/umkm/",
+});
 export default function Page() {
   return (
     <PublicShell>
