@@ -30,6 +30,20 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+        // Pesan bawaan "Too Many Attempts." berbahasa Inggris dan tanpa waktu tunggu. `retry_after` di body
+        // karena header Retry-After tidak terbaca lintas origin tanpa Access-Control-Expose-Headers.
+        $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+            $seconds = max(1, (int) ($e->getHeaders()['Retry-After'] ?? 60));
+            $wait = $seconds < 60 ? "{$seconds} detik" : ((int) ceil($seconds / 60)).' menit';
+
+            return response()->json([
+                'message' => "Terlalu banyak percobaan. Tunggu {$wait}, lalu coba lagi.",
+                'retry_after' => $seconds,
+            ], 429, $e->getHeaders());
+        });
         $exceptions->respond(function (\Symfony\Component\HttpFoundation\Response $response) {
             if (request()->is('api/v1/staff/site/*') || (request()->isMethod('GET') && request()->is('api/v1/staff/*'))) {
                 $response->headers->set('Cache-Control', 'private, no-store');

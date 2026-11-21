@@ -13,6 +13,7 @@ export function FormField({
   onValueChange,
   hint,
   suggestions,
+  required = true,
 }: {
   name: keyof SubmissionValues;
   label: string;
@@ -25,11 +26,12 @@ export function FormField({
   placeholder?: string;
   onValueChange?: (value: string) => void;
   hint?: string;
+  required?: boolean;
 }) {
   const error = errors[name]?.message;
   const props = {
     id: name,
-    required: true,
+    required,
     "aria-invalid": !!error,
     "aria-describedby": [hint ? `${name}-hint` : "", error ? `${name}-error` : ""].filter(Boolean).join(" ") || undefined,
     ...register(name, { onChange: (event) => onValueChange?.(event.target.value) }),
@@ -37,7 +39,7 @@ export function FormField({
   return (
     <div className={"field" + (wide ? " wide" : "")}>
       <label htmlFor={name}>
-        {label} <span aria-hidden="true">*</span>
+        {label} {required && <span aria-hidden="true">*</span>}
       </label>
       {options ? (
         <select {...props}>
@@ -54,7 +56,7 @@ export function FormField({
           type={type}
           placeholder={placeholder}
           list={suggestions ? `${name}-suggestions` : undefined}
-          maxLength={name === "nik" || name === "no_kk" ? 16 : name === "pekerjaan" ? 60 : ["acara", "tempat_acara", "jenis_hiburan"].includes(name) ? 120 : 200}
+          maxLength={name === "nik" || name === "no_kk" ? 16 : name === "pekerjaan" ? 60 : name === "email" ? undefined : ["acara", "tempat_acara", "jenis_hiburan"].includes(name) ? 120 : 200}
           inputMode={
             ["nik", "no_kk", "rt", "rw"].includes(name) ? "numeric" : undefined
           }

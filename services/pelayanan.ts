@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { attachmentKinds, attachmentKindLabels, serviceCodes, statuses, type Submission, type SubmissionAttachments, type Receipt, type StatusReceipt } from "@/types/pelayanan";
+import { attachmentKinds, attachmentKindLabels, serviceCodes, statuses, type Submission, type SubmissionAttachments, type Receipt, type StatusReceipt, type EmailUnsubscribeResponse } from "@/types/pelayanan";
 import { submissionSchema } from "@/lib/validation";
 // An explicit demo build must never contact an API, even with a stale API URL.
 export const apiBase = process.env.NEXT_PUBLIC_DEMO_MODE === "true"
@@ -15,6 +15,7 @@ export class SubmissionValidationError extends Error {
     this.name = "SubmissionValidationError";
   }
 }
+export const THROTTLE_FALLBACK_MESSAGE = "Terlalu banyak percobaan. Tunggu sekitar 1 menit, lalu coba lagi.";
 export async function apiRequest<T>(path: string, options: RequestInit = {}, pdf = false): Promise<T> {
   if (!apiBase) throw new Error("API tidak tersedia dalam mode simulasi.");
   const controller = new AbortController();
@@ -28,11 +29,15 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}, pdf
     const body = (await response.json().catch(() => ({}))) as { message?: string; errors?: Record<string, string[]> };
     if (!response.ok) {
       if (response.status === 422 && body.errors) throw new Error(Object.values(body.errors).flat().join(" "));
+      // 429 server memakai ApiThrottleError (bahasa Indonesia + waktu tunggu); pesan bawaan Inggris/proxy diganti.
+      if (response.status === 429 && (!body.message || /too many/i.test(body.message))) throw new Error(THROTTLE_FALLBACK_MESSAGE);
       throw new Error(body.message || "Layanan belum dapat dihubungi. Coba lagi nanti.");
     }
     return body as T;
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw new Error("Waktu tunggu habis. Periksa koneksi lalu coba lagi.");
+    // fetch gagal total (offline, DNS, CORS) melempar TypeError berbahasa Inggris, mis. "Failed to fetch".
+    if (error instanceof TypeError) throw new Error("Server belum dapat dihubungi. Periksa koneksi internet lalu coba lagi.");
     throw error;
   } finally { clearTimeout(timeout); }
 }
@@ -77,6 +82,13 @@ function uploadMultipart<T>(path: string, form: FormData, schema: z.ZodType<T>, 
 const demoDownloaded = new Set<string>();
 const demoDeadline = new Date(Date.now() + 30 * 86400000).toISOString();
 export const pelayananService = {
+  async unsubscribeEmail(query: string): Promise<EmailUnsubscribeResponse> {
+    if (!apiBase) throw new Error('Berhenti menerima email tidak tersedia dalam mode simulasi. Email pemberitahuan tidak dikirim.');
+    const params = new URLSearchParams(query);
+    if (!params.get('id') || !params.get('signature')) throw new Error('Tautan tidak lengkap. Gunakan tautan berhenti menerima email dari email pemberitahuan.');
+    // Jangan susun ulang query: tanda tangan Laravel bergantung pada urutan/encoding aslinya.
+    return z.object({ success: z.literal(true), message: z.string() }).parse(await apiRequest(`/applications/unsubscribe${query}`, { method: 'POST' }));
+  },
   async downloadLetter(id: string, secret?: string): Promise<Blob> {
     if (apiBase) {
       if (!secret?.trim()) throw new Error('Masukkan kode akses pengajuan.');

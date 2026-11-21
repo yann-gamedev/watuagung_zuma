@@ -37,6 +37,16 @@ export type Agama = (typeof agamaOptions)[number];
 export type Kewarganegaraan = (typeof kewarganegaraanOptions)[number];
 export type StatusPerkawinan = (typeof statusPerkawinanOptions)[number];
 export type Pendidikan = (typeof pendidikanOptions)[number];
+/**
+ * Body 429 dari batas laju rute (bukan kunci kode akses warga, yang memakai `{ success: false, message }`).
+ * `message` sudah berbahasa Indonesia dengan waktu tunggu; `retry_after` dalam detik (header Retry-After
+ * tidak terbaca lintas origin). Login petugas: 5/menit per username + IP dan 20/menit per IP.
+ */
+export interface ApiThrottleError {
+  message: string;
+  retry_after: number;
+}
+/** 401 login: `{ message: "Username atau kata sandi salah." }`, juga untuk akun nonaktif. */
 export type StaffLoginRequest = { password: string } & (
   | { username: string; email?: never }
   | { email: string; username?: never }
@@ -64,7 +74,74 @@ export interface StaffApplicationEvent {
   to_status: Status;
   note: string | null;
   staff_name: string | null;
+  /** E3: "email" bila Kepala Desa memutuskan lewat tautan email (tampilkan "melalui email"); null = panel/sistem. */
+  via?: "email" | null;
   created_at: string;
+}
+/**
+ * E3 GET/PUT /staff/me/notifications (semua peran panel). PUT `{ email: string | null }` menyimpan email
+ * notifikasi (rfc, maks 120), mengosongkan status terverifikasi, dan mengirim tautan verifikasi 24 jam ke
+ * `{SITE_URL}/verifikasi-email/?user&email&expires&signature`; email sama yang belum terverifikasi = kirim ulang.
+ */
+export interface StaffNotificationSettings {
+  notification_email: string | null;
+  notification_email_verified: boolean;
+  /** true hanya untuk village_head: bagian PIN dan persetujuan email ditampilkan. */
+  approval_by_email_available: boolean;
+  approval_pin_set: boolean;
+  approval_pin_set_at: string | null;
+  /** village_head aktif + email terverifikasi + PIN: menerima tautan persetujuan. */
+  approval_by_email_active: boolean;
+}
+/** E3 PUT /staff/me/notifications/pin (village_head saja; lain 403). PIN 6 digit, bukan angka sama/berurutan. */
+export interface StaffApprovalPinInput {
+  pin: string;
+  pin_confirmation: string;
+  /** Kata sandi akun; salah → 422 `errors.password`. */
+  password: string;
+}
+/**
+ * E3 POST /notifications/verify?{query dari tautan email apa adanya} (publik). 200 terverifikasi;
+ * 403 tanda tangan salah/kedaluwarsa (24 jam); 410 email sudah diganti sejak tautan dikirim.
+ */
+export interface NotificationVerifyResponse {
+  success: boolean;
+  message: string;
+}
+/**
+ * E3 POST /approvals/preview `{ token }` (publik, token dari `?t=` halaman /persetujuan/). Tidak mengubah status.
+ * 410 = tautan tidak berlaku (kedaluwarsa 72 jam, terpakai, dicabut, dikunci, status berubah, akun tidak memenuhi
+ * syarat). POST /approvals/draft `{ token }` mengembalikan PDF draf (blob). Lampiran KTP/KK tidak tersedia.
+ */
+export interface ApprovalPreview {
+  request_id: string;
+  jenis_surat: ServiceCode;
+  jenis_surat_label: string;
+  nama: string;
+  submitted_at: string;
+  verified_by: string | null;
+  letter_number: string | null;
+  head_name: string;
+  expires_at: string;
+  pin_attempts_left: number;
+}
+/** E3 POST /approvals/decide. `note` wajib untuk reject (422 `errors.note`, tidak mengurangi percobaan PIN). */
+export interface ApprovalDecisionRequest {
+  token: string;
+  pin: string;
+  decision: "approve" | "reject";
+  note?: string;
+}
+/**
+ * 200 berhasil. 422 PIN salah `{ message, errors.pin, pin_attempts_left }`; 423 PIN salah ke-5 (tautan dikunci,
+ * kepala desa diberi email); 410 tautan tidak berlaku.
+ */
+export interface ApprovalDecisionResponse {
+  success: true;
+  request_id: string;
+  status: "APPROVED" | "REJECTED";
+  letter_number: string | null;
+  message: string;
 }
 /** Hanya respons detail terotorisasi; jangan simpan ke storage atau log. */
 export interface StaffApplicationDetail extends StaffApplication, Pick<Submission, "nama" | "nik" | "no_kk" | "alamat" | "rt" | "rw" | "keperluan"> {
@@ -269,6 +346,20 @@ export interface Submission {
   /** UMUM, maksimal 500. */
   isi_keterangan?: string;
   keperluan: string;
+  /**
+   * E1: email opsional untuk notifikasi status (RFC, maks 120). Disimpan terenkripsi, tidak pernah dikembalikan API.
+   * Bila diisi, `email_consent` wajib bernilai diterima ("1"/"true"); tanpa email, centang diabaikan. Form E2 memakai boolean; multipart mengirim "true"/"false".
+   */
+  email?: string;
+  email_consent?: boolean | "1" | "0";
+}
+/**
+ * POST /applications/unsubscribe?id=…&signature=… (query bertanda tangan dari tautan email, diteruskan halaman
+ * /berhenti-email/ apa adanya). 200 idempoten; 403 tanda tangan salah/hilang; 404 permohonan tidak ada.
+ */
+export interface EmailUnsubscribeResponse {
+  success: boolean;
+  message: string;
 }
 /** Dokumen lampiran pengajuan (cermin `AttachmentKind.php`); daftar wajib per jenis di `LetterType::requiredAttachments()`. */
 export const attachmentKinds = ["KTP", "KK", "PENGANTAR_RT_RW"] as const;

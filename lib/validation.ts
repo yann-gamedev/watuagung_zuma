@@ -55,6 +55,11 @@ export const submissionSchema = z.object({
   rt: digits("RT", /^[0-9]{1,3}$/, "RT berisi 1–3 digit angka."),
   rw: digits("RW", /^[0-9]{1,3}$/, "RW berisi 1–3 digit angka."),
   telepon: digits("Nomor telepon", /^(?:\+62|0)[0-9]{8,13}$/, "Nomor telepon diawali 0 atau +62, 9–14 digit."),
+  // shortcut: pemeriksaan awal saja; Laravel email:rfc penentu akhir, tambah parser RFC bila validasi offline identik diperlukan.
+  email: z.string().trim()
+    .refine((value) => [...value].length <= 120, "Email maksimal 120 karakter.")
+    .refine((value) => !value || (!/[\r\n]/.test(value) && value.lastIndexOf("@") > 0 && value.lastIndexOf("@") < value.length - 1), "Format email tidak valid. Contoh: nama@contoh.com.").optional(),
+  email_consent: z.boolean().optional(),
   // Bawaan WNI ditangani form/API; optional tetap tanpa preprocess agar tipe RHF sama.
   kewarganegaraan: choice(kewarganegaraanOptions, "Kewarganegaraan").optional(),
   agama: choice(agamaOptions, "Agama").optional(),
@@ -75,6 +80,7 @@ export const submissionSchema = z.object({
 }).superRefine((values, context) => {
   const issue = (field: keyof typeof values, message: string) => context.addIssue({ code: "custom", path: [field], message });
   const today = todayInJakarta();
+  if (values.email && !values.email_consent) issue("email_consent", "Centang persetujuan menerima email pemberitahuan, atau kosongkan email.");
   if (validDate(values.tanggal_lahir)) {
     if (values.tanggal_lahir < "1900-01-01") issue("tanggal_lahir", "Tanggal lahir paling awal 1 Januari 1900.");
     if (values.tanggal_lahir > today) issue("tanggal_lahir", "Tanggal lahir tidak boleh melewati hari ini.");

@@ -52,6 +52,10 @@ class LetterSubmission
             'pendidikan' => [$full, 'string', Rule::in(self::PENDIDIKAN)],
             'pekerjaan' => [$full, 'string', 'min:2', 'max:60'],
             'keperluan' => ['required', 'string', 'min:2', 'max:200'],
+            // Email opsional untuk notifikasi status; bila diisi wajib disertai persetujuan (E1).
+            'email' => ['nullable', 'string', 'max:120', 'email:rfc'],
+            // `accepted` adalah aturan implisit (tetap berjalan bila kolom tidak dikirim), jadi hanya dipasang bila email diisi.
+            'email_consent' => filled($input['email'] ?? null) ? ['required', 'accepted'] : ['nullable'],
         ];
         $specific = [
             'barang_hilang' => ['required', 'string', 'min:2', 'max:200'],
@@ -111,6 +115,9 @@ class LetterSubmission
             'tanggal_lahir.before_or_equal' => 'Tanggal lahir tidak boleh melewati hari ini.',
             'tanggal_mulai.after_or_equal' => 'Tanggal mulai tidak boleh sebelum hari ini.',
             'tanggal_selesai.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
+            'email.email' => 'Format email tidak valid. Contoh: nama@contoh.com.',
+            'email_consent.required' => 'Centang persetujuan menerima email pemberitahuan, atau kosongkan email.',
+            'email_consent.accepted' => 'Centang persetujuan menerima email pemberitahuan, atau kosongkan email.',
         ];
     }
 
@@ -126,7 +133,7 @@ class LetterSubmission
             'nama_usaha' => 'nama usaha', 'jenis_usaha' => 'jenis usaha', 'alamat_usaha' => 'alamat usaha',
             'barang_hilang' => 'barang atau dokumen yang hilang', 'acara' => 'acara', 'tempat_acara' => 'tempat acara',
             'tanggal_mulai' => 'tanggal mulai', 'tanggal_selesai' => 'tanggal selesai', 'jenis_hiburan' => 'jenis hiburan',
-            'isi_keterangan' => 'isi keterangan',
+            'isi_keterangan' => 'isi keterangan', 'email' => 'email', 'email_consent' => 'persetujuan email',
         ];
     }
 }

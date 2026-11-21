@@ -2,6 +2,8 @@
 namespace App\Http\Controllers\Api;
 use App\Domain\AccessCode;
 use App\Domain\ApplicationStatus;
+use App\Domain\ApplicationTransition;
+use App\Domain\TransitionRejected;
 use App\Domain\Letter;
 use App\Domain\LetterType;
 use App\Domain\LetterNumber;
@@ -56,8 +58,8 @@ class StaffController extends Controller {
         $user = isset($data['username'])
             ? User::where('username', $data['username'])->first()
             : User::where('email', $data['email'])->first();
-        // Akun nonaktif memakai pesan yang sama dengan kredensial salah.
-        if (! $user || ! Hash::check($data['password'], $user->password) || ! $user->canAccessPanel()) return response()->json(['message'=>'Kredensial tidak valid.'], 401);
+        // Akun nonaktif memakai pesan yang sama dengan kata sandi salah (tidak membocorkan keberadaan akun).
+        if (! $user || ! Hash::check($data['password'], $user->password) || ! $user->canAccessPanel()) return response()->json(['message'=>'Username atau kata sandi salah.'], 401);
         $user->forceFill(['last_login_at'=>now()])->save();
         return response()->json(['token'=>$user->createToken('staff', $user->abilities())->plainTextToken,'must_change_password'=>(bool) $user->must_change_password,'user'=>['name'=>$user->name,'role'=>$user->role,'rt'=>$user->rt,'rw'=>$user->rw]]);
     }
@@ -141,13 +143,15 @@ class StaffController extends Controller {
             ->leftJoin('users', 'users.id', '=', 'events.user_id')
             ->where('events.application_id', $application->id)
             ->orderBy('events.created_at')->orderBy('events.id')
-            ->get(['events.action','events.from_status','events.to_status','events.note','users.name as staff_name','events.created_at'])
+            ->get(['events.action','events.from_status','events.to_status','events.note','events.via','users.name as staff_name','events.created_at'])
             ->map(fn ($event) => [
                 'action'=>$event->action,
                 'from_status'=>$event->from_status,
                 'to_status'=>$event->to_status,
                 'note'=>$event->note === null ? null : Crypt::decryptString($event->note),
                 'staff_name'=>$event->staff_name,
+                // 'email' bila kepala desa memutuskan lewat tautan email (E3); null = panel/sistem.
+                'via'=>$event->via,
                 'created_at'=>Carbon::parse($event->created_at)->toISOString(),
             ]);
         $detail = [
@@ -216,30 +220,11 @@ class StaffController extends Controller {
         if (! $user->canManageApplications()) return $this->forbidden();
         if (! $application->isInTerritory($user)) return $this->forbidden();
         $data = $request->validate(['status'=>['required',Rule::in(ApplicationStatus::values())], 'catatan'=>['nullable','string','max:1000']]);
-        $note = blank($data['catatan'] ?? null) ? null : trim($data['catatan']);
-        $issuedAt = now();
-        $result = DB::transaction(function () use ($application, $data, $note, $user, $issuedAt) {
-            LetterNumber::acquireWriteLock($issuedAt->year);
-            // Re-read under lock so a stale client cannot move an already-changed status.
-            $fresh = Application::whereKey($application->getKey())->lockForUpdate()->firstOrFail();
-            if (! $fresh->isInTerritory($user)) return $this->forbidden();
-            $from = $fresh->status;
-            $type = LetterType::from($fresh->jenis_surat);
-            if (! ApplicationStatus::isTransition($from, $data['status'], $type)) return response()->json(['message'=>'Transisi status tidak valid.'], 422);
-            if (! ApplicationStatus::canTransition($from, $data['status'], $user->role, $type)) return response()->json(['message'=>'Peran Anda tidak berwenang melakukan perubahan status ini.'], 403);
-            if (ApplicationStatus::requiresNote($data['status']) && $note === null) return response()->json(['message'=>'Catatan wajib diisi.','errors'=>['catatan'=>['Catatan wajib diisi.']]], 422);
-            if ($from === 'PROCESSING' && $data['status'] === 'WAITING_APPROVAL') LetterNumber::issue($fresh, $user, $issuedAt);
-            if ($from === 'WAITING_APPROVAL' && in_array($data['status'], ['REJECTED', 'NEED_REVISION'], true)) LetterNumber::void($fresh, $note);
-            // Siapa dan kapan Kepala Desa menyetujui, beserta kode verifikasi QR.
-            if ($data['status'] === 'APPROVED') Letter::approve($fresh, $user);
-            $fresh->update(['status'=>$data['status'],'catatan'=>$note]);
-            DB::table('application_events')->insert(['application_id'=>$fresh->id,'user_id'=>$user->id,'from_status'=>$from,'to_status'=>$data['status'],'note'=>$note === null ? null : Crypt::encryptString($note),'created_at'=>now()]);
-            return $fresh;
-        }, 3);
-        if ($result instanceof JsonResponse) return $result;
-        if ($result->status === 'APPROVED') {
-            // Persetujuan sudah tersimpan; bila PDF gagal dibuat, unduhan pertama akan mencoba lagi.
-            try { Letter::generate($result); } catch (\Throwable $e) { report($e); }
+        // Jalur yang sama dipakai persetujuan lewat email (ApprovalController), agar hasilnya identik.
+        try {
+            $result = ApplicationTransition::apply($application, $data['status'], $user, $data['catatan'] ?? null);
+        } catch (TransitionRejected $e) {
+            return $e->status === 403 && $e->getMessage() === 'Akses ditolak.' ? $this->forbidden() : response()->json($e->body(), $e->status);
         }
         return response()->json([
             'success'=>true,'request_id'=>$result->request_id,'status'=>$result->status,'catatan'=>$result->catatan,

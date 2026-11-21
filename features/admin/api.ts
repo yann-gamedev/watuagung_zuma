@@ -1,4 +1,4 @@
-import { apiBase } from "@/services/pelayanan";
+import { apiBase, THROTTLE_FALLBACK_MESSAGE } from "@/services/pelayanan";
 
 export const SESSION_EXPIRED_MESSAGE = "Sesi berakhir, silakan masuk lagi.";
 
@@ -67,6 +67,8 @@ async function send(path: string, token: string, options: RequestInit): Promise<
   if (response.status === 401) throw new AdminUnauthorizedError();
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { message?: string; errors?: Record<string, string[]> };
+    // Semua 429 sebelum pesan per fitur: "gagal diproses" menyesatkan bila petugas cukup menunggu.
+    if (response.status === 429) throw new Error(body.message && !/too many/i.test(body.message) ? body.message : THROTTLE_FALLBACK_MESSAGE);
     if (path.startsWith("/staff/site/")) {
       if (response.status === 404) throw new AdminSiteNotFoundError("Bagian situs belum diisi.");
       if (response.status === 403) throw new Error("Akun ini tidak memiliki akses untuk tindakan tersebut.");

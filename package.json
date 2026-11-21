@@ -12,6 +12,7 @@
                     "build:demo": "node scripts/build-demo.mjs",
                     "test:demo": "node scripts/test-demo.mjs",
                     "test:no-sample": "node scripts/test-no-sample.mjs",
+                    "test:approval": "node scripts/test-approval.mjs",
                     "start":  "next dev --hostname 127.0.0.1",
                     "lint":  "eslint . --ignore-pattern dist --ignore-pattern .next",
                     "db:generate":  "drizzle-kit generate"

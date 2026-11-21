@@ -26,6 +26,24 @@ enum ApplicationStatus: string
     private const OFFICE = ['staff', 'admin'];
     private const HEAD = ['village_head'];
 
+    /** Label untuk warga (email status). Cermin `statusLabels` di components/site.tsx; ubah keduanya bersama. */
+    public function citizenLabel(): string
+    {
+        return match ($this) {
+            self::Submitted => 'Diterima',
+            self::RtApproved => 'Disetujui RT, menunggu RW',
+            self::RwApproved => 'Pengantar RT/RW sah, menunggu kantor desa',
+            self::Verified => 'Diverifikasi',
+            self::Processing => 'Diproses',
+            self::WaitingApproval => 'Menunggu persetujuan',
+            self::Approved => 'Disetujui',
+            self::ReadyForPickup => 'Siap diunduh',
+            self::Completed => 'Selesai',
+            self::Rejected => 'Ditolak',
+            self::NeedRevision => 'Perlu perbaikan',
+        };
+    }
+
     /**
      * Status asal => [status tujuan => peran yang berwenang].
      *

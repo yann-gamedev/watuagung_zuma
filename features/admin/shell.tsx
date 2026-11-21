@@ -183,6 +183,11 @@ function AdminFrame({ children }: { children: React.ReactNode }) {
                       event.currentTarget.closest("details")?.removeAttribute("open");
                     }}
                   >Ganti kata sandi</button>
+                  <Link
+                    href="/admin/notifikasi/"
+                    className="btn btn-secondary"
+                    onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")}
+                  >Notifikasi email</Link>
                 </div>
               </details>
               <button id="staff-logout" type="button" className="btn btn-secondary" disabled={leaving} onClick={() => void signOut()}>

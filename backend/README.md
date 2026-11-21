@@ -167,7 +167,7 @@ php artisan staff:create rt-lokal --role=rt_head --rt=1 --rw=2 --name="Ketua RT 
 php artisan staff:create rw-lokal --role=rw_head --rw=2 --name="Ketua RW Lokal"
 ```
 
-Saat fitur mati, login RT/RW mendapat 401 generik `Kredensial tidak valid.`; token RT/RW lama mendapat 403 pada endpoint panel. API pembuatan/penetapan peran atau wilayah/aktivasi akun RT/RW ditolak 422 dengan pesan jelas bahwa fitur nonaktif. Menonaktifkan akun RT/RW yang sudah ada tetap diizinkan. `staff:create --role=rt_head|rw_head` juga ditolak. `/staff/me` mengirim `features.neighborhood_approval`; otorisasi tetap di server.
+Saat fitur mati, login RT/RW mendapat 401 generik `Username atau kata sandi salah.`; token RT/RW lama mendapat 403 pada endpoint panel. API pembuatan/penetapan peran atau wilayah/aktivasi akun RT/RW ditolak 422 dengan pesan jelas bahwa fitur nonaktif. Menonaktifkan akun RT/RW yang sudah ada tetap diizinkan. `staff:create --role=rt_head|rw_head` juga ditolak. `/staff/me` mengirim `features.neighborhood_approval`; otorisasi tetap di server.
 
 `--email` opsional (bawaan `<username>@example.test`). `rt_head` wajib `--rt` dan `--rw`; `rw_head` wajib `--rw`; isinya 1–3 digit dan disimpan sebagai 3 digit (`1` → `001`). Kolom `rt`/`rw` pada `users` nullable untuk peran lain. Ketua RT/RW tanpa wilayah lengkap tidak bisa masuk panel. Nama, username, dan nomor wilayah di atas hanya contoh, **bukan** akun bawaan. Buat admin pertama melalui CLI; untuk pengelolaan berikutnya gunakan panel **Akun** (`/admin/akun`) agar validasi wilayah, perlindungan admin, dan audit diterapkan.
 
@@ -210,9 +210,9 @@ Akun tersimpan di tabel `users` pada **database aktif Laravel**. Git push/pull t
 |---|---|
 | Panel petugas tidak aktif pada demo | Mode demo/API URL kosong atau build demo. Bukan kegagalan kata sandi. |
 | Server belum dapat dihubungi / gagal jaringan | Cek `/up`, port/API URL, dan `FRONTEND_ORIGINS`. Origin mencakup protokol, host, port; `http://localhost:3000` berbeda dari `http://127.0.0.1:3000`. |
-| 401 / `Kredensial tidak valid.` saat login | Username/kata sandi salah, akun nonaktif, peran tidak diizinkan, RT/RW nonaktif, atau wilayah RT/RW tidak lengkap. Pesan sengaja generik; cek metadata akun secara lokal. |
+| 401 / `Username atau kata sandi salah.` saat login | Username/kata sandi salah, akun nonaktif, peran tidak diizinkan, RT/RW nonaktif, atau wilayah RT/RW tidak lengkap. Pesan sengaja generik; cek metadata akun secara lokal. |
 | 422 saat login | Format username/isian salah. Username 1–64 karakter, diawali huruf kecil/angka; sisanya huruf kecil/angka, `_`, `-`. Bukan nama tampilan/email. Akun lama username null perlu ditetapkan oleh admin berwenang; API email lama tidak berarti form username menerima email. |
-| 429 | Batas login 5 percobaan/menit. Hentikan percobaan, tunggu sampai batas pulih; jangan mengakali rate limit. |
+| 429 / `Terlalu banyak percobaan. Tunggu … lalu coba lagi.` | Limiter `staff-login`: 5 percobaan/menit per username + IP, 20/menit per IP (`AppServiceProvider`). Tunggu sesuai `retry_after`; jangan mengakali rate limit. Halaman publik tidak lagi menghabiskan jatah login (throttle rute bernama, lihat `docs/integrasi.md` § Respons 429 batas laju). |
 | Sesi berakhir | Token kedaluwarsa/dicabut; masuk ulang. Sesi disimpan per tab/origin, bukan bukti akun terhapus. |
 | Diminta ganti kata sandi | Login berhasil, akun memakai kata sandi sementara. Selesaikan penggantian sebelum memakai fitur lain. |
 | 403 setelah login | Periksa peran/akun aktif/ability dan konfigurasi RT/RW. Admin/staff boleh mengelola media dan konten situs; KIM hanya berita/UMKM termasuk foto; Kepala Desa tidak boleh mengelola keduanya. |
@@ -238,6 +238,10 @@ Semua path pada tabel diawali `/api/v1`. Permintaan JSON memakai `Accept: applic
 | POST | `/applications` | Publik, 5 permintaan/menit | Mengajukan layanan (multipart, lampiran KTP/KK/pengantar RT/RW wajib; lihat § Lampiran persyaratan); mengembalikan `request_id`, `status`, `jenis_surat`, `requires_neighborhood_approval: boolean` dari `LetterType`, `lampiran` (jenis yang diterima), dan `lookup_secret` (HTTP 201) |
 | POST | `/applications/letter` | Publik, 10/menit per IP; kunci kode akses bersama cek status | Warga mengunduh scan surat bertanda tangan (`request_id`, `lookup_secret`); unduhan pertama → `COMPLETED` (§ Surat PDF) |
 | POST | `/applications/attachments` | Publik, 5 permintaan/menit; kunci kode akses bersama cek status | Warga mengganti lampiran saat `NEED_REVISION` (multipart `request_id`, `lookup_secret`, `lampiran[KIND]`) |
+| POST | `/approvals/preview`, `/approvals/draft`, `/approvals/decide` | Publik, limiter `approval-link`; token di body | Persetujuan Kepala Desa lewat email dengan PIN (§ Persetujuan kepala desa lewat email) |
+| POST | `/notifications/verify` | Publik, URL bertanda tangan 24 jam | Verifikasi email notifikasi akun |
+| GET/PUT | `/staff/me/notifications`, PUT `/staff/me/notifications/pin` | Token petugas; PIN hanya `village_head` | Email notifikasi dan PIN persetujuan |
+| POST | `/applications/unsubscribe` | Publik, 10/menit; URL bertanda tangan (`id`, `signature`) | Berhenti menerima email status (§ Notifikasi email pemohon); mengosongkan email; 403 tanda tangan salah |
 | POST | `/applications/status` | Publik, 10 permintaan/menit; 5 kode salah per nomor → 429 selama 15 menit | Body: `request_id` dan `lookup_secret`; mengembalikan `jenis_surat`, `requires_neighborhood_approval: boolean` dari `LetterType`, status, `lampiran` (jenis yang diterima, tanpa path/ukuran/hash), dan catatan (penolakan RT/RW historis tetap diberi awalan "Ditolak oleh Ketua RT/RW") |
 | POST | `/staff/login` | Publik, 5 permintaan/menit | Body: `username` dan `password` (atau `email` untuk klien lama); mengembalikan bearer token |
 | POST | `/staff/logout` | Token petugas | Mencabut token aktif |
@@ -295,6 +299,25 @@ Field formulir mengikuti [tipe frontend](../types/pelayanan.ts). Validasi yang g
 - Nama file asli tidak pernah disimpan. Hostinger: `upload_max_filesize`/`post_max_size` 20M (`deploy/hostinger.md` § C).
 - Tes: `tests/Feature/ApplicationAttachmentsTest.php`; tes lain mengajukan lewat `submitLetter()` di `tests/LetterPayloads.php` (gambar polos fiktif, disk `local` palsu).
 - **Akses, penggantian, retensi (17 November 2026):** `AttachmentController::show()` (staff/admin/village_head, `forUser()`, 404/410, audit `attachment.viewed` setiap kali sebelum isi dikirim, header `private, no-store` + `nosniff`, nama netral). `ApplicationController::replaceAttachments()` memakai `authenticate()` yang sama dengan cek status (kunci `lookup:{request_id}`), hanya `NEED_REVISION`, `AttachmentStore::replace()` memperbarui baris yang sama dan mengembalikan path lama untuk `deleteFiles()` setelah commit; event `ATTACHMENTS_UPDATED`. Detail petugas memakai `AttachmentStore::staffList()`. `AttachmentStore::purgeRows()` dipakai `attachments:purge` dan `applications:purge`. Tes: `tests/Feature/AttachmentAccessTest.php`. Kontrak lengkap: [docs/integrasi.md § Akses petugas, penggantian, dan retensi lampiran](../docs/integrasi.md#akses-petugas-penggantian-dan-retensi-lampiran-17-november-2026).
+
+### Notifikasi email pemohon (E1, 20 November 2026)
+
+- Kolom `applications.email` (text, cast `encrypted`, `$hidden`), `email_consent_at`, `email_unsubscribed_at` (migration `2026_11_20_000000_add_email_notifications_to_applications`, ada `down()`). Validasi di `LetterSubmission::rules()`: `email` opsional `email:rfc` maks 120; `email_consent` wajib diterima hanya bila email diisi.
+- `App\Domain\ApplicationStatusChanged` (after commit) dikirim di keempat tempat status berubah: `StaffController::update`, `LetterController::upload`, `ApplicationController::letter` (unduhan pertama), `letters:expire-downloads`. **Tempat baru yang mengubah status wajib mengirim event yang sama** setelah menulis `application_events` (`insertGetId`).
+- `App\Listeners\SendApplicantStatusEmail` (ditemukan otomatis, `ShouldQueue`, 3 percobaan): `shouldQueue()` dan `handle()` memeriksa `ApplicantEmail::canNotify()` (email + persetujuan + belum berhenti + belum dianonimkan). Mailable dikirim langsung dari listener agar isinya tidak tersimpan di tabel `jobs`. Gagal kirim → `Log::warning` dengan email tersamar; koneksi `sync` tidak melempar sehingga respons petugas tetap 200.
+- `App\Support\ApplicantEmail`: kalimat status, nama jenis surat, URL cek status dan berhenti (`SITE_URL`), penyamaran email. Label status di `ApplicationStatus::citizenLabel()` (cermin `components/site.tsx`).
+- `POST /applications/unsubscribe` memakai `hasValidSignature(false)` (tanda tangan relatif, tanpa kedaluwarsa); mengosongkan email, audit `application.email_unsubscribed`.
+- Antrean: `QUEUE_CONNECTION=database`. Lokal: `php artisan queue:work --stop-when-empty` (atau `schedule:work`), `MAIL_MAILER=log`. Hostinger: cron langsung tiap menit (`deploy/hostinger.md` § H).
+- Tes: `tests/Feature/ApplicantStatusEmailTest.php`. Kontrak lengkap: [docs/integrasi.md § Notifikasi email pemohon](../docs/integrasi.md#notifikasi-email-pemohon-e1-20-november-2026).
+
+### Persetujuan kepala desa lewat email (E3, 20 November 2026)
+
+- Migration `2026_11_20_000001_add_email_approval`: `users.notification_email` (encrypted, hidden), `notification_email_verified_at`, `approval_pin_hash`, `approval_pin_set_at`; tabel `approval_links`; `application_events.via`. Ada `down()`.
+- `App\Domain\ApplicationTransition::apply()` = satu-satunya jalur transisi manual (panel dan email); `TransitionRejected` membawa status HTTP + pesan yang sama seperti sebelumnya.
+- `App\Support\ApprovalLinks` (issue/resolve/revoke, SHA-256, 72 jam, 5 PIN), `App\Support\NotificationEmails` (URL verifikasi bertanda tangan 24 jam, PIN lemah).
+- Listener: `SendHeadApprovalLinks` (antrean, token dibuat di dalam job), `RevokeApprovalLinks` (sinkron). Job: `SendNotificationEmailVerification`, `SendPinLockedEmail` (payload hanya ID).
+- Controller: `NotificationSettingsController` (`/staff/me/notifications`, `/notifications/verify`), `ApprovalController` (`/approvals/preview|draft|decide`). Limiter bernama `approval-link` di `AppServiceProvider`.
+- Tes: `tests/Feature/HeadEmailApprovalTest.php`, `tests/Feature/NotificationSettingsTest.php`. Kontrak: [docs/integrasi.md § Persetujuan kepala desa lewat email](../docs/integrasi.md#persetujuan-kepala-desa-lewat-email-e3-20-november-2026).
 
 ### Berita
 
@@ -356,7 +379,7 @@ Tipe baru `types/site.ts`, re-export `types/pelayanan.ts`; dokumentasi lengkap d
 - `warnings` berisi `{ role, rt, rw, pending }` untuk permohonan `SUBMITTED` di RT/RW tanpa `rt_head` aktif atau `RT_APPROVED` di RW tanpa `rw_head` aktif. Angka `pending` adalah jumlah permohonan yang tertahan.
 - Saat fitur mati, buat akun RT/RW, tetapkan peran/wilayah RT/RW, atau aktifkan akun RT/RW → 422 dengan pesan jelas bahwa fitur nonaktif. Menonaktifkan akun RT/RW lama tetap boleh. Login RT/RW → 401 generik; token lama yang belum dicabut → 403 pada endpoint panel.
 - `PATCH` mengikuti aturan: admin tidak bisa menonaktifkan/menurunkan dirinya sendiri; admin aktif terakhir tidak bisa dihapus; satu RT hanya satu `rt_head` aktif dan satu RW hanya satu `rw_head` aktif. Melanggar aturan → 422 dengan `errors`.
-- Login akun nonaktif → 401 `Kredensial tidak valid.` (pesan sama dengan kata sandi salah). Login berhasil mengisi `last_login_at` dan mengembalikan `must_change_password`.
+- Login akun nonaktif → 401 `Username atau kata sandi salah.` (pesan sama dengan kata sandi salah). Login berhasil mengisi `last_login_at` dan mengembalikan `must_change_password`.
 - `POST /staff/me/password` memverifikasi kata sandi lama, menyimpan kata sandi baru (min. 10), menghapus `must_change_password`, dan mencabut token lain. Token yang sedang dipakai tetap berlaku.
 - Audit akun memakai `subject_type=user` dan `subject_id` = ID akun target. Tidak ada email, kata sandi, atau token di audit.
 
@@ -514,6 +537,7 @@ Migration `2026_10_20_000000_add_neighborhood_territories` menambah kolom `rt`/`
   - Idempoten: permohonan yang sudah memiliki `purged_at` dilewati. Nilai bukan bilangan bulat ≥ 1 → keluar dengan error tanpa perubahan.
   - Dijadwalkan harian di `routes/console.php`; aman karena mati bawaan. Backup lama tetap berisi data sebelum anonimisasi sampai rotasinya habis.
   - Lampiran persyaratan permohonan yang dianonimkan ikut dihapus (`AttachmentStore::purgeRows()`, audit `attachment.purged` per lampiran).
+  - `email` dan `email_consent_at` dikosongkan (notifikasi email berhenti).
 - **Retensi lampiran (aktif bawaan, 30 hari):** `config/retention.php` `attachment_days` membaca `ATTACHMENT_RETENTION_DAYS` (tidak diset = 30; kosong/`0` = mati). `php artisan attachments:purge --dry-run` menampilkan target. Tanpa opsi: lampiran permohonan `COMPLETED`/`REJECTED` dengan `updated_at` lebih tua dari N hari → `path` null, `purged_at` diisi, audit `attachment.purged`, file dihapus setelah commit. Data permohonan tidak diubah. Dijadwalkan harian; di Hostinger dipasang sebagai cron sendiri (`deploy/hostinger.md` § H).
 - Lampiran persyaratan diterima, dibuka petugas, diganti warga, dan dihapus retensi di API (§ Lampiran persyaratan), tetapi belum ada layar unggah/ganti warga (L3) atau tampilan petugas (L4). Belum ada OTP, TTE, atau pengelolaan konten. Jangan menguji dengan data pribadi nyata.
 

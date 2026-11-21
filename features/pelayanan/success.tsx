@@ -11,6 +11,7 @@ export function Success() {
   const [message, setMessage] = useState("");
   const [secret, setSecret] = useState("");
   const [letterType, setLetterType] = useState("");
+  const [email, setEmail] = useState("");
   const [copied, setCopied] = useState({ number: false, secret: false });
   async function copyReceipt(value: string, field: "number" | "secret") {
     try {
@@ -27,7 +28,8 @@ export function Success() {
     try {
       const type = sessionStorage.getItem(`watuagung-receipt-type-${id}`) || "";
       const value = isDemo ? "" : sessionStorage.getItem(`watuagung-receipt-${id}`) || "";
-      queueMicrotask(() => { setLetterType(type); setSecret(value); });
+      const maskedEmail = isDemo ? "" : sessionStorage.getItem(`watuagung-receipt-email-${id}`) || "";
+      queueMicrotask(() => { setLetterType(type); setSecret(value); setEmail(maskedEmail); });
     } catch { /* Peringatan kode akses tetap ditampilkan bila storage tidak tersedia. */ }
   }, [id]);
   if (!id || !/^REQ-\d{4}-[A-Z0-9]{6,36}$/.test(id))
@@ -54,6 +56,7 @@ export function Success() {
           ? "Pengajuan simulasi Anda telah diterima. Ini bukan pengajuan resmi ke kantor desa."
           : "Terima kasih. Pengajuan Anda akan diverifikasi oleh petugas desa."}
       </p>
+      {isDemo ? <p>Email pemberitahuan tidak dikirim dalam mode simulasi.</p> : email && <div className="notice [overflow-wrap:anywhere]" role="status"><p>Kabar status akan dikirim ke {email}.</p><p>Jika email belum terlihat, cek folder spam.</p></div>}
       {letterType && <p>Jenis surat: <strong>{services.find((service) => service.code === letterType)?.title || letterType}</strong></p>}
       <div className="receipt-item">
         <div>
