@@ -40,7 +40,7 @@ hPanel → Advanced → PHP Configuration:
 
 1. Versi **PHP 8.3** (`backend/composer.json` meminta `^8.3`).
 2. Ekstensi aktif: `pdo_mysql`, `mysqli`, `mbstring`, `xml`/`dom`, `gd` (JPEG, PNG, WebP), `intl`, `bcmath`, `zip`, `curl`, `fileinfo`, `openssl`, `sodium`.
-3. Opsi: `upload_max_filesize` dan `post_max_size` minimal 20M (Web Hosting Premium hanya menawarkan 1024M/1536M dan sudah 1536M saat dicek 20 November 2026; cukup) (pengajuan surat membawa 3 lampiran ≤ 5 MB per file; 12M tidak cukup bahkan untuk 3 × 4 MB + overhead multipart, lihat `docs/integrasi.md` § Lampiran), `memory_limit = 256M` (foto 6000×6000 butuh ±170 MB saat diolah), `max_execution_time` minimal 60, `display_errors = Off`, `expose_php = Off` bila ada.
+3. Opsi: `upload_max_filesize` dan `post_max_size` minimal 20M (Web Hosting Premium hanya menawarkan 1024M/1536M dan sudah 1536M saat dicek 20 November 2026; cukup) (pengajuan surat membawa 3 lampiran ≤ 5 MB per file; foto berita/UMKM ≤ 10 MB per file dan diperkecil server ke sisi terpanjang 2.000 px; 12M tidak cukup bahkan untuk 3 × 4 MB + overhead multipart, lihat `docs/integrasi.md` § Lampiran), `memory_limit = 256M` (foto 6000×6000 butuh ±170 MB saat diolah), `max_execution_time` minimal 60, `display_errors = Off`, `expose_php = Off` bila ada.
 
 PHP **CLI** lewat SSH bisa berbeda versi dari PHP web. Cek setelah SSH aktif (§ E):
 

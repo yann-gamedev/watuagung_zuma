@@ -4340,14 +4340,15 @@ td {
 .article-image-frame {
   position: relative;
   overflow: hidden;
-  aspect-ratio: 16 / 9;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--sage);
 }
 .article-image-frame img {
-  object-fit: cover;
-  object-position: center 43%;
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
 }
 .article-image figcaption {
   margin-top: 9px;
@@ -4370,6 +4371,27 @@ td {
   font-size: 17px;
   line-height: 1.9;
 }
+/* Foto tambahan memakai rasio asli; tidak dipotong dan tidak dipaksa satu ukuran. */
+.article-inline-image {
+  margin: 0 0 28px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--sage);
+}
+.article-inline-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.article-inline-image figcaption {
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--white);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
 .article-endnote {
   margin-top: 32px;
   padding: 16px 18px;
@@ -4387,11 +4409,12 @@ td {
   overflow: hidden;
 }
 .news-cover.news-art { height: auto; }
-.news-cover img { width: 100%; height: 100%; object-fit: cover; }
+.news-cover img { width: 100%; height: 100%; object-fit: contain; background: var(--sage); }
 .news-card .news-meta { font-size: 15px; }
 .news-card .news-summary, .news-card .text-link { font-size: 17px; }
 .news-card h3, .home-news-card h3, .article-copy p { overflow-wrap: anywhere; }
-.news-cover.article-image-frame { margin-bottom: 32px; }
+.news-cover.article-image-frame { aspect-ratio: auto; margin-bottom: 32px; }
+.news-cover.article-image-frame img { height: auto; object-fit: contain; }
 .news-load-state { margin-top: 32px; }
 .news-load-state p { margin-bottom: 16px; }
 .article-back-link {

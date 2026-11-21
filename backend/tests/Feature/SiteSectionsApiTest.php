@@ -150,7 +150,7 @@ class SiteSectionsApiTest extends TestCase
             $this->uploadImage($this->image('jpg', $width, $height))->assertUnprocessable()
                 ->assertJsonPath('errors.file.0', 'Lebar foto harus 600–6000 piksel dan tinggi 400–6000 piksel.');
         }
-        $this->uploadImage($this->image()->size(5121))->assertUnprocessable()->assertJsonPath('errors.file.0', 'Ukuran foto maksimal 5120 KiB.');
+        $this->uploadImage($this->image()->size(5121))->assertUnprocessable()->assertJsonPath('errors.file.0', 'Ukuran foto maksimal 5 MB.');
         $this->assertSame([], Storage::disk('public')->allFiles());
     }
 

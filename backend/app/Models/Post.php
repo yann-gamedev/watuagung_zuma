@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Domain\PostCategory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -20,6 +21,11 @@ class Post extends Model
 
     public function scopePublished(Builder $query): void {
         $query->where('status', 'published')->where('published_at', '<=', now());
+    }
+
+    /** Foto tambahan, urut posisi. Berita soft-deleted tidak memakai relasi ini saat dibaca publik. */
+    public function images(): HasMany {
+        return $this->hasMany(PostImage::class)->orderBy('position')->orderBy('id');
     }
 
     /** Slug unik dari judul, termasuk baris terhapus agar tautan lama tidak berpindah ke berita lain. */

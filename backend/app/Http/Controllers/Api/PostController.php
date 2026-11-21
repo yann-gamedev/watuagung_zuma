@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 use App\Domain\PostCategory;
 use App\Http\Controllers\Controller;
 use App\Models\Post;
+use App\Models\PostImage;
 use App\Support\ImageProcessor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /** Berita: baca publik + kelola admin/staff. Isi disimpan sebagai teks biasa, tidak pernah diproses sebagai HTML. */
 class PostController extends Controller {
@@ -33,7 +35,18 @@ class PostController extends Controller {
     }
 
     private function staffDetail(Post $post): array {
-        return $this->staffItem($post) + ['body'=>$post->body, 'created_at'=>$post->created_at->toISOString()];
+        $post->load('images');
+        return $this->staffItem($post) + [
+            'body'=>$post->body,
+            'images'=>$post->images->map(fn (PostImage $image) => [
+                'id'=>$image->id, 'url'=>$this->imageUrl($image), 'caption'=>$image->caption,
+            ])->values(),
+            'created_at'=>$post->created_at->toISOString(),
+        ];
+    }
+
+    private function imageUrl(PostImage $image): string {
+        return Storage::disk('public')->url($image->path);
     }
 
     public function index(): JsonResponse {
@@ -43,8 +56,13 @@ class PostController extends Controller {
     }
 
     public function show(string $slug): JsonResponse {
-        $post = Post::published()->where('slug', $slug)->firstOrFail();
-        return response()->json($this->item($post) + ['body'=>$post->body])->header('Cache-Control', self::PUBLIC_CACHE);
+        $post = Post::published()->with('images')->where('slug', $slug)->firstOrFail();
+        return response()->json($this->item($post) + [
+            'body'=>$post->body,
+            'images'=>$post->images->map(fn (PostImage $image) => [
+                'url'=>$this->imageUrl($image), 'caption'=>$image->caption,
+            ])->values(),
+        ])->header('Cache-Control', self::PUBLIC_CACHE);
     }
 
     public function staffIndex(Request $request): JsonResponse {
@@ -110,16 +128,21 @@ class PostController extends Controller {
         $user = $request->user();
         if (! $user->canManageMedia()) return $this->forbidden();
         $oldPath = null;
-        DB::transaction(function () use ($user, $id, &$oldPath) {
+        $imagePaths = [];
+        DB::transaction(function () use ($user, $id, &$oldPath, &$imagePaths) {
             $post = Post::lockForUpdate()->findOrFail($id);
             $oldPath = $post->cover_path;
+            $imagePaths = $post->images()->pluck('path')->all();
+            $post->images()->delete();
             $post->forceFill(['updated_by'=>$user->id, 'cover_path'=>null])->save();
             $post->delete();
             $this->audit($user->id, 'post.deleted', $post);
         });
-        // Sampul ikut dihapus setelah commit agar storage tidak penuh. Berita yang dipulihkan tidak bersampul.
+        // Sampul dan foto tambahan ikut dihapus setelah commit agar storage tidak penuh.
         // Gagal hapus tidak membatalkan penghapusan; file yatim dibersihkan `media:prune`.
-        if ($oldPath !== null && ! Storage::disk('public')->delete($oldPath)) Log::warning('Sampul berita terhapus gagal dihapus.', ['path'=>$oldPath]);
+        foreach ([$oldPath, ...$imagePaths] as $path) {
+            if ($path !== null && ! Storage::disk('public')->delete($path)) Log::warning('Foto berita terhapus gagal dihapus.', ['path'=>$path]);
+        }
         return response()->json(['success'=>true])->header('Cache-Control', 'private, no-store');
     }
 
@@ -131,7 +154,7 @@ class PostController extends Controller {
             'file.file'=>'Foto harus berupa file yang valid.',
             'file.uploaded'=>ImageProcessor::UPLOAD_FAILED,
         ]);
-        $path = ImageProcessor::store($request->file('file'), 'posts', 3072, 1600, minWidth: 1, minHeight: 1);
+        $path = ImageProcessor::store($request->file('file'), 'posts', 10240, 2000, minWidth: 1, minHeight: 1, maxHeight: 2000);
         try {
             $post = $this->changeCover($request, $id, $path, $oldPath);
         } catch (\Throwable $e) {
@@ -147,6 +170,76 @@ class PostController extends Controller {
         if (! $request->user()->canManageMedia()) return $this->forbidden();
         $post = $this->changeCover($request, $id, null, $oldPath);
         $this->removeCoverFile($oldPath);
+        return response()->json($this->staffDetail($post))->header('Cache-Control', 'private, no-store');
+    }
+
+    /** Maksimal 3 foto tambahan; foto pertama tampil setelah paragraf pertama, dan seterusnya. */
+    public function uploadImage(Request $request, int $id): JsonResponse {
+        $user = $request->user();
+        if (! $user->canManageMedia()) return $this->forbidden();
+        Post::findOrFail($id);
+        $data = $request->validate([
+            'file'=>['bail', 'required', 'file'],
+            'caption'=>['sometimes', 'nullable', 'string', 'max:200', self::NO_CONTROL],
+        ], [
+            'file.required'=>'Pilih foto yang akan diunggah.',
+            'file.file'=>'Foto harus berupa file yang valid.',
+            'file.uploaded'=>ImageProcessor::UPLOAD_FAILED,
+        ]);
+        $path = ImageProcessor::store($request->file('file'), 'posts', 10240, 2000, minWidth: 1, minHeight: 1, maxHeight: 2000);
+        try {
+            $post = DB::transaction(function () use ($data, $user, $id, $path) {
+                $post = Post::lockForUpdate()->findOrFail($id);
+                $count = PostImage::where('post_id', $post->id)->count();
+                if ($count >= 3) throw ValidationException::withMessages(['file'=>'Maksimal 3 foto tambahan per berita.']);
+                PostImage::create([
+                    'post_id'=>$post->id, 'path'=>$path,
+                    'caption'=>trim((string) ($data['caption'] ?? '')) ?: null,
+                    'position'=>(int) PostImage::where('post_id', $post->id)->max('position') + 1,
+                ]);
+                $post->forceFill(['updated_by'=>$user->id])->save();
+                $this->audit($user->id, 'post.updated', $post);
+                return $post;
+            });
+        } catch (\Throwable $e) {
+            Storage::disk('public')->delete($path);
+            throw $e;
+        }
+        return response()->json($this->staffDetail($post))->header('Cache-Control', 'private, no-store');
+    }
+
+    public function updateImage(Request $request, int $id, int $image): JsonResponse {
+        $user = $request->user();
+        if (! $user->canManageMedia()) return $this->forbidden();
+        $data = $request->validate([
+            'caption'=>['sometimes', 'nullable', 'string', 'max:200', self::NO_CONTROL],
+        ]);
+        $post = DB::transaction(function () use ($data, $user, $id, $image) {
+            $post = Post::lockForUpdate()->findOrFail($id);
+            $row = PostImage::where('post_id', $post->id)->lockForUpdate()->findOrFail($image);
+            $row->forceFill(['caption'=>trim((string) ($data['caption'] ?? '')) ?: null])->save();
+            $post->forceFill(['updated_by'=>$user->id])->save();
+            $this->audit($user->id, 'post.updated', $post);
+            return $post;
+        });
+        return response()->json($this->staffDetail($post))->header('Cache-Control', 'private, no-store');
+    }
+
+    public function deleteImage(Request $request, int $id, int $image): JsonResponse {
+        $user = $request->user();
+        if (! $user->canManageMedia()) return $this->forbidden();
+        $path = null;
+        $post = DB::transaction(function () use ($user, $id, $image, &$path) {
+            $post = Post::lockForUpdate()->findOrFail($id);
+            $row = PostImage::where('post_id', $post->id)->lockForUpdate()->findOrFail($image);
+            $path = $row->path;
+            $row->delete();
+            $post->forceFill(['updated_by'=>$user->id])->save();
+            $this->audit($user->id, 'post.updated', $post);
+            return $post;
+        });
+        // File dihapus setelah commit; kegagalan hanya menyisakan file yatim yang dibersihkan `media:prune`.
+        if ($path !== null && ! Storage::disk('public')->delete($path)) Log::warning('Foto tambahan berita gagal dihapus.', ['path'=>$path]);
         return response()->json($this->staffDetail($post))->header('Cache-Control', 'private, no-store');
     }
 

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Business;
 use App\Models\Post;
+use App\Models\PostImage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -65,6 +66,30 @@ class MediaPruneTest extends TestCase
         Storage::disk('public')->assertMissing([$trashedCover, $orphan, $trashedPhoto])->assertExists([$active, $recent, $activePhoto, $site]);
         $this->assertNull(Post::withTrashed()->find($trashed->id)->cover_path);
         $this->assertSame(0, Business::onlyTrashed()->whereNotNull('photo_path')->count());
+
+        $this->artisan('media:prune')->expectsOutputToContain('0 file foto yatim dihapus')->assertSuccessful();
+    }
+
+    public function test_prune_keeps_active_inline_images_and_removes_trashed_or_orphan_ones(): void
+    {
+        $activePost = $this->makePost('aktif-tambahan', null);
+        $active = $this->file('posts/tambahan-aktif.webp');
+        PostImage::create(['post_id'=>$activePost->id, 'path'=>$active, 'position'=>1]);
+        $trashedPost = $this->makePost('terhapus-tambahan', null);
+        $trashed = $this->file('posts/tambahan-terhapus.webp');
+        PostImage::create(['post_id'=>$trashedPost->id, 'path'=>$trashed, 'position'=>1]);
+        $trashedPost->delete();
+        $orphan = $this->file('posts/tambahan-yatim.webp');
+        $recent = $this->file('posts/tambahan-baru.webp', old: false);
+
+        $this->artisan('media:prune --dry-run')->expectsOutputToContain('[dry-run] 2 file akan dihapus')->assertSuccessful();
+        Storage::disk('public')->assertExists([$active, $trashed, $orphan]);
+        $this->assertSame(2, PostImage::count());
+
+        $this->artisan('media:prune')->expectsOutputToContain('2 file foto yatim dihapus')->assertSuccessful();
+        Storage::disk('public')->assertMissing([$trashed, $orphan])->assertExists([$active, $recent]);
+        $this->assertSame(1, PostImage::count());
+        $this->assertSame($active, PostImage::sole()->path);
 
         $this->artisan('media:prune')->expectsOutputToContain('0 file foto yatim dihapus')->assertSuccessful();
     }

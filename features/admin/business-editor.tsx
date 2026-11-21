@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { businessCategoryLabels, businessHref } from "@/services/businesses";
 import { businessCategories, businessHamlets, type BusinessStatus } from "@/types/business";
+import { prepareImageForUpload } from "@/lib/image-compress";
 import { can, useAdminSession } from "./session";
 import { AdminUnauthorizedError, AdminValidationError } from "./api";
 import { businessInputSchema, parseBusiness, type BusinessForm } from "./business-data";
@@ -76,7 +77,7 @@ export function BusinessEditor({ id }: { id?: number }) {
       let result = parseBusiness(await request<unknown>(item ? `/staff/businesses/${item.id}` : "/staff/businesses", { method: item ? "PATCH" : "POST", body: JSON.stringify(parsed.data) }));
       adopt(result); textSaved = true;
       if (file) {
-        const data = new FormData(); data.append("file", file);
+        const data = new FormData(); data.append("file", await prepareImageForUpload(file));
         result = parseBusiness(await request<unknown>(`/staff/businesses/${result.id}/photo`, { method: "POST", body: data }));
         adopt(result); setFile(null); if (input.current) input.current.value = "";
       } else if (removePhoto) {
@@ -125,7 +126,7 @@ export function BusinessEditor({ id }: { id?: number }) {
         <div className={styles.field}><label htmlFor="umkm-hamlet">Dusun</label><select id="umkm-hamlet" value={value.hamlet ?? ""} onChange={(e) => set("hamlet")(e.target.value as BusinessForm["hamlet"])}><option value="">Tidak dicantumkan</option>{businessHamlets.map((hamlet) => <option key={hamlet} value={hamlet}>{hamlet}</option>)}</select></div>
         <div className={styles.field}><label htmlFor="umkm-description">Deskripsi</label><span id="umkm-description-help">Produk atau jasa, jam buka, cara memesan. Pisahkan paragraf dengan baris kosong. {value.description.length}/3.000 karakter.</span><textarea id="umkm-description" required rows={8} maxLength={3000} aria-describedby="umkm-description-help" value={value.description} onChange={(e) => set("description")(e.target.value)} /></div>
         <div className={styles.field}><label htmlFor="umkm-photo">Foto usaha {item?.photo_url || file ? "(ganti foto)" : "(opsional)"}</label><input ref={input} id="umkm-photo" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="umkm-photo-help" onChange={(e) => { const selected = e.target.files?.[0] ?? null; setFile(selected); setLocalPhoto(selected ? URL.createObjectURL(selected) : null); setRemovePhoto(false); }} />
-          <p id="umkm-photo-help">Disarankan memakai foto dengan lebar minimal 600 piksel dan tinggi minimal 400 piksel agar tetap jelas. Foto lebih kecil tetap dapat diunggah. Format JPG, PNG, atau WebP; dimensi maksimal 6.000 × 6.000 piksel dan ukuran file maksimal 3 MB. Foto produk atau tempat usaha, bukan foto KTP/dokumen. Foto diunggah setelah data tersimpan dan dapat diakses publik.</p>
+          <p id="umkm-photo-help">Format JPG, PNG, atau WebP; ukuran maksimal 10 MB. Foto besar otomatis diperkecil di browser, dan sisi terpanjang hasil akhir 2.000 piksel dengan rasio asli tanpa dipotong. Foto produk atau tempat usaha, bukan foto KTP/dokumen. Foto diunggah setelah data tersimpan dan dapat diakses publik.</p>
           {photo && <Image className={styles.cover} src={photo} alt="Pratinjau foto usaha" width={800} height={500} unoptimized />}
           {(photo || file) && <button type="button" className="btn btn-secondary" onClick={() => { setFile(null); setRemovePhoto(!!item?.photo_url); if (input.current) input.current.value = ""; }}>Hapus foto</button>}
           {removePhoto && <p>Foto akan dihapus saat UMKM disimpan.</p>}

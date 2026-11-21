@@ -1,10 +1,10 @@
-import type { ReactNode } from "react";
-import Image from "next/image";
+import { Fragment, type ReactNode } from "react";
 
 export type NewsArticleProps = {
   summary: string;
   body: string;
   coverUrl?: string | null;
+  images?: { url: string; caption: string | null }[];
   sample?: boolean;
   children?: ReactNode;
 };
@@ -13,10 +13,13 @@ export function NewsArticle({
   summary,
   body,
   coverUrl,
+  images = [],
   sample = false,
   children,
 }: NewsArticleProps) {
   const imageUrl = sample ? "/village.jpg" : coverUrl;
+  const paragraphs = body.split(/\r?\n[\t ]*\r?\n/).filter((paragraph) => paragraph.trim());
+  const inline = images.slice(0, 3);
 
   return (
     <article className="article-body">
@@ -29,13 +32,11 @@ export function NewsArticle({
       {imageUrl && (
         <figure className="article-image">
           <div className="article-image-frame">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element -- Sampul API mempertahankan rasio asli. */}
+            <img
               src={imageUrl}
               alt={sample ? "Petani menanam padi di sawah" : "Foto sampul berita"}
-              fill
-              sizes="(max-width: 820px) 100vw, 780px"
-              preload={sample}
-              unoptimized={!sample}
+              loading={sample ? "eager" : "lazy"}
             />
           </div>
           {sample && (
@@ -45,8 +46,14 @@ export function NewsArticle({
       )}
       <p className="article-lead">{summary}</p>
       <div className="article-copy">
-        {body.split(/\r?\n[\t ]*\r?\n/).filter((paragraph) => paragraph.trim()).map((paragraph, index) => (
-          <p key={index}>{paragraph}</p>
+        {paragraphs.map((paragraph, index) => (
+          <Fragment key={index}>
+            <p>{paragraph}</p>
+            {inline[index] && <InlineImage image={inline[index]} index={index} />}
+          </Fragment>
+        ))}
+        {inline.slice(paragraphs.length).map((image, index) => (
+          <InlineImage key={`extra-${index}`} image={image} index={paragraphs.length + index} />
         ))}
       </div>
       {sample && (
@@ -54,5 +61,15 @@ export function NewsArticle({
       )}
       {children}
     </article>
+  );
+}
+
+function InlineImage({ image, index }: { image: { url: string; caption: string | null }; index: number }) {
+  return (
+    <figure className="article-inline-image">
+      {/* eslint-disable-next-line @next/next/no-img-element -- Foto API mempertahankan rasio asli, tanpa crop. */}
+      <img src={image.url} alt={image.caption ?? `Foto tambahan ${index + 1}`} loading="lazy" />
+      {image.caption && <figcaption>{image.caption}</figcaption>}
+    </figure>
   );
 }
