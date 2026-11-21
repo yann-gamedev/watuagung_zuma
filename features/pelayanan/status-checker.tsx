@@ -118,6 +118,8 @@ export function StatusChecker() {
   const describe = (text: string) => text.replace("{tanggal}", deadline || "tanggal yang tertera pada surat");
   const steps = result?.jenis_surat ? letterSteps(result.requires_neighborhood_approval) : [];
   const current = result ? steps.findIndex((s) => s[0] === timelineStatus(result.status)) : -1;
+  // Tahap terakhir tercapai = alur selesai; semua tahap ditandai sudah dilalui.
+  const finished = current >= 0 && current === steps.length - 1;
   const exception =
     result && ["REJECTED", "NEED_REVISION"].includes(result.status);
   return (
@@ -170,10 +172,10 @@ export function StatusChecker() {
             <ul>
               <li>REQ-2026-000001 — Diproses</li>
               <li>REQ-2026-000002 — Perlu perbaikan</li>
-              <li>REQ-2026-000003 — Disetujui</li>
+              <li>REQ-2026-000003 — Selesai (contoh data lama berstatus Disetujui)</li>
               <li>REQ-2026-000004 — Ditolak</li>
-              <li>REQ-2026-000005 — Siap diunduh (PDF simulasi)</li>
-              <li>REQ-2026-000006 — Selesai</li>
+              <li>REQ-2026-000005 — Selesai, siap diunduh (PDF simulasi)</li>
+              <li>REQ-2026-000006 — Selesai, sudah diunduh</li>
               <li>REQ-2026-000007 — Diterima (contoh SKTM)</li>
               <li>REQ-2026-000008 — Diverifikasi (contoh domisili)</li>
             </ul>
@@ -199,7 +201,7 @@ export function StatusChecker() {
           {result.jenis_surat && <p>Jenis surat: <strong>{services.find((service) => service.code === result.jenis_surat)?.title || result.jenis_surat}</strong></p>}
           <div className="lookup-result-header">
             <strong className="receipt-value">{result.request_id}</strong>
-            <StatusBadge status={result.status} neighborhoodApproval={result.requires_neighborhood_approval} />
+            <StatusBadge citizen status={result.status} neighborhoodApproval={result.requires_neighborhood_approval} />
           </div>
           {result.letter_number && ["APPROVED", "READY_FOR_PICKUP", "COMPLETED"].includes(result.status) && <div className="status-next-step">
             <h3>Nomor surat</h3><p className="receipt-value">{result.letter_number}</p>
@@ -230,7 +232,7 @@ export function StatusChecker() {
           ) : (
             <>
               <div className="status-next-step">
-                <h3>Langkah berikutnya</h3>
+                <h3>{finished ? "Keterangan" : "Langkah berikutnya"}</h3>
                 <p>{result.status === "SUBMITTED" && result.requires_neighborhood_approval ? "Permohonan menunggu verifikasi Ketua RT, lalu Ketua RW, sebelum masuk kantor desa." : expired ? expiredText : result.status === "READY_FOR_PICKUP" && !result.letter_available ? "Berkas surat belum tersedia untuk diunduh. Hubungi Petugas untuk bantuan." : describe(statusDescriptions[result.status])}</p>
                 {(result.status === "APPROVED" || result.status === "READY_FOR_PICKUP") && <Link href="/kontak" className="text-link">Lihat Kontak Kantor</Link>}
               </div>
@@ -238,17 +240,17 @@ export function StatusChecker() {
               <ol className="timeline" aria-label="Tahap pengajuan sesuai jenis surat">
                 {steps.map(([code, label, description], index) => (
                   <li
-                    className={`${index <= current ? "complete" : ""} ${index === current ? "current" : ""}`}
+                    className={`${index <= current ? "complete" : ""} ${index === current && !finished ? "current" : ""}`}
                     key={code}
-                    aria-current={index === current ? "step" : undefined}
+                    aria-current={index === current && !finished ? "step" : undefined}
                   >
                     <span className="timeline-dot" aria-hidden="true">
                       {index <= current ? <Check size={22} /> : index + 1}
                     </span>
                     <div>
                       <strong>{label}</strong>
-                      <span className="timeline-state">{index === current ? "Tahap saat ini" : index < current ? "Sudah dilalui" : "Belum dimulai"}</span>
-                      <p>{code === "COMPLETED" && expired ? "Masa berlaku surat sudah habis." : code === "READY_FOR_PICKUP" && result.status === "APPROVED" ? statusDescriptions.APPROVED : describe(description)}</p>
+                      <span className="timeline-state">{index === current ? (finished ? "Selesai" : "Tahap saat ini") : index < current ? "Sudah dilalui" : "Belum dimulai"}</span>
+                      <p>{code === "READY_FOR_PICKUP" && index > current ? "Setelah Kepala Desa menyetujui, surat langsung bisa diunduh dan dicetak sendiri. Berlaku 7 hari." : code === "READY_FOR_PICKUP" && expired ? "Masa berlaku surat sudah habis." : code === "READY_FOR_PICKUP" && result.status === "APPROVED" ? statusDescriptions.APPROVED : describe(description)}</p>
                     </div>
                   </li>
                 ))}

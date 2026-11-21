@@ -185,14 +185,18 @@ for (const status of ["READY_FOR_PICKUP", "COMPLETED", "RT_APPROVED", "RW_APPROV
 await assert.rejects(pelayananService.getStatus("REQ-2026-UNKNOWN"), /tidak ditemukan/);
 localStorage.setItem = () => { throw new Error("Storage blocked"); };
 await assert.rejects(pelayananService.submit(valid, attachments), /Penyimpanan simulasi tidak tersedia/);
-const { letterSteps, timelineStatus } = await source("lib/letter-workflow.ts");
-// Persetujuan langsung merilis surat: Disetujui dan Siap diunduh satu tahap; APPROVED lama dipetakan ke tahap itu.
-assert.deepEqual(letterSteps().map(([status]) => status), ["SUBMITTED", "VERIFIED", "PROCESSING", "WAITING_APPROVAL", "READY_FOR_PICKUP", "COMPLETED"]);
+const { letterSteps, timelineStatus, isCitizenFinal } = await source("lib/letter-workflow.ts");
+// Bagi warga alur selesai saat Kepala Desa menyetujui: tahap terakhir = disetujui; APPROVED/COMPLETED dipetakan ke sana.
+assert.deepEqual(letterSteps().map(([status]) => status), ["SUBMITTED", "VERIFIED", "PROCESSING", "WAITING_APPROVAL", "READY_FOR_PICKUP"]);
 assert.equal(timelineStatus("APPROVED"), "READY_FOR_PICKUP");
+assert.equal(timelineStatus("COMPLETED"), "READY_FOR_PICKUP");
 assert.equal(timelineStatus("PROCESSING"), "PROCESSING");
+assert.equal(timelineStatus("REJECTED"), "REJECTED");
 assert.equal(letterSteps().find(([code]) => code === "READY_FOR_PICKUP")[2], "Surat sudah bisa diunduh dan dicetak. Berlaku sampai {tanggal}.");
 assert.deepEqual(letterSteps(true).map(([status]) => status), ["SUBMITTED", "RT_APPROVED", "RW_APPROVED", ...letterSteps().slice(1).map(([status]) => status)]);
-assert.equal(letterSteps().find(([code]) => code === "READY_FOR_PICKUP")[1], "Disetujui, siap diunduh");
+assert.equal(letterSteps().find(([code]) => code === "READY_FOR_PICKUP")[1], "Selesai — disetujui Kepala Desa");
+// Badge warga (StatusBadge citizen): semua status pasca-persetujuan berlabel Selesai; panel tetap label server.
+assert.deepEqual(["APPROVED", "READY_FOR_PICKUP", "COMPLETED", "WAITING_APPROVAL", "REJECTED", "NEED_REVISION"].map(isCitizenFinal), [true, true, true, false, false, false]);
 const beforeDownload = stored;
 assert.equal((await pelayananService.getStatus("REQ-2026-000005")).letter_available, true);
 const demoPdf = await pelayananService.downloadLetter("REQ-2026-000005");
