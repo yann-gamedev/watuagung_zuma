@@ -4661,6 +4661,30 @@ td {
   gap: 8px;
   margin-top: 8px;
 }
+/* Hak cipta KIM opsional dan tautan media sosial per berita (22 November 2026). */
+.article-copyright {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 15px;
+}
+.article-social {
+  margin-top: 24px;
+}
+.article-social h2 {
+  font-size: 17px;
+  line-height: 1.4;
+}
+.article-social-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+.article-social-links .btn {
+  gap: 8px;
+}
 @media (max-width: 900px) {
   .page-heading-editorial {
     padding-bottom: 33px;

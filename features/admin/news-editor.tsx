@@ -5,21 +5,29 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import type { StaffPostDetail, StaffPostImage, StaffPostInput, PostStatus } from "@/types/posts";
+import { socialPlatforms, type StaffPostDetail, type StaffPostImage, type PostStatus } from "@/types/posts";
+import { isSocialLink, socialPlatformInfo } from "@/lib/social-links";
 import { NewsArticle } from "@/features/news/news-article";
 import { prepareImageForUpload } from "@/lib/image-compress";
 import { can, useAdminSession } from "./session";
 import { AdminUnauthorizedError } from "./api";
-import { categoryLabels, parsePost, postDate, postInputSchema } from "./news-data";
+import { categoryLabels, parsePost, postDate, postInputSchema, type PostFormValue } from "./news-data";
 import { NewsStatus } from "./news-list";
 import styles from "./news.module.css";
 import { useUnsavedChanges } from "./use-unsaved-changes";
 
-const empty: StaffPostInput = { title: "", category: "kegiatan_desa", summary: "", body: "", status: "draft" };
+const empty: PostFormValue = {
+  title: "", category: "kegiatan_desa", summary: "", body: "", status: "draft",
+  show_copyright: false, instagram_url: "", tiktok_url: "", youtube_url: "", facebook_url: "",
+};
 const MAX_INLINE_IMAGES = 3;
 // Penjagaan navigasi dipakai bersama editor bagian situs.
-function fields(post: StaffPostInput): StaffPostInput {
-  return { title: post.title, category: post.category, summary: post.summary, body: post.body, status: post.status };
+function fields(post: StaffPostDetail): PostFormValue {
+  return {
+    title: post.title, category: post.category, summary: post.summary, body: post.body, status: post.status,
+    show_copyright: post.show_copyright, instagram_url: post.instagram_url ?? "", tiktok_url: post.tiktok_url ?? "",
+    youtube_url: post.youtube_url ?? "", facebook_url: post.facebook_url ?? "",
+  };
 }
 function captionMap(images: StaffPostImage[]): Record<number, string> {
   return Object.fromEntries(images.map((image) => [image.id, image.caption ?? ""])) as Record<number, string>;
@@ -35,8 +43,8 @@ export function NewsEditPage() {
 export function NewsEditor({ id }: { id?: number }) {
   const { request, user } = useAdminSession();
   const [post, setPost] = useState<StaffPostDetail | null>(null);
-  const [value, setValue] = useState<StaffPostInput>(empty);
-  const [saved, setSaved] = useState<StaffPostInput>(empty);
+  const [value, setValue] = useState<PostFormValue>(empty);
+  const [saved, setSaved] = useState<PostFormValue>(empty);
   const [loading, setLoading] = useState(!!id);
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -50,6 +58,8 @@ export function NewsEditor({ id }: { id?: number }) {
   const [newCaption, setNewCaption] = useState("");
   const [captions, setCaptions] = useState<Record<number, string>>({});
   const [preview, setPreview] = useState(false);
+  // Tahun pratinjau hak cipta untuk berita yang belum terbit; dibaca sekali agar render tetap murni.
+  const [openedAt] = useState(() => Date.now());
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
@@ -192,7 +202,7 @@ export function NewsEditor({ id }: { id?: number }) {
       <fieldset className={styles.fields} disabled={busy}>
         <legend className="sr-only">Isi berita</legend>
         <div className={styles.field}><label htmlFor="post-title">Judul</label><input id="post-title" required maxLength={160} value={value.title} onChange={(e) => setValue({ ...value, title: e.target.value })} /></div>
-        <div className={styles.field}><label htmlFor="post-category">Kategori</label><select id="post-category" value={value.category} onChange={(e) => setValue({ ...value, category: e.target.value as StaffPostInput["category"] })}>{Object.entries(categoryLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></div>
+        <div className={styles.field}><label htmlFor="post-category">Kategori</label><select id="post-category" value={value.category} onChange={(e) => setValue({ ...value, category: e.target.value as PostFormValue["category"] })}>{Object.entries(categoryLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></div>
         <div className={styles.field}><label htmlFor="post-summary">Ringkasan</label><textarea id="post-summary" required rows={3} maxLength={300} aria-describedby="summary-count" value={value.summary} onChange={(e) => setValue({ ...value, summary: e.target.value })} /><span id="summary-count">{value.summary.length}/300 karakter</span></div>
         <div className={styles.field}><label htmlFor="post-body">Isi</label><span id="body-help">Pisahkan paragraf dengan baris kosong. Foto tambahan disisipkan otomatis setelah paragraf pertama, kedua, dan ketiga.</span><textarea id="post-body" required rows={14} maxLength={20000} aria-describedby="body-help" value={value.body} onChange={(e) => setValue({ ...value, body: e.target.value })} /></div>
         <div className={styles.field}><label htmlFor="post-cover">Foto sampul {post?.cover_url || file ? "(ganti foto)" : "(opsional)"}</label><input ref={input} id="post-cover" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="cover-help" onChange={(e) => { const selected = e.target.files?.[0] ?? null; setFile(selected); setLocalCover(selected ? URL.createObjectURL(selected) : null); setRemoveCover(false); }} />
@@ -230,6 +240,23 @@ export function NewsEditor({ id }: { id?: number }) {
             <button type="button" className="btn" disabled={busy || !imageFile} onClick={() => void uploadImage()}>Unggah foto</button>
           </div>}
         </div>
+        <label className={styles.check}><input type="checkbox" checked={value.show_copyright} aria-describedby="post-copyright-help" onChange={(e) => setValue({ ...value, show_copyright: e.target.checked })} />Tampilkan © KIM Desa Watuagung di akhir berita</label>
+        <span id="post-copyright-help">Opsional. Bila dicentang, berita ini menampilkan &quot;© {"{tahun terbit}"} KIM Desa Watuagung&quot; di bawah isi berita.</span>
+        <div className={styles.field}>
+          <h3 className={styles.subhead}>Media sosial (opsional)</h3>
+          <p id="post-social-help">Tempel tautan unggahan berita yang sama di media sosial desa. Kosongkan bila tidak ada; hanya tautan yang diisi yang tampil sebagai tombol &quot;Lihat juga di&quot; di halaman berita.</p>
+          {socialPlatforms.map((platform) => {
+            const column = `${platform}_url` as const;
+            const { label, example } = socialPlatformInfo[platform];
+            const invalid = value[column].trim() !== "" && !isSocialLink(platform, value[column].trim());
+            return <div key={platform} className={styles.field}>
+              <label htmlFor={`post-${platform}`}>Tautan {label} (opsional)</label>
+              <span id={`post-${platform}-help`}>Contoh: {example}</span>
+              <input id={`post-${platform}`} type="url" inputMode="url" maxLength={500} placeholder="https://" aria-invalid={invalid} aria-describedby={`post-${platform}-help post-social-help${invalid ? ` post-${platform}-error` : ""}`} value={value[column]} onChange={(e) => setValue({ ...value, [column]: e.target.value })} />
+              {invalid && <span id={`post-${platform}-error`} className={styles.fieldError}>Tautan harus diawali https:// dan mengarah ke {socialPlatformInfo[platform].hosts[0]}.</span>}
+            </div>;
+          })}
+        </div>
         <div className={styles.actions}>
           {post?.status !== "published" && <button className="btn btn-secondary" type="submit">Simpan draf</button>}
           <button className="btn" type="button" onClick={() => void save("published")}>{post?.status === "published" ? "Simpan perubahan" : "Terbitkan"}</button>
@@ -239,7 +266,9 @@ export function NewsEditor({ id }: { id?: number }) {
       </fieldset>
     </form>
     {busy && <p role="status">Menyimpan perubahan…</p>}
-    {preview && <section id="post-preview" className={styles.preview} aria-label="Pratinjau berita"><p>Pratinjau — belum tentu sudah tersimpan</p><h2>{value.title || "Judul berita"}</h2><p>{categoryLabels[value.category]} · {postDate(post?.published_at ?? null)}</p><NewsArticle title={value.title || "Judul berita"} summary={value.summary} body={value.body} coverUrl={cover} images={previewImages} /></section>}
+    {preview && <section id="post-preview" className={styles.preview} aria-label="Pratinjau berita"><p>Pratinjau — belum tentu sudah tersimpan</p><h2>{value.title || "Judul berita"}</h2><p>{categoryLabels[value.category]} · {postDate(post?.published_at ?? null)}</p><NewsArticle title={value.title || "Judul berita"} summary={value.summary} body={value.body} coverUrl={cover} images={previewImages}
+      copyrightYear={value.show_copyright ? Number(new Date(post?.published_at ?? openedAt).toLocaleString("en-US", { year: "numeric", timeZone: "Asia/Jakarta" })) : null}
+      socialLinks={socialPlatforms.flatMap((platform) => { const url = value[`${platform}_url`].trim(); return url && isSocialLink(platform, url) ? [{ platform, label: socialPlatformInfo[platform].label, url }] : []; })} /></section>}
     {post && <button className="btn btn-secondary" type="button" disabled={busy} onClick={() => dialog.current?.showModal()}>Hapus berita</button>}
     <dialog ref={dialog} className={styles.dialog} aria-labelledby="delete-title" onCancel={(event) => { if (busy) event.preventDefault(); }}><h2 id="delete-title">Hapus berita</h2><p>Berita akan dihapus dari website. Foto sampul dan foto tambahannya ikut dihapus dan tidak dapat dikembalikan. Lanjutkan?</p><div className={styles.actions}><button type="button" className="btn btn-secondary" disabled={busy} onClick={() => dialog.current?.close()} autoFocus>Batal</button><button type="button" className="btn" disabled={busy} onClick={() => void deletePost()}>Ya, hapus berita</button></div></dialog>
   </div>;

@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Domain\PostCategory;
+use App\Domain\SocialPlatform;
 use App\Http\Controllers\Controller;
 use App\Models\Post;
 use App\Models\PostImage;
@@ -38,6 +39,8 @@ class PostController extends Controller {
         $post->load('images');
         return $this->staffItem($post) + [
             'body'=>$post->body,
+            'show_copyright'=>$post->show_copyright,
+            ...collect(SocialPlatform::cases())->mapWithKeys(fn (SocialPlatform $p) => [$p->column() => $post->{$p->column()}])->all(),
             'images'=>$post->images->map(fn (PostImage $image) => [
                 'id'=>$image->id, 'url'=>$this->imageUrl($image), 'caption'=>$image->caption,
             ])->values(),
@@ -59,6 +62,9 @@ class PostController extends Controller {
         $post = Post::published()->with('images')->where('slug', $slug)->firstOrFail();
         return response()->json($this->item($post) + [
             'body'=>$post->body,
+            'show_copyright'=>$post->show_copyright,
+            // Hanya yang terisi; objek kosong bila tidak ada tautan.
+            'social_links'=>(object) $post->socialLinks(),
             'images'=>$post->images->map(fn (PostImage $image) => [
                 'url'=>$this->imageUrl($image), 'caption'=>$image->caption,
             ])->values(),
@@ -265,7 +271,15 @@ class PostController extends Controller {
             'summary'=>[$required, 'string', 'max:300', self::NO_CONTROL],
             'body'=>[$required, 'string', 'max:20000', self::BODY_NO_CONTROL],
             'status'=>[$required, Rule::in(['draft', 'published'])],
-        ];
+            'show_copyright'=>['sometimes', 'boolean'],
+        ] + collect(SocialPlatform::cases())->mapWithKeys(fn (SocialPlatform $platform) => [$platform->column() => [
+            'sometimes', 'nullable', 'string', 'max:500', self::NO_CONTROL,
+            function (string $attribute, mixed $value, \Closure $fail) use ($platform) {
+                if (is_string($value) && ! $platform->accepts($value)) {
+                    $fail("Tautan {$platform->label()} harus diawali https:// dan mengarah ke ".$platform->hosts()[0].'.');
+                }
+            },
+        ]])->all();
     }
 
     /** Hanya aksi dan ID; judul/isi berita tidak masuk audit. */

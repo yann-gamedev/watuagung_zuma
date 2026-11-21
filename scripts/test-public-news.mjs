@@ -13,7 +13,7 @@ async function source(mode, entry = "services/posts.ts") {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
       fileName: path,
     }).outputText;
-    code = code.replace(/(["'])(@\/[^"']+|zod|react(?:\/jsx-runtime)?)\1/g, (_match, _quote, name) => {
+    code = code.replace(/(["'])(@\/[^"']+|zod|lucide-react|react(?:\/jsx-runtime)?)\1/g, (_match, _quote, name) => {
       if (!name.startsWith("@/")) return JSON.stringify(import.meta.resolve(name));
       const path = name.slice(2);
       return JSON.stringify(url(existsSync(`${path}.ts`) ? `${path}.ts` : `${path}.tsx`));
@@ -107,8 +107,25 @@ try {
   assert.equal((await api.listPosts()).current_page, 1);
   assert.equal(calls.at(-1).url, `${apiBase}/posts?page=1`);
   reply(detail);
-  assert.deepEqual(await api.getPost(slug), { ...result.data[0], body: detail.body, images });
+  assert.deepEqual(await api.getPost(slug), { ...result.data[0], body: detail.body, images, copyrightYear: null, socialLinks: [] });
   assert.equal(calls.at(-1).url, `${apiBase}/posts/${encodeURIComponent(slug)}`);
+  // Hak cipta KIM opsional: tahun terbit WIB; tautan sosmed hanya https + host resmi, urutan tetap.
+  reply({ ...detail, show_copyright: true, social_links: {
+    facebook: "https://www.facebook.com/desafiktif/posts/1", instagram: "https://www.instagram.com/p/FIKTIF/",
+    youtube: "https://youtube.com.evil.test/x", tiktok: "javascript:alert(1)", myspace: "https://myspace.com/x",
+  } });
+  const withExtras = await api.getPost(slug);
+  assert.equal(withExtras.copyrightYear, 2026);
+  assert.deepEqual(withExtras.socialLinks, [
+    { platform: "instagram", label: "Instagram", url: "https://www.instagram.com/p/FIKTIF/" },
+    { platform: "facebook", label: "Facebook", url: "https://www.facebook.com/desafiktif/posts/1" },
+  ]);
+  reply({ ...detail, show_copyright: false, social_links: {} });
+  assert.deepEqual([(await api.getPost(slug)).copyrightYear, (await api.getPost(slug)).socialLinks], [null, []]);
+  for (const bad of [{ ...detail, show_copyright: "ya" }, { ...detail, social_links: [] }, { ...detail, social_links: { instagram: 5 } }]) {
+    reply(bad);
+    await assert.rejects(api.getPost(slug), zodError);
+  }
   for (const cover_url of [null, "http://media.example.test/cover.jpg"]) {
     reply({ ...detail, cover_url });
     assert.equal((await api.getPost(slug)).coverUrl, cover_url);
@@ -252,6 +269,12 @@ try {
   const noCoverArticle = renderToStaticMarkup(createElement(NewsArticle, { title, summary: "Ringkasan", body: "Isi uji" }));
   assert.match(noCoverArticle, /class="news-cover news-art art-0 article-image-frame" aria-hidden="true"/);
   assert.doesNotMatch(noCoverArticle, /<img\b|placeholder|\[FOTO/i);
+  assert.doesNotMatch(noCoverArticle, /KIM Desa Watuagung|Lihat juga di/);
+  const extrasArticle = renderToStaticMarkup(createElement(NewsArticle, { title, summary: "Ringkasan", body: "Isi uji", copyrightYear: 2026,
+    socialLinks: [{ platform: "youtube", label: "YouTube", url: "https://youtu.be/FIKTIF" }] }));
+  assert.match(extrasArticle, /<p class="article-copyright">© 2026 KIM Desa Watuagung<\/p>/);
+  assert.match(extrasArticle, /<a class="btn btn-secondary" href="https:\/\/youtu.be\/FIKTIF" target="_blank" rel="noopener noreferrer">/);
+  assert.match(extrasArticle, /YouTube<span class="sr-only"> \(dibuka di tab baru\)<\/span>/);
   console.log("PASS: public news demo/API isolation, sample flags, Zod validation, safe covers, pagination, encoded slugs, no-store, HTTP/network errors, 404, 20s timeout cleanup, escaped article paragraphs, sample notice, native lazy covers and decorative patterns.");
 } finally {
   Object.assign(globalThis, savedGlobals);
