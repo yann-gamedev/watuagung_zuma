@@ -20,6 +20,16 @@ Semua langkah server dikerjakan manusia. Nama menu hPanel bisa berubah; cari men
 
 > **Status MySQL (13 November 2026):** suite `php artisan test` (411 tes) dan uji penomoran multiproses ([tests/Concurrency/letter-number-mysql.php](../backend/tests/Concurrency/letter-number-mysql.php), 3× lulus) **lulus pada MariaDB 11.4.8 lokal**. Versi server Hostinger belum diketahui: bila berbeda jenis/versi mayor (mis. MySQL 8 atau MariaDB 10.x), ulangi kedua uji dengan versi itu sebelum menerima data warga. Cara menjalankan: `backend/README.md` § Tes MySQL/MariaDB.
 
+## Pemeriksaan pra-rilis (`app:preflight`)
+
+`php artisan app:preflight --production` (dari `backend/`, biner PHP produksi § C) hanya **membaca** konfigurasi, database, folder, dan jadwal; tidak mengubah apa pun. Setiap baris berlabel OK / PERINGATAN / GAGAL, diakhiri ringkasan; exit 1 bila ada GAGAL. Rahasia (`APP_KEY`, kata sandi database/SMTP) hanya ditulis "terisi"/"kosong".
+
+GAGAL antara lain: `APP_ENV` bukan production, `APP_DEBUG=true`, `APP_KEY` kosong; `APP_URL`/`SITE_URL`/`LETTER_VERIFY_URL`/`FRONTEND_ORIGINS` bukan https, berisi localhost/placeholder/`example`, atau beda host; `LETTER_VERIFY_URL` tidak berakhiran `/verifikasi/`; URL media bukan https/tidak sehost; database tidak tersambung atau ada migration tertunda; folder `storage`/`bootstrap/cache` tidak dapat ditulis; GD tidak ada; `QUEUE_CONNECTION` bukan `database` atau tabel `jobs` tidak ada; `upload_max_filesize` < 6M atau `post_max_size` < 20M; tidak ada admin aktif. PERINGATAN (tidak memblokir, tetap dibaca): GD tanpa WebP, masa unduh/berlaku bukan 7, RT/RW aktif, `MAIL_MAILER=log`, alamat pengirim beda domain, kepala desa tanpa email terverifikasi/PIN, job gagal, tugas jadwal hilang.
+
+Batas unggah yang diperiksa milik **PHP CLI**; PHP web diatur terpisah di hPanel (§ C). Pemeriksaan jadwal membaca `routes/console.php`, bukan cron hPanel: cocokkan tabel § H secara manual.
+
+Jalankan: (1) setelah mengisi/mengubah `.env` (§ G langkah 3, § I, § M), (2) setelah `migrate`, dan (3) setelah deploy, sebelum membuka layanan dan cron. Bila `.env` diubah, jalankan `php artisan config:clear` (atau `config:cache`) dulu agar yang diperiksa sama dengan yang dipakai aplikasi. **Jangan buka situs ke warga selama ada GAGAL.** Sebelum migration pertama, GAGAL migration/tabel `jobs`/admin memang wajar; semua GAGAL lain diperbaiki dulu.
+
 ## A. Akun dan paket
 
 1. Akun Hostinger memakai **email resmi desa**, 2FA aktif sebelum membeli. Akun hPanel bisa membuka file manager, database, backup, dan `.env` berisi `APP_KEY`: siapa pun yang menguasai akun ini menguasai seluruh data warga. Penanggung jawab teknis diberi akses lewat fitur akses/delegasi bila tersedia, bukan berbagi kata sandi.
@@ -116,7 +126,7 @@ Hanya untuk instalasi baru. Jangan menerima data warga selama bootstrap.
    chmod 700 ~/bin/composer-cli
    cd ~/watuagung/backend && ~/bin/composer-cli install --no-dev --optimize-autoloader --no-interaction
    ```
-3. **`.env`.** `cp .env.production.example .env` hanya bila `.env` belum ada. Isi domain dan kredensial database (§ D) dengan `nano`. `chmod 600 .env`. Jangan menyalin `.env` dari laptop.
+3. **`.env`.** `cp .env.production.example .env` hanya bila `.env` belum ada. Isi domain dan kredensial database (§ D) dengan `nano`. `MEDIA_URL` **dibiarkan kosong**: URL media menjadi `https://<domain>/storage/...` lewat symlink `public_html/storage` (§ F). `chmod 600 .env`. Jangan menyalin `.env` dari laptop.
 4. **Izin.** PHP berjalan sebagai user hosting yang sama, jadi tidak perlu grup bersama:
 
    ```bash
@@ -142,6 +152,8 @@ Hanya untuk instalasi baru. Jangan menerima data warga selama bootstrap.
    ```
 
    Jangan menjalankan seeder, `migrate:fresh`, atau `migrate:refresh` di produksi.
+
+   Lalu `php artisan app:preflight --production` (§ Pemeriksaan pra-rilis; setelah langkah 5 juga sekali, sebelum migration). Setelah migration dan admin dibuat, hasilnya harus **0 GAGAL**.
 
 7. **Frontend, di laptop** (dari root repo, commit yang sama dengan tag server):
 
@@ -285,11 +297,11 @@ Kegagalan setelah maintenance aktif menghentikan deploy dan mempertahankan/menga
 
 Lock `.hostinger-deploy.lock` menolak deploy bersamaan dan dilepas saat skrip keluar normal/gagal. Setelah proses dibunuh paksa atau mesin mati, lock bisa tertinggal; pastikan tidak ada proses deploy sebelum menghapus direktori lock secara manual. `SIGKILL`/listrik mati tidak dapat ditangani trap. Bila kode/vendor rusak, maintenance Laravel sendiri belum tentu dapat berjalan; pemblokiran HTTP di tingkat hosting diperlukan.
 
-Setelah skrip sukses, lakukan uji § J, baru aktifkan kembali cron/worker yang tadi dijeda. Hapus arsip setelah selesai: `rm ~/watuagung-web.tar.gz`. Pengaman ini tidak menjamin semua migration kompatibel: campuran plaintext/ciphertext tetap harus ditinjau dan dipulihkan pada salinan database, bukan dilewati pengamannya.
+Sebelum menjalankan skrip, bila `.env` diubah untuk rilis ini, jalankan `php artisan app:preflight --production` pada kode yang terpasang (tersedia sejak rilis yang memuatnya) dan perbaiki GAGAL selain migration tertunda. Setelah skrip sukses, jalankan lagi `php artisan app:preflight --production`: harus **0 GAGAL**; bila ada GAGAL, `php artisan down` dan perbaiki dulu. Lalu lakukan uji § J, baru aktifkan kembali cron/worker yang tadi dijeda. Hapus arsip setelah selesai: `rm ~/watuagung-web.tar.gz`. Pengaman ini tidak menjamin semua migration kompatibel: campuran plaintext/ciphertext tetap harus ditinjau dan dipulihkan pada salinan database, bukan dilewati pengamannya.
 
 ## J. Uji setelah deploy
 
-Dari laptop:
+Di server: `php artisan app:preflight --production` → **0 GAGAL** (§ Pemeriksaan pra-rilis). Dari laptop:
 
 ```bash
 bash deploy/smoke-test.sh example.id
@@ -343,13 +355,14 @@ Domain awal `desawatuagung.com` (dipilih di onboarding hPanel 12 November 2026) 
 
 1. **hPanel:** tambahkan domain baru ke website yang sama (atau ganti domain utama), pasang SSL untuk domain baru dan `www`. Catat folder `public_html` barunya, biasanya `~/domains/<domain-baru>/public_html`.
 2. **Domain lama tetap aktif** dan dialihkan 301 ke domain baru, termasuk path dan query string, agar QR lama (`/verifikasi/?kode=…`) tetap jalan. Jangan biarkan domain lama kedaluwarsa selama masih ada surat yang beredar.
-3. **`backend/.env` di server** (edit dengan `nano`, lalu `php artisan config:clear`):
+3. **`backend/.env` di server** (edit dengan `nano`, lalu `php artisan config:clear` dan `php artisan app:preflight --production`; `MEDIA_URL` tetap kosong):
 
    | Kunci | Nilai baru |
    |---|---|
    | `APP_URL` | `https://<domain-baru>` |
    | `FRONTEND_ORIGINS` | `https://<domain-baru>` |
    | `LETTER_VERIFY_URL` | `https://<domain-baru>/verifikasi/` |
+| `SITE_URL` | `https://<domain-baru>` |
 
 4. **Frontend di laptop:** build ulang dengan `NEXT_PUBLIC_API_URL=https://<domain-baru>/api/v1` (§ G langkah 7), lalu buat arsip baru. URL API dibekukan di arsip, jadi arsip lama tidak bisa dipakai.
 5. **Deploy:** `PUBLIC_HTML=$HOME/domains/<domain-baru>/public_html bash deploy/hostinger-deploy.sh <tag> --frontend <arsip-baru>`. Skrip membaca domain smoke test dari `APP_URL`.
@@ -365,6 +378,7 @@ Domain awal `desawatuagung.com` (dipilih di onboarding hPanel 12 November 2026) 
 - [ ] **Tes backend dan uji penomoran lulus pada MySQL/MariaDB versi Hostinger** (lulus di MariaDB 11.4.8 lokal 13 November 2026; versi Hostinger belum dicocokkan).
 - [ ] SSH dengan kunci; `rsync`, `git`, `composer`, `mysqldump`, `gpg`/`openssl` tersedia.
 - [ ] Bootstrap § G; `APP_KEY` di password manager.
+- [ ] `php artisan app:preflight --production` 0 GAGAL setelah `.env`, setelah migration, dan setelah deploy; PERINGATAN sudah dibaca.
 - [ ] Deploy § I dan uji § J lulus.
 - [ ] Cron scheduler dan backup (UTC); backup manual dan uji dekripsi lulus; salinan ke luar Hostinger aktif.
 - [ ] Email notifikasi (§ H Email notifikasi) hanya setelah E2: kotak surat, SPF/DKIM/DMARC aktif, batas kirim dicatat, cron antrean, uji kirim lulus.

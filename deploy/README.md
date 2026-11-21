@@ -10,9 +10,10 @@
 2. Ganti `<domain>` pada kedua contoh env. Salin frontend `.env.production.example` menjadi `.env.production` **hanya bila file tujuan belum ada**, lalu isi domain sebenarnya. `NEXT_PUBLIC_*` dibekukan saat build, tidak boleh berisi rahasia. Empat nama env sesuai pembaca kode; `NEXT_PUBLIC_SITE_URL` tidak dibaca kode sehingga tidak ditambahkan. Jangan gunakan `build:demo` untuk produksi.
 3. Jangan biarkan `.env.local`, `.env.production.local` atau environment shell warisan mengubah build: Next.js memprioritaskan environment proses dan file lokal di atas `.env.production`. Skrip mengunci API URL ke `APP_URL/api/v1` dan kedua flag ke `false`; URL pengaduan tetap dari env build yang Anda siapkan. Build di laptop wajib memakai konfigurasi produksi, bukan API localhost.
 4. Server, Nginx, HTTPS, PHP dan backup: ikuti [server-setup.md](server-setup.md). Konfigurasi siap pakai di [nginx/watuagung.conf](nginx/watuagung.conf) + [nginx/watuagung-headers.conf](nginx/watuagung-headers.conf): root `WEB_ROOT`, `out/404.html`, `/api/` hanya ke `backend/public/index.php`, dotfile ditolak, header keamanan `always` (termasuk galat API), CSP Report-Only, `client_max_body_size 12m`, access log tanpa query string. Uji `sudo nginx -t` sebelum reload.
-5. `MEDIA_URL` kosong memakai `APP_URL/storage`. Nginx menyajikan `backend/storage/app/public/` (media publik saja) di `/storage/` sebagai file statis, tanpa listing dan PHP ditolak; `storage/app/private` tidak terjangkau. Symlink `backend/public/storage` saja tidak membuat media tersedia pada root frontend terpisah.
-6. Backup terenkripsi: [backup.sh](backup.sh); pemulihan: [restore.md](restore.md).
-7. Pasang cron [crontab.txt](crontab.txt) sebagai user deploy (schedule Laravel + backup 02.00 WIB); pastikan `php` pada PATH cron versi benar (atau ganti dengan path absolut). Belum ada job sehingga `QUEUE_CONNECTION=sync`, tidak perlu worker. `MAIL_MAILER=log`: R11 belum aktif, tidak mengirim email. `RETENTION_APPLICATION_DAYS` kosong: anonimisasi otomatis mati sampai keputusan desa.
+5. `MEDIA_URL` **kosong** (sama dengan Hostinger) memakai `APP_URL/storage`. Nginx menyajikan `backend/storage/app/public/` (media publik saja) di `/storage/` sebagai file statis, tanpa listing dan PHP ditolak; `storage/app/private` tidak terjangkau. Symlink `backend/public/storage` saja tidak membuat media tersedia pada root frontend terpisah.
+6. Setelah mengisi `.env` dan setelah `migrate`: `php artisan app:preflight --production` dari `backend/` (hanya membaca; OK/PERINGATAN/GAGAL, exit 1 bila ada GAGAL; rahasia hanya "terisi"/"kosong"). Rincian cek: [hostinger.md § Pemeriksaan pra-rilis](hostinger.md#pemeriksaan-pra-rilis-apppreflight). **Jangan buka situs ke warga selama ada GAGAL.**
+7. Backup terenkripsi: [backup.sh](backup.sh); pemulihan: [restore.md](restore.md).
+8. Pasang cron [crontab.txt](crontab.txt) sebagai user deploy (schedule Laravel + backup 02.00 WIB); pastikan `php` pada PATH cron versi benar (atau ganti dengan path absolut). Belum ada job sehingga `QUEUE_CONNECTION=sync`, tidak perlu worker. `MAIL_MAILER=log`: R11 belum aktif, tidak mengirim email. `RETENTION_APPLICATION_DAYS` kosong: anonimisasi otomatis mati sampai keputusan desa.
 
 ## Deploy rutin
 
@@ -48,6 +49,8 @@ bash deploy/deploy.sh v1.0.0 --skip-frontend
 Opsi ini melewati instalasi/build/salin frontend, bukan reload FPM atau smoke test. Frontend manual harus sesuai commit backend; jangan unggah `.env`, repo, `node_modules`, atau `backend/` ke WEB_ROOT.
 
 ## Pemeriksaan
+
+Di server, setelah tiap deploy dan sebelum membuka layanan: `cd "$APP_DIR/backend" && "$PHP_BIN" artisan app:preflight --production` harus **0 GAGAL**; bila ada GAGAL, `artisan down` dan perbaiki. Bila `.env` diubah, jalankan juga sebelum deploy (setelah `config:clear`).
 
 ```bash
 for script in deploy/*.sh; do bash -n "$script" || exit 1; done
