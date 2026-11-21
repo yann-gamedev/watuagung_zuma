@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { isDemo } from "@/services/pelayanan";
+import { adminHref, isAbsoluteHref } from "@/lib/urls";
 import { ApprovalError, approvalService } from "@/services/approval";
 import type { ApprovalDecisionResponse, ApprovalPreview } from "@/types/pelayanan";
 import styles from "./approval.module.css";
@@ -212,5 +213,9 @@ export function ApprovalPage() {
 }
 
 function PanelLink() {
-  return <Link href="/admin/" className="btn btn-secondary mt-5">Masuk ke panel admin</Link>;
+  // Panel di subdomain: tautan lintas origin memakai <a> biasa di tab yang sama.
+  const href = adminHref("/admin/");
+  return isAbsoluteHref(href)
+    ? <a href={href} className="btn btn-secondary mt-5">Masuk ke panel admin</a>
+    : <Link href={href} className="btn btn-secondary mt-5">Masuk ke panel admin</Link>;
 }
