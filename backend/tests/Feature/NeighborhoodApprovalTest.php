@@ -97,14 +97,14 @@ class NeighborhoodApprovalTest extends TestCase
             [$this->user('admin'), 'PROCESSING'],
             [$this->user('staff'), 'WAITING_APPROVAL'],
             [$this->user('village_head'), 'APPROVED'],
-            [$this->user('admin'), 'READY_FOR_PICKUP'],
             [$this->user('staff'), 'COMPLETED'],
         ];
         foreach ($accounts as [$user, $to]) {
             $from = $application->fresh()->status;
             $this->actAs($user);
-            ($to === 'READY_FOR_PICKUP' ? $this->uploadScan($application->request_id) : $this->change($application, $to))->assertOk()->assertJsonPath('status', $to);
-            $this->assertDatabaseHas('application_events', ['application_id' => $application->id, 'user_id' => $user->id, 'from_status' => $from, 'to_status' => $to]);
+            $final = $to === 'APPROVED' ? 'READY_FOR_PICKUP' : $to;
+            $this->change($application, $to)->assertOk()->assertJsonPath('status', $final);
+            $this->assertDatabaseHas('application_events', ['application_id' => $application->id, 'user_id' => $user->id, 'from_status' => $from, 'to_status' => $final]);
         }
         $this->assertSame(5, count(array_unique(array_map(fn ($pair) => $pair[0]->role, $accounts))));
         $this->lookup($application)->assertOk()->assertJsonPath('jenis_surat', 'DOMISILI')->assertJsonPath('status', 'COMPLETED');
@@ -218,7 +218,7 @@ class NeighborhoodApprovalTest extends TestCase
         $this->lookup($rtRejected)->assertOk()->assertExactJson([
             'success' => true, 'request_id' => $rtRejected->request_id, 'jenis_surat' => 'DOMISILI', 'lampiran' => [], 'letter_available' => false, 'letter_available_until' => null, 'status' => 'REJECTED',
             'catatan' => 'Ditolak oleh Ketua RT: Alamat belum sesuai. Silakan ajukan ulang setelah data diperbaiki.',
-            'letter_number' => null, 'requires_neighborhood_approval' => true,
+            'letter_number' => null, 'requires_neighborhood_approval' => true, 'valid_until' => null,
         ]);
 
         $rwRejected = $this->application(['status' => 'RT_APPROVED']);

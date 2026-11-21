@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Listeners\SendHeadApprovalLinks;
 use App\Mail\HeadApprovalMail;
+use App\Mail\ApplicantStatusMail;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Storage;
 use App\Mail\PinLockedMail;
 use App\Models\Application;
 use App\Models\User;
@@ -34,6 +37,7 @@ class HeadEmailApprovalTest extends TestCase
         $this->withoutMiddleware(ThrottleRequests::class);
         config(['app.site_url' => 'https://desa.example.test']);
         Mail::fake();
+        Storage::fake('local');
         $this->staff = User::factory()->create(['role' => 'staff', 'name' => 'Petugas Fiktif']);
         $this->head = $this->makeHead('kades@example.test');
     }
@@ -162,18 +166,22 @@ class HeadEmailApprovalTest extends TestCase
         $this->move($byPanel, 'APPROVED', $this->head);
 
         $response = $this->decide($this->tokenFor($byEmail))->assertOk()
-            ->assertJsonPath('status', 'APPROVED')->assertJsonPath('message', 'Permohonan disetujui.');
+            ->assertJsonPath('status', 'READY_FOR_PICKUP')->assertJsonPath('message', 'Permohonan disetujui.');
 
         foreach ([$byPanel, $byEmail] as $application) {
-            $this->assertSame('APPROVED', $application->fresh()->status);
+            $this->assertSame('READY_FOR_PICKUP', $application->fresh()->status);
             $letter = DB::table('letters')->where('application_id', $application->id)->sole();
             $this->assertSame($this->head->id, $letter->approved_by);
             $this->assertNotNull($letter->path, 'PDF final dibuat sama seperti panel.');
+            $this->assertSame('system', $letter->source);
+            $this->assertSame($letter->approved_at, $letter->ready_at);
+            $this->assertSame(now()->parse($letter->ready_at)->addDays(7)->format('Y-m-d H:i:s'), $letter->valid_until);
+            $this->assertStringStartsWith('%PDF-', Crypt::decryptString(Storage::disk('local')->get($letter->path)));
             $this->assertSame('issued', DB::table('letter_numbers')->where('application_id', $application->id)->value('status'));
         }
         $this->assertSame(DB::table('letter_numbers')->where('application_id', $byEmail->id)->value('number'), $response->json('letter_number'));
-        $panelEvent = DB::table('application_events')->where('application_id', $byPanel->id)->where('to_status', 'APPROVED')->sole();
-        $emailEvent = DB::table('application_events')->where('application_id', $byEmail->id)->where('to_status', 'APPROVED')->sole();
+        $panelEvent = DB::table('application_events')->where('application_id', $byPanel->id)->where('to_status', 'READY_FOR_PICKUP')->sole();
+        $emailEvent = DB::table('application_events')->where('application_id', $byEmail->id)->where('to_status', 'READY_FOR_PICKUP')->sole();
         $this->assertNull($panelEvent->via);
         $this->assertSame('email', $emailEvent->via);
         $this->assertSame($this->head->id, $emailEvent->user_id);
@@ -183,7 +191,54 @@ class HeadEmailApprovalTest extends TestCase
         // Riwayat panel menampilkan asalnya.
         Sanctum::actingAs($this->staff, $this->staff->abilities());
         $history = collect($this->getJson("/api/v1/staff/applications/{$byEmail->request_id}")->assertOk()->json('history'));
-        $this->assertSame('email', $history->firstWhere('to_status', 'APPROVED')['via']);
+        $this->assertSame('email', $history->firstWhere('to_status', 'READY_FOR_PICKUP')['via']);
+    }
+
+    public function test_email_approval_sends_one_final_applicant_email_and_replacement_sends_none(): void
+    {
+        $this->head->save();
+        $application = $this->waiting();
+        $application->forceFill(['email' => 'warga@example.test', 'email_consent_at' => now()])->save();
+        $this->decide($this->tokenFor($application), note: 'Catatan email fiktif')->assertOk()->assertJsonPath('status', 'READY_FOR_PICKUP');
+        Mail::assertSent(ApplicantStatusMail::class, 1);
+        Mail::assertSent(ApplicantStatusMail::class, fn ($mail) => $mail->statusLabel === 'Siap diunduh');
+        $event = DB::table('application_events')->where('application_id', $application->id)->where('to_status', 'READY_FOR_PICKUP')->sole();
+        $this->assertSame('Disetujui dan dirilis: Catatan email fiktif', Crypt::decryptString($event->note));
+        Sanctum::actingAs($this->staff, $this->staff->abilities());
+        $this->uploadScan($application->request_id)->assertOk();
+        Mail::assertSent(ApplicantStatusMail::class, 1);
+    }
+
+    public function test_email_inner_transition_failure_rolls_back_release_and_cleans_file(): void
+    {
+        $this->head->save();
+        $application = $this->waiting();
+        $token = $this->tokenFor($application);
+        $this->failInsertsInto('application_events');
+        $this->decide($token)->assertServerError();
+        $this->restoreInsertsInto('application_events');
+        $this->assertSame('WAITING_APPROVAL', $application->fresh()->status);
+        $this->assertDatabaseCount('letters', 0);
+        $this->assertNull(DB::table('approval_links')->value('used_at'));
+        $this->assertSame([], Storage::disk('local')->allFiles('letters'));
+        Mail::assertNotSent(ApplicantStatusMail::class);
+    }
+
+    public function test_email_outer_transaction_failure_rolls_back_release_and_cleans_file(): void
+    {
+        $this->head->save();
+        $application = $this->waiting();
+        $token = $this->tokenFor($application);
+        $application->forceFill(['email' => 'warga@example.test', 'email_consent_at' => now()])->save();
+        $this->failInsertsInto('audit_logs');
+        $this->decide($token)->assertServerError();
+        $this->restoreInsertsInto('audit_logs');
+        $this->assertSame('WAITING_APPROVAL', $application->fresh()->status);
+        $this->assertDatabaseCount('letters', 0);
+        $this->assertNull(DB::table('approval_links')->value('used_at'));
+        $this->assertSame(0, DB::table('application_events')->where('to_status', 'READY_FOR_PICKUP')->count());
+        $this->assertSame([], Storage::disk('local')->allFiles('letters'));
+        Mail::assertNotSent(ApplicantStatusMail::class);
     }
 
     public function test_reject_requires_reason_and_voids_letter_number(): void

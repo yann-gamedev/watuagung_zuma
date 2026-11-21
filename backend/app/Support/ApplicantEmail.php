@@ -34,7 +34,7 @@ final class ApplicantEmail
             ApplicationStatus::Verified => 'Data pengajuan Anda sudah diverifikasi petugas.',
             ApplicationStatus::Processing => 'Surat Anda sedang disiapkan.',
             ApplicationStatus::WaitingApproval => 'Surat Anda menunggu persetujuan Kepala Desa.',
-            ApplicationStatus::Approved => 'Surat Anda disetujui dan sedang ditandatangani Kepala Desa.',
+            ApplicationStatus::Approved => 'Surat Anda sudah disetujui Kepala Desa.',
             ApplicationStatus::ReadyForPickup => $downloadUntil
                 ? 'Surat Anda sudah bisa diunduh di halaman cek status sampai '.self::indonesianDate($downloadUntil).'.'
                 : 'Surat Anda sudah bisa diunduh di halaman cek status.',
