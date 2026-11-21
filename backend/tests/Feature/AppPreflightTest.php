@@ -123,6 +123,55 @@ class AppPreflightTest extends TestCase
         $this->assertStringContainsString('Host URL berbeda', $output);
     }
 
+    public function test_panel_subdomain_origin_passes(): void
+    {
+        config(['cors.allowed_origins' => ['https://desa-fiktif.test', 'https://panel.desa-fiktif.test']]);
+        [$code, $output] = $this->preflight();
+
+        $this->assertSame(0, $code, $output);
+        $this->assertStringContainsString('FRONTEND_ORIGINS[2] https://panel.desa-fiktif.test.', $output);
+        $this->assertStringContainsString('atau subdomain langsungnya', $output);
+    }
+
+    /** @return array<string, array{string}> */
+    public static function foreignOrigins(): array
+    {
+        return [
+            'akhiran domain asing' => ['https://desa-fiktif.test.evil.test'],
+            'host asing' => ['https://evil.test'],
+            'subdomain dua tingkat' => ['https://a.panel.desa-fiktif.test'],
+            'awalan tanpa titik' => ['https://evildesa-fiktif.test'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('foreignOrigins')]
+    public function test_foreign_origin_fails(string $origin): void
+    {
+        config(['cors.allowed_origins' => ['https://desa-fiktif.test', $origin]]);
+        [$code, $output] = $this->preflight();
+
+        $this->assertSame(1, $code, $output);
+        $this->assertStringContainsString('Host URL berbeda', $output);
+    }
+
+    public function test_panel_origin_must_be_https(): void
+    {
+        config(['cors.allowed_origins' => ['https://desa-fiktif.test', 'http://panel.desa-fiktif.test']]);
+        [$code, $output] = $this->preflight();
+
+        $this->assertSame(1, $code);
+        $this->assertStringContainsString('FRONTEND_ORIGINS[2] http://panel.desa-fiktif.test bukan https', $output);
+    }
+
+    public function test_site_url_on_subdomain_still_fails(): void
+    {
+        config(['app.site_url' => 'https://panel.desa-fiktif.test']);
+        [$code, $output] = $this->preflight();
+
+        $this->assertSame(1, $code);
+        $this->assertStringContainsString('Host URL berbeda', $output);
+    }
+
     public function test_media_url_on_other_host_fails(): void
     {
         config(['filesystems.disks.public.url' => 'https://cdn-fiktif.test/media']);

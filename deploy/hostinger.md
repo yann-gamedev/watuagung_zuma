@@ -24,7 +24,7 @@ Semua langkah server dikerjakan manusia. Nama menu hPanel bisa berubah; cari men
 
 `php artisan app:preflight --production` (dari `backend/`, biner PHP produksi § C) hanya **membaca** konfigurasi, database, folder, dan jadwal; tidak mengubah apa pun. Setiap baris berlabel OK / PERINGATAN / GAGAL, diakhiri ringkasan; exit 1 bila ada GAGAL. Rahasia (`APP_KEY`, kata sandi database/SMTP) hanya ditulis "terisi"/"kosong".
 
-GAGAL antara lain: `APP_ENV` bukan production, `APP_DEBUG=true`, `APP_KEY` kosong; `APP_URL`/`SITE_URL`/`LETTER_VERIFY_URL`/`FRONTEND_ORIGINS` bukan https, berisi localhost/placeholder/`example`, atau beda host; `LETTER_VERIFY_URL` tidak berakhiran `/verifikasi/`; URL media bukan https/tidak sehost; database tidak tersambung atau ada migration tertunda; folder `storage`/`bootstrap/cache` tidak dapat ditulis; GD tidak ada; `QUEUE_CONNECTION` bukan `database` atau tabel `jobs` tidak ada; `upload_max_filesize` < 6M atau `post_max_size` < 20M; tidak ada admin aktif. PERINGATAN (tidak memblokir, tetap dibaca): GD tanpa WebP, masa unduh/berlaku bukan 7, RT/RW aktif, `MAIL_MAILER=log`, alamat pengirim beda domain, kepala desa tanpa email terverifikasi/PIN, job gagal, tugas jadwal hilang.
+GAGAL antara lain: `APP_ENV` bukan production, `APP_DEBUG=true`, `APP_KEY` kosong; `APP_URL`/`SITE_URL`/`LETTER_VERIFY_URL`/`FRONTEND_ORIGINS` bukan https, berisi localhost/placeholder/`example`, atau beda host (origin `FRONTEND_ORIGINS` boleh subdomain langsung host `APP_URL`, mis. panel § N; `desa.id.evil.test` atau subdomain dua tingkat ditolak); `LETTER_VERIFY_URL` tidak berakhiran `/verifikasi/`; URL media bukan https/tidak sehost; database tidak tersambung atau ada migration tertunda; folder `storage`/`bootstrap/cache` tidak dapat ditulis; GD tidak ada; `QUEUE_CONNECTION` bukan `database` atau tabel `jobs` tidak ada; `upload_max_filesize` < 6M atau `post_max_size` < 20M; tidak ada admin aktif. PERINGATAN (tidak memblokir, tetap dibaca): GD tanpa WebP, masa unduh/berlaku bukan 7, RT/RW aktif, `MAIL_MAILER=log`, alamat pengirim beda domain, kepala desa tanpa email terverifikasi/PIN, job gagal, tugas jadwal hilang.
 
 Batas unggah yang diperiksa milik **PHP CLI**; PHP web diatur terpisah di hPanel (§ C). Pemeriksaan jadwal membaca `routes/console.php`, bukan cron hPanel: cocokkan tabel § H secara manual.
 
@@ -108,10 +108,13 @@ hPanel → Databases → MySQL Databases:
     ├── index.html, _next/, ...      # isi out/
     ├── .htaccess                    # dari deploy/hostinger/.htaccess
     ├── laravel.php                  # penghubung /api/
-    └── storage -> /home/u123456789/watuagung/backend/storage/app/public
+    ├── storage -> /home/u123456789/watuagung/backend/storage/app/public
+    └── panel/                       # ADMIN_PUBLIC_HTML bila docroot subdomain bersarang (§ N)
+        ├── admin/, _next/, ...      # isi out/ yang sama
+        └── .htaccess                # dari deploy/hostinger/admin.htaccess; TANPA laravel.php/storage
 ```
 
-Tidak ada file `backend/` lain di `public_html`. `storage/app/private` (PDF surat) dan log tidak terjangkau dari web. `hostinger-deploy.sh` menolak repo yang berada di dalam `public_html`.
+Docroot subdomain boleh juga sejajar (mis. `domains/example.id/panel_html/`); bila bersarang harus anak langsung `public_html` dan namanya tidak bentrok dengan isi `out/` (§ N). Tidak ada file `backend/` lain di `public_html`. `storage/app/private` (PDF surat) dan log tidak terjangkau dari web. `hostinger-deploy.sh` menolak repo yang berada di dalam `public_html`.
 
 ## G. Bootstrap pertama
 
@@ -291,6 +294,8 @@ bash deploy/hostinger-deploy.sh v1.0.0 --frontend ~/watuagung-web.tar.gz
 
 Tanpa `--frontend`, hanya backend yang diperbarui dan `.htaccess`/`laravel.php`/symlink dipasang ulang; frontend lama di `public_html` harus cocok dengan commit backend. Dengan `--frontend`, `public_html` diselaraskan penuh (`rsync --delete`, kecuali `.well-known/`): file lain yang ditaruh manual di sana terhapus.
 
+**Bila subdomain panel sudah dibuat di hPanel, setiap deploy wajib menyertakan `ADMIN_PUBLIC_HTML`** (mode P atau S, § N). Tanpa itu skrip memakai mode L dan `rsync --delete` **menghapus** docroot subdomain yang bersarang di `public_html`.
+
 Urutan skrip: validasi (repo di luar `public_html`, konfirmasi backup/penulis, arsip berisi isi `out/` tanpa API localhost), lock satu deploy, fetch/resolve tag tanpa mengganti kode, `artisan down`, tunggu request lama (bawaan **120 detik**), checkout rilis, `composer install --no-dev`, validasi `.env` produksi (`APP_ENV`, `APP_DEBUG=false`, `APP_KEY`, `DB_CONNECTION=mysql|mariadb`, `APP_URL` https), `migrate --force`, cache config/route/view, pasang `public_html`, `artisan up`, smoke test. `DEPLOY_DRAIN_SECONDS` boleh diperbesar sesuai batas waktu request server; 120 detik bukan bukti semua request selesai. Operator wajib memastikan tidak ada penulis lama tersisa sebelum checkout. Tidak ada reload PHP; bila perubahan kode tidak terlihat, tunggu beberapa menit (opcache) atau restart PHP dari hPanel bila ada menunya.
 
 Kegagalan setelah maintenance aktif menghentikan deploy dan mempertahankan/mengaktifkan ulang maintenance; kegagalan smoke test menutup layanan kembali. Ada jendela singkat layanan terbuka untuk smoke test; ini bukan deployment atomik. Jangan otomatis rollback migration, mengganti `APP_KEY`, mengaktifkan cron, atau menjalankan `artisan up` saat gagal. Periksa tahap gagal, pulihkan backup bila diperlukan, lalu uji ulang sebelum membuka layanan. Bila maintenance gagal diaktifkan ulang, blokir HTTP lewat hPanel. Frontend statis tetap bisa dibuka saat API maintenance.
@@ -305,6 +310,8 @@ Di server: `php artisan app:preflight --production` → **0 GAGAL** (§ Pemeriks
 
 ```bash
 bash deploy/smoke-test.sh example.id
+# Mode S (§ N): tambahkan --admin admin.example.id, dan --admin-dir <folder> bila docroot bersarang.
+# Mode P bersarang: --admin-dir <folder> saja.
 curl -sI https://example.id/ | grep -Ei 'strict-transport|content-security|x-frame|cache-control'
 for p in /persetujuan/ /verifikasi-email/ /berhenti-email/; do   # E4: harus no-referrer (token di URL)
   printf '%s ' "$p"; curl -sI "https://example.id$p" | grep -i '^referrer-policy'
@@ -360,14 +367,56 @@ Domain awal `desawatuagung.com` (dipilih di onboarding hPanel 12 November 2026) 
    | Kunci | Nilai baru |
    |---|---|
    | `APP_URL` | `https://<domain-baru>` |
-   | `FRONTEND_ORIGINS` | `https://<domain-baru>` |
+   | `FRONTEND_ORIGINS` | `https://<domain-baru>` (ditambah `,https://admin.<domain-baru>` bila panel di subdomain, § N) |
    | `LETTER_VERIFY_URL` | `https://<domain-baru>/verifikasi/` |
-| `SITE_URL` | `https://<domain-baru>` |
+   | `SITE_URL` | `https://<domain-baru>` |
 
 4. **Frontend di laptop:** build ulang dengan `NEXT_PUBLIC_API_URL=https://<domain-baru>/api/v1` (§ G langkah 7), lalu buat arsip baru. URL API dibekukan di arsip, jadi arsip lama tidak bisa dipakai.
 5. **Deploy:** `PUBLIC_HTML=$HOME/domains/<domain-baru>/public_html bash deploy/hostinger-deploy.sh <tag> --frontend <arsip-baru>`. Skrip membaca domain smoke test dari `APP_URL`.
 6. **Yang tidak berubah:** `.htaccess`, `laravel.php`, cron (path repo), backup, database, `APP_KEY`. **Jangan** menjalankan `key:generate`.
 7. Catat domain baru di `docs/deploy-plan.md` (K7) dan dokumen serah terima, lalu jalankan uji § J untuk domain baru.
+
+## N. Panel di subdomain
+
+Panel petugas disajikan dari `https://admin.desawatuagung.com/admin/` (docroot `public_html/panel-admin`, dibuat 21 November 2026) memakai arsip `out/` yang sama; API tetap di domain utama. Rencana dan keputusan D1–D7: [docs/PROMPTS-ADMIN-SUBDOMAIN.md](../docs/PROMPTS-ADMIN-SUBDOMAIN.md), [docs/deploy-plan.md](../docs/deploy-plan.md) § Panel di subdomain. Origin terpisah membatasi pembacaan token sesi panel oleh skrip di situs publik; ini bukan penyembunyian dan tidak menggantikan kata sandi kuat, throttle login, atau CSP.
+
+### Mode skrip
+
+| Mode | `ADMIN_PUBLIC_HTML` | `ADMIN_ORIGIN` | Hasil |
+|---|---|---|---|
+| L (lama) | kosong | kosong | Persis seperti sebelumnya: satu docroot, `.htaccess` utama tanpa blok `admin-subdomain`. **Menghapus** folder lain di `public_html`, termasuk docroot subdomain bersarang. |
+| P (lindungi, tahap 1) | docroot subdomain | kosong | Docroot subdomain tidak disentuh dan dikecualikan dari `rsync --delete` utama; bila bersarang, `public_html/<folder>/` ditolak (403) dari host utama. `/admin/` utama tetap disajikan, tanpa redirect. |
+| S (subdomain, tahap 2) | docroot subdomain | `https://admin.<domain>` | Subdomain diisi arsip + `admin.htaccess`; `/admin` domain utama dialihkan 302 (query ikut) dan folder `admin/` utama dihapus. |
+
+`ADMIN_ORIGIN` tanpa `ADMIN_PUBLIC_HTML` → GAGAL. Validasi sebelum maintenance: `ADMIN_PUBLIC_HTML` ada (`realpath -e`), bukan `PUBLIC_HTML`, tidak berisi `PUBLIC_HTML`, tidak di dalam/berisi repo; bila di dalam `public_html` harus **anak langsung** dengan nama yang tidak bentrok dengan isi arsip (`admin`, `_next`, `berita`, `umkm`, `pelayanan`, `storage`, `api`, dll.); symlink di `public_html` yang menunjuk docroot sejajar ditolak. `ADMIN_ORIGIN` huruf kecil `https://<sub>.<domain>` tanpa path/port; setelah konfigurasi dibaca, wajib subdomain langsung host `APP_URL` **dan** tercantum di `FRONTEND_ORIGINS` (gagal = layanan tetap maintenance). Mode S mewajibkan `admin/index.html` di arsip, atau di docroot subdomain bila tanpa `--frontend`.
+
+Docroot bersarang membuat `.htaccess` utama ikut dibaca untuk subdomain. `admin.htaccess` karena itu memakai `RewriteEngine On` sendiri (aturan rewrite induk tidak diwarisi), mengulang HTTPS/ACME/blok dotfile/PHP, menimpa header induk dengan `Header always set`, menghapus CSP penegak, dan **menolak host selain panel**. Aturan `[F]` di `.htaccess` utama saja tidak cukup, karena tidak berlaku di bawah `RewriteEngine` milik subfolder.
+
+### Langkah (manusia)
+
+1. **Tahap 1, saat subdomain dibuat.** hPanel → Domains → Subdomains: buat `admin` dengan **folder kustom** `panel-admin`. **Jangan pakai folder bawaan `public_html/admin`**: itu folder panel situs utama, deploy mode S akan menghapusnya, dan subdomain tidak bisa memuat `/_next/`. Skrip menolak nama itu. Pasang SSL untuk `admin.<domain>`; cek `nslookup admin.<domain>`. **Mulai saat ini setiap deploy memakai mode P** (`ADMIN_PUBLIC_HTML=<docroot>`), atau docroot bersarang terhapus.
+2. **`backend/.env`:** `FRONTEND_ORIGINS=https://<domain>,https://admin.<domain>`; `SITE_URL` tetap domain utama. `php artisan config:clear` lalu `php artisan app:preflight --production` → 0 GAGAL.
+3. **Build di laptop** dengan `NEXT_PUBLIC_SITE_URL=https://<domain>` dan `NEXT_PUBLIC_ADMIN_URL=https://admin.<domain>` selain env § G langkah 7 (tautan lintas origin, sesi A1).
+4. **Tahap 2, deploy mode S** (prosedur § I, termasuk maintenance, backup, dan penulis dijeda):
+
+   ```bash
+   cd ~/watuagung
+   APP_DIR=$HOME/watuagung PUBLIC_HTML=$HOME/domains/example.id/public_html \
+   ADMIN_PUBLIC_HTML=$HOME/domains/example.id/public_html/panel-admin ADMIN_ORIGIN=https://admin.example.id \
+   PHP_BIN=/opt/alt/php83/usr/bin/php COMPOSER_BIN=$HOME/bin/composer-cli \
+   DEPLOY_BACKUP_CONFIRMED=1 DEPLOY_WRITERS_PAUSED=1 \
+   bash deploy/hostinger-deploy.sh <tag> --frontend ~/watuagung-web.tar.gz
+   ```
+
+   Smoke test otomatis memakai `--admin` (dan `--admin-dir` bila bersarang): redirect `/admin` + query, `panel/` → `/admin/`, panel 200 dengan `X-Robots-Tag` noindex dan tepat satu CSP Report-Only, `/api/` subdomain 403, halaman non-panel → domain utama, `laravel.php`/`.env` 403/404, folder bersarang tertutup dari host utama, preflight CORS origin panel 204 + `Access-Control-Allow-Origin`, origin asing tanpa header itu. Header `Content-Security-Policy: upgrade-insecure-requests` dari platform Hostinger dibiarkan.
+5. **Uji manual** rencana § 8 (login semua peran, alur fiktif penuh, lampiran, unggah foto, `sessionStorage` hanya di origin panel), lalu umumkan alamat baru. Selama masa uji redirect tetap **302** (D6); ganti ke 301 di template `.htaccess` setelah ±1 minggu (A4).
+6. **Basic Auth (D3, ditunda).** hPanel → Password Protect Directories menulis ke `.htaccess` docroot subdomain, yang **ditimpa** deploy berikutnya. Untuk mengaktifkan: buat `.htpasswd` di luar `public_html`, buka komentar bagian Basic Auth di `deploy/hostinger/admin.htaccess` dengan path absolutnya (tanpa kredensial di repo), deploy ulang. Smoke test `--admin` lalu akan GAGAL 401 pada pemeriksaan subdomain; lakukan pemeriksaan itu manual dengan kredensial.
+
+### Rollback
+
+- **Cepat:** deploy ulang tag sebelumnya (atau tag yang sama) dengan arsip yang masih berisi `admin/`, memakai **mode P** (`ADMIN_PUBLIC_HTML` saja): blok redirect hilang, `admin/` kembali ke domain utama, docroot subdomain tetap utuh. Jangan rollback dengan mode L selama docroot subdomain bersarang masih dipakai.
+- Karena masa uji memakai 302, browser tidak menyimpan pengalihan. Setelah 301, petugas mungkin perlu membersihkan cache.
+- `FRONTEND_ORIGINS` boleh tetap memuat origin panel. Tidak ada perubahan database.
 
 ## Daftar periksa
 
@@ -380,6 +429,7 @@ Domain awal `desawatuagung.com` (dipilih di onboarding hPanel 12 November 2026) 
 - [ ] Bootstrap § G; `APP_KEY` di password manager.
 - [ ] `php artisan app:preflight --production` 0 GAGAL setelah `.env`, setelah migration, dan setelah deploy; PERINGATAN sudah dibaca.
 - [ ] Deploy § I dan uji § J lulus.
+- [ ] Panel subdomain (§ N): subdomain + SSL; sejak subdomain dibuat setiap deploy memakai `ADMIN_PUBLIC_HTML` (mode P); `FRONTEND_ORIGINS` memuat origin panel; deploy mode S dengan smoke test `--admin` lulus; uji manual dan masa 302 selesai sebelum 301.
 - [ ] Cron scheduler dan backup (UTC); backup manual dan uji dekripsi lulus; salinan ke luar Hostinger aktif.
 - [ ] Email notifikasi (§ H Email notifikasi) hanya setelah E2: kotak surat, SPF/DKIM/DMARC aktif, batas kirim dicatat, cron antrean, uji kirim lulus.
 - [ ] Uji pemulihan § L lulus.

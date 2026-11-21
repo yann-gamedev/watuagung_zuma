@@ -100,11 +100,21 @@ class AppPreflight extends Command
             $this->ok("$name ".$this->safeUrl($url).'.');
         }
 
-        if (count(array_unique($hosts)) > 1) {
+        // APP_URL, SITE_URL, LETTER_VERIFY_URL: satu host. FRONTEND_ORIGINS: host itu atau subdomain langsungnya
+        // (panel di panel.<domain>, deploy/hostinger.md § N); bukan <domain>.evil.test atau host lain.
+        $siteHosts = array_filter($hosts, fn ($name) => ! str_starts_with($name, 'FRONTEND_ORIGINS'), ARRAY_FILTER_USE_KEY);
+        $appHost = $hosts['APP_URL'] ?? null;
+        $mismatch = count(array_unique($siteHosts)) > 1;
+        if ($appHost !== null) {
+            foreach ($hosts as $name => $host) {
+                if (str_starts_with($name, 'FRONTEND_ORIGINS') && ! $this->sameOrDirectSubdomain($host, $appHost)) $mismatch = true;
+            }
+        }
+        if ($mismatch) {
             $list = implode(', ', array_map(fn ($name, $host) => "$name=$host", array_keys($hosts), $hosts));
-            $this->prodFailLine("Host URL berbeda satu sama lain ($list); semuanya harus domain yang sama.");
+            $this->prodFailLine("Host URL berbeda satu sama lain ($list); semuanya harus domain yang sama (FRONTEND_ORIGINS boleh subdomain langsungnya).");
         } elseif (count($hosts) === count($urls)) {
-            $this->ok('Semua URL memakai host yang sama ('.reset($hosts).').');
+            $this->ok('Semua URL memakai host '.$appHost.(count(array_unique($hosts)) > 1 ? ' atau subdomain langsungnya' : '').'.');
         }
 
         $verify = $urls['LETTER_VERIFY_URL'];
@@ -315,6 +325,14 @@ class AppPreflight extends Command
             if (str_contains(strtolower(rawurldecode($url)), $placeholder)) return 'masih berisi placeholder/contoh';
         }
         return null;
+    }
+
+    /** "panel.desa.id" terhadap "desa.id" lulus; "a.b.desa.id" dan "desa.id.evil.test" tidak. */
+    private function sameOrDirectSubdomain(string $host, string $base): bool
+    {
+        if ($host === $base) return true;
+        if (! str_ends_with($host, '.'.$base)) return false;
+        return (bool) preg_match('/\A[a-z0-9]([a-z0-9-]*[a-z0-9])?\z/', substr($host, 0, -strlen($base) - 1));
     }
 
     private function host(string $url): string
