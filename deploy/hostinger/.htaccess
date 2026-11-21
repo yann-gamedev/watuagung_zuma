@@ -31,6 +31,16 @@ ErrorDocument 403 /404.html
     RewriteCond %{ENV:REDIRECT_STATUS} ^$
     RewriteRule \.(php[0-9]?|phtml|phar|phps)(/|$) - [F,NC]
 
+    # BEGIN admin-subdomain
+    # Panel di subdomain (deploy/hostinger.md § N). Dikelola hostinger-deploy.sh: tanpa ADMIN_PUBLIC_HTML blok ini
+    # dihapus; "#@nested " aktif bila docroot subdomain di dalam public_html (mode P/S), "#@redirect " pada mode S.
+    # Salinan mentah berkas ini tetap aman: kedua aturan masih berupa komentar.
+    # Docroot subdomain bersarang tidak boleh terbuka dari host utama (admin.htaccess juga menolak host lain).
+    #@nested RewriteRule ^__ADMIN_DIR_RE__(/|$) - [F]
+    # Panel pindah ke subdomain; query string ikut otomatis. Ganti ke R=301 setelah masa uji (D6).
+    #@redirect RewriteRule ^admin(/.*)?$ __ADMIN_ORIGIN__/admin$1 [R=302,L]
+    # END admin-subdomain
+
     # /api/* → Laravel. Path tetap /api/v1/... di Laravel (REQUEST_URI tidak berubah).
     RewriteRule ^api/ laravel.php [L]
 </IfModule>

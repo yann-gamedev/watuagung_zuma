@@ -1,0 +1,81 @@
+# Docroot subdomain panel Desa Watuagung (mode S, deploy/hostinger.md § N). Dipasang hostinger-deploy.sh sebagai
+# .htaccess docroot subdomain; jangan diedit langsung di server (tertimpa saat deploy).
+# Isi docroot: arsip out/ yang sama dengan situs utama + berkas ini. TIDAK ada laravel.php, /api/, atau storage.
+#
+# Bila docroot berada di dalam public_html utama, .htaccess utama juga dibaca (induk). Karena itu:
+# - RewriteEngine On di sini: aturan rewrite induk TIDAK diwarisi, jadi HTTPS/ACME/blok dotfile/PHP diulang;
+# - header induk ditimpa dengan "Header always set" dan CSP penegak dihapus agar tidak ada CSP ganda;
+# - folder ini menolak host selain panel, karena blok di .htaccess utama tidak berlaku di bawah RewriteEngine ini.
+
+Options -Indexes -MultiViews +SymLinksIfOwnerMatch
+DirectoryIndex index.html
+ErrorDocument 404 /404.html
+ErrorDocument 403 /404.html
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # HTTPS saja (sama dengan .htaccess utama).
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+    # Validasi SSL Let's Encrypt dari hPanel untuk subdomain.
+    RewriteRule ^\.well-known/acme-challenge/ - [L]
+
+    # File tersembunyi dan PHP ditolak (sama dengan utama; tidak ada rewrite internal ke PHP di sini).
+    RewriteRule (^|/)\. - [F]
+    RewriteRule \.(php[0-9]?|phtml|phar|phps)(/|$) - [F,NC]
+
+    # Hanya host panel. Docroot bersarang juga terjangkau sebagai https://<domain>/<folder>/ dari host utama.
+    RewriteCond %{HTTP_HOST} !^__ADMIN_HOST_RE__$ [NC]
+    RewriteRule ^ - [F]
+
+    # Tidak ada API di subdomain; panel memanggil API domain utama (CORS FRONTEND_ORIGINS).
+    RewriteRule ^api(/|$) - [F]
+
+    RewriteRule ^$ /admin/ [R=302,L]
+
+    # Hanya panel dan aset build. Halaman lain (HTML, folder, atau tidak ada) → situs utama, query ikut.
+    # "(/|$)": /admin tanpa garis miring tidak boleh memantul antara dua host.
+    RewriteCond %{REQUEST_URI} !^/(admin|_next)(/|$)
+    RewriteCond %{REQUEST_URI} !^/404\.html$
+    RewriteCond %{REQUEST_FILENAME} !-f [OR]
+    RewriteCond %{REQUEST_URI} \.html$
+    RewriteRule ^ __SITE_ORIGIN__%{REQUEST_URI} [R=302,L]
+</IfModule>
+
+# Basic Auth (D3, ditunda). hPanel → Password Protect Directories MENULIS ke .htaccess folder ini, dan deploy
+# berikutnya MENIMPANYA. Untuk mengaktifkan: buat .htpasswd di luar public_html, lalu buka komentar di berkas
+# template ini (repo) dengan path absolutnya dan deploy ulang. Kredensial tidak pernah disimpan di repo.
+# AuthType Basic
+# AuthName "Panel Desa Watuagung"
+# AuthUserFile /home/<USER_HOSTING>/.htpasswds/panel/passwd
+# Require valid-user
+
+<IfModule mod_headers.c>
+    # "always set" menimpa header yang sama dari .htaccess induk (docroot bersarang).
+    Header always set Strict-Transport-Security "max-age=31536000"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "same-origin"
+    Header always set X-Frame-Options "DENY"
+    Header always set X-Robots-Tag "noindex, nofollow"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    # Report-Only (D4). Dari CSP utama: connect-src ke API situs utama ('self' tetap untuk payload navigasi
+    # Next.js *.txt), img-src menambah media situs utama; i.ytimg.com dan frame-src YouTube/Google dipertahankan
+    # untuk pratinjau editor video dan kontak.
+    Header always set Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://i.ytimg.com __SITE_ORIGIN__; font-src 'self'; connect-src 'self' __SITE_ORIGIN__; frame-src https://www.google.com https://maps.google.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    Header always unset Content-Security-Policy
+    Header always unset X-Powered-By
+
+    # Cache sama dengan utama: HTML dicek ulang, aset build berhash 1 tahun.
+    SetEnvIf Request_URI "^/_next/static/" WA_IMMUTABLE
+    <FilesMatch "\.html$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+    Header set Cache-Control "public, max-age=31536000, immutable" env=WA_IMMUTABLE
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript text/javascript application/json image/svg+xml
+</IfModule>

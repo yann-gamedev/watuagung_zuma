@@ -25,6 +25,22 @@
 | K7 | Domain | Domain `.id` umum (tanpa dokumen) atas nama/email desa; `.desa.id` dibatalkan karena waktu | 12 November 2026: onboarding Hostinger memakai `desawatuagung.com`; pengguna dapat menggantinya nanti (prosedur `deploy/hostinger.md` § M). Pemilik domain harus kontak resmi desa |
 | K8 | Pembiayaan dan pemilik akun | Siapa membayar VPS + domain setelah kepanitiaan selesai; akun penyedia memakai email desa | Belum |
 
+### Panel di subdomain (D1–D7)
+
+Rencana: `docs/PROMPTS-ADMIN-SUBDOMAIN.md`; pelaksanaan deploy: `deploy/hostinger.md` § N. `docs/PROMPTS-RILIS-SUBDOMAIN.md` tidak ada di repo, jadi keputusan di bawah dicatat dari prompt sesi deploy (A2) 21 November 2026.
+
+| # | Keputusan | Pilihan | Status |
+|---|---|---|---|
+| D1 | Nama subdomain | `panel.desawatuagung.com` | Ditetapkan prompt A2 |
+| D2 | Bentuk build | Satu build `out/` untuk dua docroot; panel di `https://panel.<domain>/admin/`, akar subdomain → `/admin/` | Ditetapkan prompt A2 |
+| D3 | Basic Auth subdomain | **Ditunda**; bagian Basic Auth di `deploy/hostinger/admin.htaccess` dikomentari. hPanel Password Protect akan ditimpa deploy, jadi aktivasi lewat template repo | Ditetapkan prompt A2 |
+| D4 | CSP subdomain | Report-Only dulu, ditegakkan setelah ±1 minggu tanpa pelanggaran (A4) | Ditetapkan prompt A2 |
+| D5 | `/persetujuan/`, `/verifikasi-email/` | Tetap di domain utama | Rekomendasi rencana; prompt A2 tidak membahas, implementasi deploy tidak memindahkannya. **Konfirmasi Tech Lead** |
+| D6 | Redirect `/admin` domain utama | 302 selama masa uji, lalu 301 (A4) | Ditetapkan prompt A2 (302) |
+| D7 | `/admin` di docroot utama | Dihapus pada mode S (redirect menangani bookmark); mode P (tahap 1) mempertahankannya | Ditetapkan prompt A2 |
+
+Docroot subdomain bisa bersarang (`public_html/<folder>`, bawaan hPanel) atau sejajar; skrip deploy mendukung keduanya (mode P melindungi folder itu sebelum tahap 2).
+
 ### Alasan K3 — PostgreSQL, bukan SQLite atau MySQL
 
 - Penomoran surat (`App\Domain\LetterNumber`) dan perubahan status memakai `lockForUpdate()`. **SQLite mengabaikan penguncian baris ini**; keamanan nomor bergantung pada kunci seluruh database. PostgreSQL menjalankan `SELECT … FOR UPDATE` sebenarnya; uji konkurensi multiproses M3a lulus tiga kali pada PostgreSQL 18.6 lokal (24 Oktober 2026), lihat Fase 2.

@@ -2,7 +2,22 @@
 set -euo pipefail
 
 PHP_BIN="${PHP_BIN:-php}"
-[[ $# -eq 1 && $1 =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ ]] || { printf 'Pemakaian: bash deploy/smoke-test.sh <domain> (tanpa https:// atau path)\n' >&2; exit 1; }
+# --admin <host>: panel di subdomain (mode S, deploy/hostinger.md § N).
+# --admin-dir <nama>: docroot subdomain bersarang public_html/<nama>, wajib tertutup dari domain utama.
+usage() { printf 'Pemakaian: bash deploy/smoke-test.sh <domain> [--admin <host-panel>] [--admin-dir <folder>] (tanpa https:// atau path)\n' >&2; exit 1; }
+host_re='^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$'
+[[ $# -ge 1 && $1 =~ $host_re ]] || usage
+domain=$1
+shift
+admin_host='' admin_dir=''
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --admin) [[ $# -ge 2 && $2 =~ $host_re ]] || usage; admin_host=$2; shift 2 ;;
+        --admin-dir) [[ $# -ge 2 && $2 =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || usage; admin_dir=$2; shift 2 ;;
+        *) usage ;;
+    esac
+done
+set -- "$domain"
 for cmd in curl "$PHP_BIN" mktemp; do
     command -v "$cmd" >/dev/null || { printf 'Perintah tidak tersedia: %s\n' "$cmd" >&2; exit 1; }
 done
@@ -64,5 +79,76 @@ request /api/v1/staff/login 422 true -H 'Content-Type: application/json' --data 
 request /.env not200 false
 request /backend/.env not200 false
 request /api/../.env not200 false
+
+# Panel subdomain. probe <url> [argumen curl...]: status di $status, header di $tmp/headers; tidak mengikuti redirect.
+probe() {
+    local url=$1
+    shift
+    if ! status=$(curl --silent --show-error --path-as-is --proto '=https' --connect-timeout 10 --max-time 30 \
+        --dump-header "$tmp/headers" --output "$tmp/body" --write-out '%{http_code}' "$@" "$url"); then
+        status=000
+        : > "$tmp/headers"
+    fi
+}
+header_value() {
+    # Nilai header terakhir bernama $1 (tanpa CR), kosong bila tidak ada.
+    { grep -i "^$1:" "$tmp/headers" || true; } | tail -1 | sed -e 's/^[^:]*:[[:space:]]*//' -e 's/[[:space:]]*$//' | tr -d '\r'
+}
+header_count() { grep -ic "^$1:" "$tmp/headers" || true; }
+expect_redirect() {
+    local url=$1 target=$2
+    probe "$url"
+    check "$url: 302 (aktual $status)" test "$status" = 302
+    local location
+    location=$(header_value Location)
+    check "$url: Location $target (aktual ${location:-kosong})" test "$location" = "$target"
+}
+expect_blocked() {
+    probe "$1"
+    check "$1: 403/404 (aktual $status)" test "$status" = 403 -o "$status" = 404
+}
+csp_enforced_ok() {
+    # Hanya Report-Only dari admin.htaccess; header penegak platform Hostinger (upgrade-insecure-requests) dibiarkan.
+    local value
+    while IFS= read -r value; do
+        value=$(printf '%s' "$value" | sed -e 's/^[^:]*:[[:space:]]*//' -e 's/[[:space:];]*$//' | tr -d '\r')
+        [[ $value == upgrade-insecure-requests ]] || return 1
+    done < <(grep -i '^Content-Security-Policy:' "$tmp/headers" || true)
+}
+if [[ -n $admin_host ]]; then
+    panel="https://$admin_host"
+    expect_redirect "$base/admin/" "$panel/admin/"
+    expect_redirect "$base/admin/permohonan/detail/?id=REQ-TEST" "$panel/admin/permohonan/detail/?id=REQ-TEST"
+    probe "$panel/"
+    check "$panel/: 302 (aktual $status)" test "$status" = 302
+    location=$(header_value Location)
+    check "$panel/: Location /admin/ (aktual ${location:-kosong})" test "$location" = /admin/ -o "$location" = "$panel/admin/"
+    probe "$panel/admin/"
+    check "$panel/admin/: HTTP 200 (aktual $status)" test "$status" = 200
+    check "$panel/admin/: Content-Type HTML" grep -Eiq '^Content-Type:[[:space:]]*text/html' "$tmp/headers"
+    check "$panel/admin/: X-Robots-Tag noindex" grep -Eiq '^X-Robots-Tag:.*noindex' "$tmp/headers"
+    csp_count=$(header_count Content-Security-Policy-Report-Only)
+    check "$panel/admin/: tepat satu CSP Report-Only (aktual $csp_count)" test "$csp_count" = 1
+    check "$panel/admin/: tanpa CSP penegak ganda" csp_enforced_ok
+    check "$panel/admin/: Strict-Transport-Security" grep -Eiq '^Strict-Transport-Security:[[:space:]]*max-age=[1-9][0-9]*' "$tmp/headers"
+    check "$panel/admin/: X-Content-Type-Options nosniff" grep -Eiq '^X-Content-Type-Options:[[:space:]]*nosniff[[:space:]]*$' "$tmp/headers"
+    probe "$panel/api/v1/posts"
+    check "$panel/api/v1/posts: 403 tanpa Laravel (aktual $status)" test "$status" = 403
+    expect_redirect "$panel/pelayanan/" "$base/pelayanan/"
+    expect_blocked "$panel/laravel.php"
+    expect_blocked "$panel/.env"
+    probe "$base/api/v1/staff/me" -X OPTIONS -H "Origin: $panel" -H 'Access-Control-Request-Method: GET' \
+        -H 'Access-Control-Request-Headers: authorization'
+    acao=$(header_value Access-Control-Allow-Origin)
+    check "CORS preflight origin panel: 204 (aktual $status)" test "$status" = 204
+    check "CORS preflight origin panel: Access-Control-Allow-Origin $panel (aktual ${acao:-kosong})" test "$acao" = "$panel"
+    probe "$base/api/v1/staff/me" -X OPTIONS -H 'Origin: https://evil.test' -H 'Access-Control-Request-Method: GET'
+    acao=$(header_value Access-Control-Allow-Origin)
+    check "CORS preflight origin asing: tanpa Access-Control-Allow-Origin (aktual ${acao:-kosong})" test -z "$acao"
+fi
+if [[ -n $admin_dir ]]; then
+    expect_blocked "$base/$admin_dir/"
+    expect_blocked "$base/$admin_dir/admin/"
+fi
 printf '\nRingkasan: %s lulus, %s gagal.\n' "$passed" "$failed"
 [[ $failed -eq 0 ]]
