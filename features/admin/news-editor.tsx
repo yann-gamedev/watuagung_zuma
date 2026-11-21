@@ -196,8 +196,7 @@ export function NewsEditor({ id }: { id?: number }) {
   return <div className={styles.editor}>
     <Link className="btn btn-secondary" href="/admin/berita/">Kembali ke daftar berita</Link>
     <div ref={message} tabIndex={-1}>{error && <p className="error-box" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}</div>
-    <div className={styles.actions}><NewsStatus status={post?.status ?? "draft"} />{dirty && <span>Perubahan belum disimpan</span>}{post?.status === "published" && <a className="btn btn-secondary" href={`/berita/baca/?slug=${encodeURIComponent(post.slug)}`} target="_blank" rel="noopener noreferrer">Lihat di website</a>}</div>
-    {post?.status === "published" && <p>Tautan website disiapkan untuk halaman publik CMS (C4), yang belum tersedia.</p>}
+    <div className={styles.actions}><NewsStatus status={post?.status ?? "draft"} />{dirty && <span>Perubahan belum disimpan</span>}{post?.status === "published" && <a className="btn btn-secondary" href={`/berita/baca/?slug=${encodeURIComponent(post.slug)}`} target="_blank" rel="noopener noreferrer">Lihat di website<span className="sr-only"> (dibuka di tab baru)</span></a>}</div>
     <form onSubmit={(event) => { event.preventDefault(); void save(post?.status ?? "draft"); }}>
       <fieldset className={styles.fields} disabled={busy}>
         <legend className="sr-only">Isi berita</legend>

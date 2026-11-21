@@ -60,3 +60,11 @@ Verifikasi:
 - Uji browser (Laravel :8010 SQLite sementara, akun KIM fiktif, static export :3010) pada 390px dan 1440px: keempat tombol tampil berurutan. Gaya terhitungnya identik dengan tombol Chat WhatsApp UMKM: latar `rgb(47, 90, 39)`, teks putih, tinggi 53px, radius 10px, 17px/700. Tanpa scroll horizontal; screenshot diperiksa visual.
 - Tidak ada berkas yang diunggah ke storage; `out/` dibangun ulang dengan env bawaan.
 - Backend tidak diubah.
+
+## Pembaruan: teks usang di editor berita terbit
+
+Laporan pengguna: editor berita berstatus terbit masih menampilkan "Tautan website disiapkan untuk halaman publik CMS (C4), yang belum tersedia." Halaman publik `/berita/baca/?slug=…` sudah ada sejak C4, dan tombol "Lihat di website" ke alamat itu sudah tampil tepat di atas kalimat tersebut.
+
+- Kalimat usang dihapus dari `features/admin/news-editor.tsx`. Tombol "Lihat di website" ditambah keterangan pembaca layar "(dibuka di tab baru)". Tidak ada tes atau dokumen lain yang merujuk kalimat itu.
+- Verifikasi: lint (0 error, 1 warning lama), tsc, build, build:demo, test:demo lulus.
+- Tombol dan alamatnya sudah dipakai uji browser sebelumnya (skrip E2E membaca `href` tombol ini lalu membuka halaman publik). Setelah perubahan ini, uji browser ulang tidak dijalankan karena hanya menghapus satu paragraf.
