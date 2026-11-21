@@ -35,6 +35,7 @@ export function adminPageTitle(path: string) {
   if (normalizePath(path) === "/admin/konten/transparansi") return "Konten transparansi";
   if (normalizePath(path) === "/admin/konten/struktur") return "Konten struktur pemerintahan";
   if (normalizePath(path) === "/admin/konten/video") return "Konten video";
+  if (normalizePath(path) === "/admin/notifikasi") return "Notifikasi email";
   return adminLinks.find((link) => link.href === normalizePath(path))?.title ?? "Panel Petugas";
 }
 function isActive(path: string, href: string) {
@@ -46,6 +47,8 @@ function isActive(path: string, href: string) {
 export function canAccessAdminPath(user: StaffProfile | null, path: string) {
   path = normalizePath(path);
   if (!can(user, "panel")) return false;
+  // Menu Akun → Notifikasi email: semua peran panel (bagian PIN hanya tampil untuk Kepala Desa).
+  if (path === "/admin/notifikasi") return true;
   if (path === "/admin/berita" || path.startsWith("/admin/berita/") || path === "/admin/umkm" || path.startsWith("/admin/umkm/")) return can(user, "media:manage");
   if (path === "/admin/konten" || path.startsWith("/admin/konten/")) return can(user, "site:manage");
   if (path === "/admin/akun") return user?.role === "admin";

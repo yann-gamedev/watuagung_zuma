@@ -1,0 +1,27 @@
+/* Menu Akun → Notifikasi email (E4). Pola kartu panel admin; hanya token app/globals.css. */
+.page { display: grid; gap: 24px; max-width: 760px; min-width: 0; color: var(--ink); font-size: 16px; line-height: 1.6; }
+.card { background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 24px; min-width: 0; overflow-wrap: anywhere; }
+.card h2 { font-size: 21px; font-weight: 700; margin: 0 0 8px; }
+.card > p { max-width: 36rem; margin-bottom: 16px; color: var(--muted); }
+.form { display: grid; gap: 16px; }
+.form label { display: block; margin-bottom: 8px; font-weight: 700; }
+.form input {
+  width: 100%;
+  max-width: 420px;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--ink);
+}
+.pin { max-width: 200px !important; letter-spacing: .3em; font-variant-numeric: tabular-nums; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.status { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px; padding: 6px 12px; border-radius: 999px; font-weight: 700; }
+.ok { background: var(--sage); color: var(--leaf); }
+.pending { background: var(--sand); color: var(--earth); }
+.form :focus-visible { outline: 3px solid var(--leaf); outline-offset: 4px; }
+@media (max-width: 600px) {
+  .card { padding: 20px 16px; }
+  .actions :global(.btn) { width: 100%; justify-content: center; }
+}
