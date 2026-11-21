@@ -3,7 +3,8 @@
 # Padanan deploy/nginx/watuagung.conf + watuagung-headers.conf untuk hosting tanpa Nginx.
 #
 # Isi public_html: hasil static export (out/), berkas ini, laravel.php (penghubung /api/),
-# dan symlink storage → backend/storage/app/public (media publik saja).
+# dan symlink storage → backend/storage/app/public (media publik saja). backend/.env: MEDIA_URL kosong,
+# sehingga URL media Laravel = APP_URL/storage/... yang disajikan symlink ini.
 # Kode Laravel, .env, storage/app/private dan log berada DI LUAR public_html.
 
 Options -Indexes -MultiViews +SymLinksIfOwnerMatch
