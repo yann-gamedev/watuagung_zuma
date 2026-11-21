@@ -90,6 +90,12 @@ class SiteSectionController extends Controller
             $path = $data['chartImagePath'] ?? null;
             return is_string($path) && preg_match(SiteSectionRules::STRUCTURE_IMAGE_PATH, $path) ? [$path] : [];
         }
+        if ($section === SectionKey::Profile) {
+            $details = is_array($data['profileDetails'] ?? null) ? $data['profileDetails'] : [];
+            $institutions = is_array($details['institutions'] ?? null) ? $details['institutions'] : [];
+            $paths = array_column($institutions, 'logoPath');
+            return array_values(array_unique(array_filter($paths, fn ($path) => is_string($path) && preg_match(SiteSectionRules::PROFILE_IMAGE_PATH, $path))));
+        }
         return $this->documents($data);
     }
 
@@ -105,7 +111,13 @@ class SiteSectionController extends Controller
         if (! $section->allowsImages()) throw ValidationException::withMessages(['file' => 'Bagian ini tidak mengizinkan gambar.']);
         $request->validate(['file' => ['required', 'file']], ['file.uploaded' => ImageProcessor::UPLOAD_FAILED]);
         // ponytail: unggahan tanpa PUT tetap di disk; tambah pembersihan berkala bila menumpuk.
-        $path = ImageProcessor::store($request->file('file'), 'site/'.$section->value, 5120, 2400);
+        $path = ImageProcessor::store(
+            $request->file('file'), 'site/'.$section->value,
+            $section === SectionKey::Profile ? 2048 : 5120,
+            $section === SectionKey::Profile ? 512 : 2400,
+            $section === SectionKey::Profile ? 1 : 600,
+            $section === SectionKey::Profile ? 1 : 400,
+        );
         return response()->json(['path' => $path, 'url' => Storage::disk('public')->url($path)])->header('Cache-Control', 'private, no-store');
     }
 
@@ -124,6 +136,10 @@ class SiteSectionController extends Controller
         if ($row->key === SectionKey::Structure->value) {
             $path = $row->data['chartImagePath'] ?? null;
             $item['image_url'] = $path === null ? null : Storage::disk('public')->url($path);
+        }
+        if ($row->key === SectionKey::Profile->value) {
+            $paths = $this->files(SectionKey::Profile, $row->data);
+            $item['institution_image_urls'] = (object) array_combine($paths, array_map(fn ($path) => Storage::disk('public')->url($path), $paths));
         }
         return $item;
     }

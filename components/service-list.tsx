@@ -20,13 +20,16 @@ export function ServiceList({ fullRequirements = false }: { fullRequirements?: b
         )}
       </div>
       <ul className="home-service-list">
-        {services.map((service) => (
+        {services.map((service) => {
+          const office = service.mode === "office";
+          return (
           <li key={service.slug} className="home-service-item">
             <div className="home-service-copy">
               <h3>{service.title}</h3>
+              {office && <span className="task-badge">Layanan di kantor</span>}
               {fullRequirements ? (
                 <div className="service-full-requirements">
-                  <p>Persyaratan sementara — menunggu konfirmasi desa</p>
+                  <p>{office ? "Dokumen yang dibawa ke Balai Desa — menunggu konfirmasi desa" : "Persyaratan sementara — menunggu konfirmasi desa"}</p>
                   <ul>
                     {service.requirements.map((requirement) => (
                       <li key={requirement}>{requirement}</li>
@@ -35,7 +38,7 @@ export function ServiceList({ fullRequirements = false }: { fullRequirements?: b
                 </div>
               ) : (
                 <p className="home-service-requirements">
-                  Syarat sementara: {service.requirements.join(", ")}
+                  {office ? "Dibawa ke Balai Desa" : "Syarat sementara"}: {service.requirements.join(", ")}
                 </p>
               )}
               <p className="home-service-time">Waktu pelayanan: {service.time}</p>
@@ -43,15 +46,16 @@ export function ServiceList({ fullRequirements = false }: { fullRequirements?: b
             <Link
               className="home-service-apply"
               href={`/pelayanan/${service.slug}`}
-              aria-label={`Ajukan ${service.title}`}
+              aria-label={office ? `${service.title}: datang ke Balai Desa` : `Ajukan ${service.title} online`}
             >
-              <span>Ajukan</span>
+              <span>{office ? "Datang ke Balai Desa" : "Ajukan online"}</span>
               <ChevronRight size={24} aria-hidden="true" />
             </Link>
           </li>
-        ))}
+          );
+        })}
       </ul>
-      <p className="home-service-note">Unggah tiga dokumen persyaratan, lalu unduh surat melalui Cek Status Surat setelah tersedia.</p>
+      <p className="home-service-note">Untuk layanan online, unggah tiga dokumen persyaratan, lalu unduh surat melalui Cek Status Surat setelah tersedia. Izin Keramaian diurus langsung di Balai Desa.</p>
     </section>
   );
 }

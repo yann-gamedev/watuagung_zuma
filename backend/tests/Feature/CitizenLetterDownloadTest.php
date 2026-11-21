@@ -12,10 +12,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\LetterPayloads;
 use Tests\TestCase;
 
-/** Alur online: unggah scan → siap diunduh → warga mengunduh. Seluruh identitas dan berkas fiktif. */
+/** Alur online: persetujuan merilis PDF, warga mengunduh. Seluruh identitas dan berkas fiktif. */
 class CitizenLetterDownloadTest extends TestCase
 {
     use RefreshDatabase, LetterPayloads;
@@ -36,8 +37,10 @@ class CitizenLetterDownloadTest extends TestCase
         $receipt = $this->submitLetter(self::letterPayload())->assertCreated();
         $application = Application::where('request_id', $receipt->json('request_id'))->firstOrFail();
         $head = User::factory()->create(['role' => 'village_head']);
-        DB::table('letters')->insert(['application_id' => $application->id, 'verification_code' => Str::random(32), 'approved_by' => $head->id, 'approved_at' => now()]);
-        $application->update(['status' => 'APPROVED', 'catatan' => 'Catatan persetujuan fiktif']);
+        $application->update(['status' => 'WAITING_APPROVAL']);
+        $this->actAs($head);
+        $this->patchJson('/api/v1/staff/applications/'.$application->request_id.'/status', ['status' => 'APPROVED'])
+            ->assertOk()->assertJsonPath('status', 'READY_FOR_PICKUP');
 
         return [$application->fresh(), $receipt->json('lookup_secret')];
     }
@@ -47,7 +50,6 @@ class CitizenLetterDownloadTest extends TestCase
     {
         [$application, $secret] = $this->approved();
         $this->actAs($this->staff);
-        $this->uploadScan($application->request_id)->assertOk();
 
         return [$application->fresh(), $secret];
     }
@@ -91,57 +93,78 @@ class CitizenLetterDownloadTest extends TestCase
 
     // ---- Unggah scan ----
 
-    public function test_upload_on_approved_moves_to_ready_in_same_transaction(): void
-    {
-        [$application, $secret] = $this->approved();
-        $this->actAs($this->staff);
-        $response = $this->uploadScan($application->request_id)->assertOk()->assertJsonPath('status', 'READY_FOR_PICKUP')
-            ->assertJsonPath('letter.source', 'uploaded')->assertJsonPath('letter.download_count', 0)->assertJsonPath('letter.last_downloaded_at', null);
-        $letter = $this->letter($application);
-        $this->assertNotNull($letter->ready_at);
-        $this->assertSame(Carbon::parse($letter->ready_at)->toISOString(), $response->json('letter.ready_at'));
-        $this->assertSame(Carbon::parse($letter->ready_at)->addDays(30)->toISOString(), $response->json('letter.download_until'));
-        $fresh = $application->fresh();
-        $this->assertSame('READY_FOR_PICKUP', $fresh->status);
-        $this->assertNull($fresh->catatan);
-        $this->assertSame(['from' => 'APPROVED', 'to' => 'READY_FOR_PICKUP', 'note' => 'Scan surat bertanda tangan diunggah', 'user' => $this->staff->id], $this->lastEvent($application));
-        $this->assertSame(1, DB::table('audit_logs')->where('action', 'letter.uploaded')->count());
-        $this->lookup($application, $secret)->assertOk()->assertJsonPath('status', 'READY_FOR_PICKUP')
-            ->assertJsonPath('letter_available', true)->assertJsonPath('letter_available_until', $response->json('letter.download_until'));
-    }
-
-    public function test_failed_status_event_rolls_back_upload_transition(): void
-    {
-        [$application] = $this->approved();
-        $this->actAs($this->staff);
-        $this->failInsertsInto('application_events');
-        $this->uploadScan($application->request_id)->assertStatus(500);
-        $this->restoreInsertsInto('application_events');
-        $this->assertSame('APPROVED', $application->fresh()->status);
-        $this->assertNull($this->letter($application)->ready_at);
-        $this->assertNull($this->letter($application)->source);
-    }
-
-    public function test_reupload_while_ready_replaces_file_and_refreshes_ready_at(): void
+    public function test_approval_releases_system_pdf_without_upload(): void
     {
         [$application, $secret] = $this->ready();
+        $letter = $this->letter($application);
+        $this->assertSame('system', $letter->source);
+        $this->assertSame($letter->approved_at, $letter->ready_at);
+        $this->assertSame(Carbon::parse($letter->ready_at)->addDays(7)->format('Y-m-d H:i:s'), $letter->valid_until);
+        $this->assertSame('READY_FOR_PICKUP', $application->status);
+        $this->assertSame(['from' => 'WAITING_APPROVAL', 'to' => 'READY_FOR_PICKUP', 'note' => 'Disetujui dan dirilis', 'user' => $letter->approved_by], $this->lastEvent($application));
+        $this->lookup($application, $secret)->assertOk()->assertJsonPath('letter_available', true)
+            ->assertJsonPath('letter_available_until', Carbon::parse($letter->ready_at)->addDays(7)->toISOString());
+        $this->assertStringStartsWith('%PDF-', $this->download($application, $secret)->assertOk()->getContent());
+    }
+
+    public function test_replacement_audit_failure_preserves_original_bytes_and_cleans_new_file(): void
+    {
+        [$application] = $this->ready();
         $first = $this->letter($application);
-        $this->travel(10)->days();
-        $this->actAs($this->staff);
-        $this->uploadScan($application->request_id, "%PDF-1.4\n% scan kedua fiktif\n%%EOF\n")->assertOk()->assertJsonPath('status', 'READY_FOR_PICKUP');
-        $second = $this->letter($application);
-        $this->assertTrue(Carbon::parse($second->ready_at)->greaterThan(Carbon::parse($first->ready_at)));
-        $this->assertNotSame($first->sha256, $second->sha256);
-        $this->assertCount(2, $this->events($application)); // SUBMITTED + unggah pertama; unggah ulang tanpa event status
+        $bytes = Storage::disk('local')->get($first->path);
+        $files = Storage::disk('local')->allFiles('letters');
+        $this->failInsertsInto('audit_logs');
+        $this->uploadScan($application->request_id)->assertStatus(500);
+        $this->restoreInsertsInto('audit_logs');
+        $this->assertSame($first->path, $this->letter($application)->path);
+        $this->assertSame($first->sha256, $this->letter($application)->sha256);
+        $this->assertSame($bytes, Storage::disk('local')->get($first->path));
+        $this->assertEqualsCanonicalizing($files, Storage::disk('local')->allFiles('letters'));
+        $this->assertSame('READY_FOR_PICKUP', $application->fresh()->status);
+        $this->assertCount(2, $this->events($application));
+    }
+
+    public function test_replacement_preserves_status_release_deadlines_and_history(): void
+    {
+        [$application, $secret] = $this->ready();
+        foreach (['READY_FOR_PICKUP', 'COMPLETED'] as $status) {
+            $application->update(['status' => $status]);
+            $first = $this->letter($application);
+            $events = $this->events($application);
+            $this->travel(1)->days();
+            $this->actAs($this->staff);
+            $this->uploadScan($application->request_id, "%PDF-1.4\n% scan kedua fiktif $status\n%%EOF\n")
+                ->assertOk()->assertJsonPath('status', $status)->assertJsonPath('letter.source', 'uploaded');
+            $second = $this->letter($application);
+            foreach (['ready_at', 'approved_at', 'valid_until', 'verification_code'] as $field) $this->assertSame($first->$field, $second->$field);
+            $this->assertNotSame($first->sha256, $second->sha256);
+            $this->assertSame($events, $this->events($application));
+        }
         $this->assertSame(2, DB::table('audit_logs')->where('action', 'letter.uploaded')->count());
-        $this->assertSame("%PDF-1.4\n% scan kedua fiktif\n%%EOF\n", $this->download($application, $secret)->assertOk()->getContent());
+        $this->assertSame("%PDF-1.4\n% scan kedua fiktif COMPLETED\n%%EOF\n", $this->download($application, $secret)->assertOk()->getContent());
+    }
+
+    public function test_replacement_validity_boundary_is_inclusive_and_never_extends_deadline(): void
+    {
+        [$application] = $this->ready();
+        $first = $this->letter($application);
+        $until = Carbon::parse($first->valid_until);
+        $this->travelTo($until);
+        $this->uploadScan($application->request_id)->assertOk();
+        $replacement = $this->letter($application);
+        $this->assertSame($first->ready_at, $replacement->ready_at);
+        $this->assertSame($first->valid_until, $replacement->valid_until);
+        $this->travelTo($until->copy()->addSecond());
+        $this->uploadScan($application->request_id)->assertUnprocessable();
+        $this->assertSame($replacement->path, $this->letter($application)->path);
+        $this->assertSame('READY_FOR_PICKUP', $application->fresh()->status);
     }
 
     public function test_upload_rejected_in_other_statuses_and_for_other_roles(): void
     {
         [$application] = $this->approved();
         $this->actAs($this->staff);
-        foreach (['PROCESSING', 'WAITING_APPROVAL', 'COMPLETED', 'REJECTED', 'NEED_REVISION'] as $status) {
+        foreach (['SUBMITTED', 'VERIFIED', 'PROCESSING', 'WAITING_APPROVAL', 'APPROVED', 'REJECTED', 'NEED_REVISION'] as $status) {
             $application->update(['status' => $status]);
             $this->uploadScan($application->request_id)->assertUnprocessable();
             $this->assertSame($status, $application->fresh()->status);
@@ -158,18 +181,19 @@ class CitizenLetterDownloadTest extends TestCase
         $this->actAs($kim, ['panel', 'applications:manage', 'media:manage', 'site:manage']);
         $this->uploadScan($application->request_id)->assertForbidden();
         $this->assertSame('APPROVED', $application->fresh()->status);
-        $this->assertNull($this->letter($application)->ready_at);
+        $this->assertNotNull($this->letter($application)->ready_at);
     }
 
-    public function test_manual_ready_transition_is_gone_but_approved_stays_in_office_queue(): void
+    public function test_manual_ready_transition_is_gone_and_legacy_approved_is_not_actionable(): void
     {
         [$application] = $this->approved();
+        $application->update(['status' => 'APPROVED']); // Legacy queue entry stays non-downloadable.
         foreach (['staff', 'admin'] as $role) {
             $this->actAs(User::factory()->create(['role' => $role]));
             $this->patchJson('/api/v1/staff/applications/'.$application->request_id.'/status', ['status' => 'READY_FOR_PICKUP'])->assertUnprocessable();
             $this->getJson('/api/v1/staff/applications/'.$application->request_id)->assertOk()->assertJsonPath('allowed_transitions', []);
-            $this->getJson('/api/v1/staff/summary')->assertOk()->assertJsonPath('my_queue', 1);
-            $this->getJson('/api/v1/staff/applications?my_queue=1')->assertOk()->assertJsonPath('total', 1);
+            $this->getJson('/api/v1/staff/summary')->assertOk()->assertJsonPath('my_queue', 0);
+            $this->getJson('/api/v1/staff/applications?my_queue=1')->assertOk()->assertJsonPath('total', 0);
         }
         $this->actAs(User::factory()->create(['role' => 'village_head']));
         $this->getJson('/api/v1/staff/summary')->assertOk()->assertJsonPath('my_queue', 0);
@@ -182,7 +206,7 @@ class CitizenLetterDownloadTest extends TestCase
     {
         [$application, $secret] = $this->ready();
         $response = $this->download($application, $secret)->assertOk();
-        $this->assertSame(self::SCAN_PDF, $response->getContent());
+        $this->assertStringStartsWith('%PDF-', $response->getContent());
         $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
         $this->assertSame('attachment; filename="Surat-'.$application->request_id.'.pdf"', $response->headers->get('Content-Disposition'));
         $this->assertStringContainsString('private', $response->headers->get('Cache-Control'));
@@ -273,14 +297,21 @@ class CitizenLetterDownloadTest extends TestCase
         $this->assertSame('COMPLETED', $application->fresh()->status);
     }
 
-    public function test_download_window_expires(): void
+    public static function downloadSources(): array
+    {
+        return [['system'], ['uploaded']];
+    }
+
+    #[DataProvider('downloadSources')]
+    public function test_download_window_expires(string $source): void
     {
         [$application, $secret] = $this->ready();
-        $until = Carbon::parse($this->letter($application)->ready_at)->addDays(30);
+        if ($source === 'uploaded') $this->uploadScan($application->request_id)->assertOk();
+        $until = Carbon::parse($this->letter($application)->ready_at)->addDays(7);
         $this->travelTo($until);
         $this->download($application, $secret)->assertOk();
         $this->travelTo($until->copy()->addSecond());
-        $this->download($application, $secret)->assertStatus(410)->assertJsonPath('message', 'Masa unduh sudah berakhir. Silakan hubungi petugas di kantor desa.');
+        $this->download($application, $secret)->assertStatus(410)->assertJsonPath('message', 'Masa unduh sudah berakhir. Ajukan ulang bila surat masih diperlukan.');
         $this->lookup($application, $secret)->assertOk()->assertJsonPath('letter_available', false)->assertJsonPath('letter_available_until', $until->toISOString());
         $this->assertSame(1, DB::table('audit_logs')->where('action', 'letter.downloaded')->count());
     }
@@ -325,7 +356,7 @@ class CitizenLetterDownloadTest extends TestCase
         [$recent] = $this->ready();
         [$downloaded, $secret] = $this->ready();
         $this->download($downloaded, $secret)->assertOk();
-        DB::table('letters')->whereIn('application_id', [$old->id, $downloaded->id])->update(['ready_at' => now()->subDays(31)]);
+        DB::table('letters')->whereIn('application_id', [$old->id, $downloaded->id])->update(['ready_at' => now()->subDays(8)]);
         $this->artisan('letters:expire-downloads', ['--dry-run' => true])->expectsOutputToContain('[dry-run] 1 permohonan akan diselesaikan')->assertSuccessful();
         $this->assertSame('READY_FOR_PICKUP', $old->fresh()->status);
 
@@ -345,9 +376,9 @@ class CitizenLetterDownloadTest extends TestCase
         config(['retention.application_days' => 1, 'retention.attachment_days' => 1]);
         [$application, $secret] = $this->ready();
         $this->download($application, $secret)->assertOk();
-        // Permohonan sudah lama COMPLETED menurut updated_at, tetapi scan baru diunggah 10 hari lalu.
+        // Permohonan sudah lama COMPLETED menurut updated_at, tetapi surat dirilis dua hari lalu.
         DB::table('applications')->where('id', $application->id)->update(['updated_at' => now()->subDays(60)]);
-        DB::table('letters')->where('application_id', $application->id)->update(['ready_at' => now()->subDays(10)]);
+        DB::table('letters')->where('application_id', $application->id)->update(['ready_at' => now()->subDays(2)]);
         $path = $this->letter($application)->path;
         $this->artisan('attachments:purge')->assertSuccessful();
         $this->artisan('applications:purge')->expectsOutputToContain('0 permohonan dianonimkan')->assertSuccessful();
@@ -356,7 +387,7 @@ class CitizenLetterDownloadTest extends TestCase
         $this->download($application, $secret)->assertOk();
 
         DB::table('applications')->where('id', $application->id)->update(['updated_at' => now()->subDays(60)]);
-        DB::table('letters')->where('application_id', $application->id)->update(['ready_at' => now()->subDays(31)]);
+        DB::table('letters')->where('application_id', $application->id)->update(['ready_at' => now()->subDays(8)]);
         $this->artisan('applications:purge')->expectsOutputToContain('1 permohonan dianonimkan')->assertSuccessful();
         $this->assertFalse(Storage::disk('local')->exists($path));
         $this->download($application, $secret)->assertStatus(410);

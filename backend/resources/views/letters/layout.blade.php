@@ -26,10 +26,9 @@
     .ttd { width: 100%; margin-top: 18px; border-collapse: collapse; page-break-inside: avoid; }
     .ttd td { width: 50%; vertical-align: top; text-align: center; }
     .ttd p { text-align: center; margin: 0; }
-    .ttd .nama { padding-top: 2cm; }
-    .ttd .qr { padding-top: 10px; text-align: left; }
-    .qr img { width: 2.1cm; height: 2.1cm; }
-    .qr p { font-size: 8pt; text-align: left; margin: 2px 0; }
+    .ttd .signature { height: 2.5cm; margin: 4px 0; }
+    .ttd .qr img { display: block; width: 2.5cm; height: 2.5cm; margin: 0 auto; }
+    .ttd .validity { font-size: 8pt; margin-top: 4px; }
     .draf { position: fixed; top: 38%; left: 0; width: 100%; text-align: center; font-size: 110pt; font-weight: bold;
         color: rgba(160, 0, 0, 0.15); transform: rotate(-35deg); z-index: -1; }
 </style>
@@ -83,19 +82,23 @@
 <p>@yield('closing', 'Demikian Surat Keterangan ini diberikan kepada yang bersangkutan untuk dapat dipergunakan sebagaimana mestinya.')</p>
 <table class="ttd">
     <tr>
-        <td>@if ($duaTandaTangan)<p><br>Yang bersangkutan</p>@endif</td>
-        <td><p>Watuagung, {{ $date->translatedFormat('d F Y') }}<br>Kepala Desa Watuagung</p></td>
+        <td>@if ($duaTandaTangan)
+            <p><br>Yang bersangkutan</p>
+            <div class="signature"></div>
+            <strong><u>{{ $a->nama }}</u></strong>
+        @endif</td>
+        <td>
+            <p>Watuagung, {{ $date->translatedFormat('d F Y') }}<br>Kepala Desa Watuagung</p>
+            <div class="signature qr">@if (!$draft && $qr)<img src="data:image/png;base64,{{ $qr }}" alt="QR verifikasi">@endif</div>
+            <strong><u>{{ $desa['kepala_desa'] }}</u></strong>
+            @if (!$draft && $qr)
+            @if ($validUntil)
+            <p class="validity">Masa surat efektif berlaku {{ $validityDays }} hari sejak surat dirilis oleh Pelayanan Desa Watuagung (berlaku s.d. {{ $validUntil->translatedFormat('d F Y') }}).</p>
+            @endif
+            <p class="validity">Scan QR untuk memeriksa keaslian surat di desawatuagung.com.</p>
+            @endif
+        </td>
     </tr>
-    <tr>
-        <td class="nama">@if ($duaTandaTangan)<strong><u>{{ $a->nama }}</u></strong>@endif</td>
-        <td class="nama"><strong><u>{{ $desa['kepala_desa'] }}</u></strong></td>
-    </tr>
-    @if ($qr)
-    <tr><td class="qr" colspan="2">
-        <img src="data:image/png;base64,{{ $qr }}" alt="QR verifikasi">
-        <p>Pindai untuk memeriksa keaslian surat.<br>QR bukan tanda tangan elektronik.</p>
-    </td></tr>
-    @endif
 </table>
 </body>
 </html>

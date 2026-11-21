@@ -49,11 +49,11 @@ class StaffSummaryTest extends TestCase
 
     public static function roles(): array
     {
-        // Per jenis: 3 wilayah; kantor punya 6 status antrean, Kepala Desa 1. Semua jenis kecuali SKU melalui RT/RW.
+        // Per jenis: 3 wilayah; kantor punya 5 status antrean, Kepala Desa 1. Semua jenis kecuali SKU melalui RT/RW.
         $types = count(LetterType::cases());
         $neighborhood = $types - 1;
         return [
-            ['staff', 3 * $types, 18 * $types], ['village_head', 3 * $types, 3 * $types], ['admin', 3 * $types, 18 * $types],
+            ['staff', 3 * $types, 15 * $types], ['village_head', 3 * $types, 3 * $types], ['admin', 3 * $types, 15 * $types],
             ['rt_head', $neighborhood, $neighborhood], ['rw_head', 2 * $neighborhood, 2 * $neighborhood],
         ];
     }

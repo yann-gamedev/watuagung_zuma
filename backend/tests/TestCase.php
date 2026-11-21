@@ -19,7 +19,7 @@ abstract class TestCase extends BaseTestCase
     /** PDF fiktif minimal pengganti scan surat bertanda tangan. */
     protected const SCAN_PDF = "%PDF-1.4\n% scan surat fiktif\n%%EOF\n";
 
-    /** Unggah scan surat sebagai pengguna yang sedang login (APPROVED → READY_FOR_PICKUP otomatis). */
+    /** Ganti PDF surat yang sudah dirilis, tanpa perubahan status atau masa berlaku. */
     protected function uploadScan(string $requestId, string $pdf = self::SCAN_PDF): TestResponse
     {
         return $this->post('/api/v1/staff/applications/'.$requestId.'/letter.pdf',

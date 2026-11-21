@@ -80,9 +80,9 @@ class ApplicationController extends Controller {
             : null;
         $letter = Letter::find($application);
         $download = Letter::downloadState($application, $letter);
-        // Tanggal batas hanya untuk scan unggahan pada status unduh; tanpa path atau hash.
+        // Tanggal batas hanya pada status unduh; tanpa path atau hash.
         $until = $download === 'unavailable' ? null : Letter::downloadUntil($letter)?->toISOString();
-        return response()->json(['success'=>true,'request_id'=>$application->request_id,'jenis_surat'=>$application->jenis_surat,'requires_neighborhood_approval'=>LetterType::from($application->jenis_surat)->requiresNeighborhoodApproval(),'status'=>$application->status,'catatan'=>$note,'letter_number'=>$letterNumber,'lampiran'=>AttachmentStore::receivedKinds($application),'letter_available'=>$download === 'available','letter_available_until'=>$until]);
+        return response()->json(['success'=>true,'request_id'=>$application->request_id,'jenis_surat'=>$application->jenis_surat,'requires_neighborhood_approval'=>LetterType::from($application->jenis_surat)->requiresNeighborhoodApproval(),'status'=>$application->status,'catatan'=>$note,'letter_number'=>$letterNumber,'lampiran'=>AttachmentStore::receivedKinds($application),'letter_available'=>$download === 'available','letter_available_until'=>$until,'valid_until'=>$letter?->valid_until ? \Illuminate\Support\Carbon::parse($letter->valid_until)->toISOString() : null]);
     }
 
     /**
@@ -155,7 +155,7 @@ class ApplicationController extends Controller {
             return [$fresh, $pdf];
         });
         if ($result === 'unavailable') return response()->json(['success'=>false,'message'=>'Surat belum tersedia untuk diunduh.'], 404)->header('Cache-Control', 'private, no-store');
-        if ($result === 'expired') return response()->json(['success'=>false,'message'=>'Masa unduh sudah berakhir. Silakan hubungi petugas di kantor desa.'], 410)->header('Cache-Control', 'private, no-store');
+        if ($result === 'expired') return response()->json(['success'=>false,'message'=>'Masa unduh sudah berakhir. Ajukan ulang bila surat masih diperlukan.'], 410)->header('Cache-Control', 'private, no-store');
         [$fresh, $pdf] = $result;
         return response($pdf, 200, [
             'Content-Type'=>'application/pdf',

@@ -48,12 +48,10 @@ class RetentionPurgeTest extends TestCase
     private function completedLetter(): Application
     {
         $application = $this->application('PROCESSING', 0);
-        $flow = [['staff', 'WAITING_APPROVAL'], ['village_head', 'APPROVED'], ['staff', 'READY_FOR_PICKUP'], ['staff', 'COMPLETED']];
+        $flow = [['staff', 'WAITING_APPROVAL'], ['village_head', 'APPROVED'], ['staff', 'COMPLETED']];
         foreach ($flow as [$role, $status]) {
             Sanctum::actingAs(User::factory()->create(['role' => $role]), ['applications:manage']);
-            $status === 'READY_FOR_PICKUP'
-                ? $this->uploadScan($application->request_id)->assertOk()
-                : $this->patchJson('/api/v1/staff/applications/'.$application->request_id.'/status', ['status' => $status])->assertOk();
+            $this->patchJson('/api/v1/staff/applications/'.$application->request_id.'/status', ['status' => $status])->assertOk();
         }
         DB::table('applications')->where('id', $application->id)->update(['updated_at' => now()->subDays(400)]);
         // Masa unduh warga sudah lama berakhir; selama masih berjalan, retensi melewatinya.
@@ -155,7 +153,7 @@ class RetentionPurgeTest extends TestCase
 
         auth()->forgetGuards();
         $this->getJson('/api/v1/verify/'.$letter->verification_code)->assertOk()
-            ->assertJsonPath('status', 'valid')->assertJsonPath('number', $number)->assertJsonPath('nama', 'S* W*');
+            ->assertJsonPath('status', 'valid')->assertJsonPath('number', $number)->assertJsonPath('nama', 'S. W.');
         DB::table('letter_numbers')->update(['status' => 'void', 'void_reason' => Crypt::encryptString('Pembatalan fiktif')]);
         $this->getJson('/api/v1/verify/'.$letter->verification_code)->assertOk()->assertJsonPath('status', 'revoked');
 

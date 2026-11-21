@@ -40,10 +40,12 @@ const specificLabels = {
   barang_hilang: "Barang atau dokumen yang hilang", acara: "Acara", tempat_acara: "Tempat acara",
   tanggal_mulai: "Tanggal mulai", tanggal_selesai: "Tanggal selesai", jenis_hiburan: "Jenis hiburan", isi_keterangan: "Isi keterangan",
 } as const;
+/** Sama dengan `LetterType::notOfferedMessage()` untuk KERAMAIAN. */
+export const OFFICE_ONLY_MESSAGE = "Izin Keramaian dilayani langsung di Balai Desa.";
 const optionalText = (label: string) => z.string({ invalid_type_error: `${label} harus berupa teks.` }).trim().optional();
 
 export const submissionSchema = z.object({
-  jenis_surat: z.enum(offeredServiceCodes, { errorMap: (_issue, context) => ({ message: context.data === undefined || context.data === "" ? "Jenis surat wajib diisi." : "Jenis surat ini tidak dapat diajukan secara online." }) }),
+  jenis_surat: z.enum(offeredServiceCodes, { errorMap: (_issue, context) => ({ message: context.data === undefined || context.data === "" ? "Jenis surat wajib diisi." : context.data === "KERAMAIAN" ? OFFICE_ONLY_MESSAGE : "Jenis surat ini tidak dapat diajukan secara online." }) }),
   nama: text("Nama"),
   nik: digits("NIK", /^[0-9]{16}$/, "NIK harus 16 digit angka."),
   no_kk: digits("Nomor KK", /^[0-9]{16}$/, "Nomor KK harus 16 digit angka."),
@@ -85,35 +87,20 @@ export const submissionSchema = z.object({
     if (values.tanggal_lahir < "1900-01-01") issue("tanggal_lahir", "Tanggal lahir paling awal 1 Januari 1900.");
     if (values.tanggal_lahir > today) issue("tanggal_lahir", "Tanggal lahir tidak boleh melewati hari ini.");
   }
-  if (values.jenis_surat !== "KERAMAIAN") {
-    for (const [field, label] of [["agama", "Agama"], ["status_perkawinan", "Status perkawinan"], ["pendidikan", "Pendidikan"]] as const) {
-      if (!values[field]) issue(field, `${label} wajib diisi.`);
-    }
+  for (const [field, label] of [["agama", "Agama"], ["status_perkawinan", "Status perkawinan"], ["pendidikan", "Pendidikan"]] as const) {
+    if (!values[field]) issue(field, `${label} wajib diisi.`);
   }
-  if (values.pekerjaan || values.jenis_surat !== "KERAMAIAN") {
-    const result = text("Pekerjaan", 60).safeParse(values.pekerjaan);
-    if (!result.success) for (const error of result.error.issues) issue("pekerjaan", error.message);
-  }
-  const own = values.jenis_surat === "KERAMAIAN" ? ["acara", "tempat_acara", "tanggal_mulai", "tanggal_selesai", "jenis_hiburan"] :
-    values.jenis_surat === "KEHILANGAN" ? ["barang_hilang"] : values.jenis_surat === "UMUM" ? ["isi_keterangan"] : [];
+  const job = text("Pekerjaan", 60).safeParse(values.pekerjaan);
+  if (!job.success) for (const error of job.error.issues) issue("pekerjaan", error.message);
+  const own: string[] = values.jenis_surat === "KEHILANGAN" ? ["barang_hilang"] : values.jenis_surat === "UMUM" ? ["isi_keterangan"] : [];
   for (const field of Object.keys(specificLabels) as (keyof typeof specificLabels)[]) {
     const label = specificLabels[field];
     if (!own.includes(field)) {
       if (values[field]) issue(field, `${label} tidak dipakai untuk jenis surat ini.`);
       continue;
     }
-    const schema = field === "tanggal_mulai" || field === "tanggal_selesai" ? dateField(label) : text(label, field === "isi_keterangan" ? 500 : field === "barang_hilang" ? 200 : 120);
-    const result = schema.safeParse(values[field]);
+    const result = text(label, field === "isi_keterangan" ? 500 : 200).safeParse(values[field]);
     if (!result.success) for (const error of result.error.issues) issue(field, error.message);
-  }
-  if (values.jenis_surat === "KERAMAIAN") {
-    const start = values.tanggal_mulai;
-    const end = values.tanggal_selesai;
-    if (start && validDate(start) && start < today) issue("tanggal_mulai", "Tanggal mulai tidak boleh sebelum hari ini.");
-    if (start && end && validDate(start) && validDate(end)) {
-      if (end < start) issue("tanggal_selesai", "Tanggal selesai tidak boleh sebelum tanggal mulai.");
-      if ((Date.parse(end) - Date.parse(start)) / 86400000 >= 7) issue("tanggal_selesai", "Izin keramaian paling lama 7 hari.");
-    }
   }
 });
 export type SubmissionValues = z.infer<typeof submissionSchema>;

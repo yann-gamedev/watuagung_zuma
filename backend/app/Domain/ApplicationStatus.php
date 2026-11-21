@@ -64,8 +64,7 @@ enum ApplicationStatus: string
             'PROCESSING' => ['WAITING_APPROVAL' => self::OFFICE, 'NEED_REVISION' => self::OFFICE, 'REJECTED' => self::OFFICE],
             // Admin sengaja tidak boleh memutuskan persetujuan.
             'WAITING_APPROVAL' => ['APPROVED' => self::HEAD, 'REJECTED' => self::HEAD, 'NEED_REVISION' => self::HEAD],
-            // APPROVED → READY_FOR_PICKUP tidak bisa dipilih manual: hanya terjadi saat kantor mengunggah scan
-            // surat bertanda tangan (canUploadLetter), sehingga "siap diunduh" selalu berarti berkasnya ada.
+            // APPROVED langsung dirilis oleh ApplicationTransition; READY tidak dapat dipilih manual.
             'READY_FOR_PICKUP' => ['COMPLETED' => self::OFFICE],
         ];
     }
@@ -113,26 +112,18 @@ enum ApplicationStatus: string
         return in_array($role, self::OFFICE, true);
     }
 
-    /** Status tempat kantor boleh mengunggah scan surat; unggahan saat APPROVED memindahkan ke READY_FOR_PICKUP. */
-    public const LETTER_UPLOAD_STATUSES = ['APPROVED', 'READY_FOR_PICKUP'];
+    /** Penggantian PDF tidak merilis ulang atau membuka kembali permohonan. */
+    public const LETTER_UPLOAD_STATUSES = ['READY_FOR_PICKUP', 'COMPLETED'];
 
     public static function canUploadLetter(string $status, ?string $role): bool
     {
         return in_array($role, self::OFFICE, true) && in_array($status, self::LETTER_UPLOAD_STATUSES, true);
     }
 
-    /** Status tujuan otomatis setelah unggah scan surat. */
-    public static function afterLetterUpload(string $status): string
-    {
-        return $status === self::Approved->value ? self::ReadyForPickup->value : $status;
-    }
-
-    /**
-     * Masuk antrean kerja peran ini: ada transisi yang boleh dipilih, atau kantor perlu mengunggah scan surat (APPROVED).
-     */
+    /** Masuk antrean kerja peran ini bila ada transisi yang boleh dipilih. */
     public static function awaitsAction(string $status, ?string $role, LetterType $type): bool
     {
-        return self::allowedFor($status, $role, $type) !== [] || ($status === self::Approved->value && self::canUploadLetter($status, $role));
+        return self::allowedFor($status, $role, $type) !== [];
     }
 
     public static function requiresNote(string $to): bool

@@ -20,8 +20,8 @@ export type Status = (typeof statuses)[number];
 /** Semua kode jenis surat yang dapat muncul di data (cermin `LetterType.php`). */
 export const serviceCodes = ["SKU", "DOMISILI", "SKTM", "KTP_KK", "BELUM_MENIKAH", "KERAMAIAN", "KEHILANGAN", "UMUM"] as const;
 export type ServiceCode = (typeof serviceCodes)[number];
-/** Jenis yang dapat diajukan; SKU dan KTP_KK hanya ada pada data lama (POST = 422). */
-export const offeredServiceCodes = ["DOMISILI", "SKTM", "BELUM_MENIKAH", "KERAMAIAN", "KEHILANGAN", "UMUM"] as const satisfies readonly ServiceCode[];
+/** Jenis yang dapat diajukan online; SKU dan KTP_KK hanya data lama, KERAMAIAN dilayani di Balai Desa (POST = 422). */
+export const offeredServiceCodes = ["DOMISILI", "SKTM", "BELUM_MENIKAH", "KEHILANGAN", "UMUM"] as const satisfies readonly ServiceCode[];
 export type OfferedServiceCode = (typeof offeredServiceCodes)[number];
 /** Pilihan baku pengajuan; validasi sebenarnya di `backend/app/Domain/LetterSubmission.php`. */
 export const dusunOptions = ["Watuagung", "Talang", "Sekar"] as const;
@@ -139,7 +139,7 @@ export interface ApprovalDecisionRequest {
 export interface ApprovalDecisionResponse {
   success: true;
   request_id: string;
-  status: "APPROVED" | "REJECTED";
+  status: "READY_FOR_PICKUP" | "REJECTED";
   letter_number: string | null;
   message: string;
 }
@@ -202,15 +202,17 @@ export interface StaffAttachment {
 export interface LetterFile {
   approved_at: string;
   /** null bila PDF otomatis belum berhasil dibuat; dibuat ulang saat diunduh. */
-  source: "generated" | "uploaded" | null;
+  source: "system" | "generated" | "uploaded" | null;
   sha256: string | null;
   file_updated_at: string | null;
   /** Diisi bila PDF dihapus oleh retensi (`applications:purge`); unduhan lalu 410. */
   file_purged_at: string | null;
-  /** Unggahan scan terakhir (masa unduh warga dihitung dari sini); null bila belum ada scan sejak fitur unduh. */
+  /** Waktu rilis; null pada surat lama yang belum dirilis. */
   ready_at?: string | null;
-  /** Batas unduhan warga (`ready_at` + LETTER_DOWNLOAD_DAYS); null bila bukan scan unggahan. */
+  /** Batas unduhan warga (`ready_at` + LETTER_DOWNLOAD_DAYS). */
   download_until?: string | null;
+  /** Batas berlaku (`ready_at` + LETTER_VALIDITY_DAYS); null pada surat lama. */
+  valid_until: string | null;
   /** Jumlah unduhan warga dari audit; tidak termasuk unduhan petugas. */
   download_count: number;
   /** Unduhan warga terakhir (ISO 8601); null bila belum pernah diunduh. */
@@ -221,9 +223,10 @@ export interface LetterVerification {
   number: string | null;
   jenis_surat: ServiceCode;
   issued_at: string;
-  /** Contoh "S*** W********". */
+  /** Nama lengkap untuk dicocokkan dengan surat cetak. */
   nama: string;
-  status: "valid" | "revoked";
+  valid_until: string | null;
+  status: "valid" | "expired" | "revoked";
 }
 /** Kode baru hanya ada di respons ini; jangan simpan ke storage atau log. */
 export interface StaffAccessCodeResponse {
@@ -405,10 +408,12 @@ export interface AttachmentReplaceResponse {
 export interface StatusReceipt extends Receipt {
   catatan?: string | null;
   letter_number?: string | null;
-  /** Mode API: true bila warga dapat mengunduh scan surat bertanda tangan sekarang (POST /applications/letter). */
+  /** Mode API: true bila warga dapat mengunduh surat sekarang (POST /applications/letter). */
   letter_available?: boolean;
-  /** ISO 8601 batas masa unduh; tetap diisi setelah lewat (letter_available false). null bila belum ada scan. */
+  /** ISO 8601 batas masa unduh; tetap diisi setelah lewat (letter_available false). */
   letter_available_until?: string | null;
+  /** Mode API: batas berlaku ISO 8601; null bila surat belum memiliki masa berlaku. Tidak tersedia pada demo. */
+  valid_until?: string | null;
 }
 export interface LetterNumber {
   number: string;

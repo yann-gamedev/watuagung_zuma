@@ -40,11 +40,19 @@ assert.equal(stored, beforeDemoRevision, "Demo revision must not change storage"
 const { submissionSchema, todayInJakarta } = await source("lib/validation.ts");
 const { offeredServiceCodes, dusunOptions, agamaOptions, kewarganegaraanOptions, statusPerkawinanOptions, pendidikanOptions } = await source("types/pelayanan.ts");
 const { services } = await source("lib/data.ts");
-assert.deepEqual(services.map((service) => service.code).sort(), [...offeredServiceCodes].sort());
+assert.deepEqual(services.filter((service) => service.mode === "online").map((service) => service.code).sort(), [...offeredServiceCodes].sort());
+assert.deepEqual(services.filter((service) => service.mode === "office").map((service) => service.code), ["KERAMAIAN"], "Crowd permit stays listed, served at the village hall");
 for (const service of services) {
-  assert.deepEqual(service.requirements, ["Scan KTP", "Scan Kartu Keluarga", "Scan Surat Pengantar RT/RW"]);
+  assert.deepEqual(service.requirements, service.mode === "office" ? ["KTP", "Kartu Keluarga", "Surat Pengantar RT/RW asli"] : ["Scan KTP", "Scan Kartu Keluarga", "Scan Surat Pengantar RT/RW"]);
   assert.ok(service.description && service.example);
 }
+const servicePage = readFileSync("app/pelayanan/[service]/page.tsx", "utf8");
+const officeBranch = servicePage.slice(servicePage.indexOf('item.mode === "office"'), servicePage.indexOf("<ApplicationForm"));
+assert.match(officeBranch, /Dilayani langsung di Balai Desa/);
+assert.match(officeBranch, /<HubungiPetugas \/>/);
+assert.match(officeBranch, /<ContactAddress \/>[\s\S]*<ContactHours \/>/);
+assert.doesNotMatch(officeBranch, /<(?:input|select|textarea|form)|ApplicationForm|FormField/, "Office service page has no input fields");
+assert.match(readFileSync("components/service-list.tsx", "utf8"), /office \? "Datang ke Balai Desa" : "Ajukan online"/);
 for (const file of ["components/service-list.tsx", "components/site.tsx", "app/page.tsx"]) {
   assert.doesNotMatch(readFileSync(file, "utf8"), /\/pelayanan\/(?:sku|ktp-kk)(?:[\/"'`])/);
 }
@@ -70,7 +78,6 @@ const specific = {
 };
 const payloads = offeredServiceCodes.map((jenis_surat) => {
   const data = { ...valid, jenis_surat, ...specific[jenis_surat] };
-  if (jenis_surat === "KERAMAIAN") for (const field of ["agama", "status_perkawinan", "pendidikan", "pekerjaan"]) delete data[field];
   return data;
 });
 async function rejected(data, field, message) {
@@ -97,7 +104,7 @@ const commonRequired = ["jenis_surat", "nama", "nik", "no_kk", "tempat_lahir", "
 const foreign = { nama_usaha: "Usaha contoh", jenis_usaha: "Jenis contoh", alamat_usaha: "Alamat usaha contoh", ...specific.KERAMAIAN, ...specific.KEHILANGAN, ...specific.UMUM };
 for (const data of payloads) {
   assert.equal(submissionSchema.safeParse(data).success, true, data.jenis_surat);
-  const required = [...commonRequired, ...Object.keys(specific[data.jenis_surat] || {}), ...(data.jenis_surat === "KERAMAIAN" ? [] : ["agama", "status_perkawinan", "pendidikan", "pekerjaan"])];
+  const required = [...commonRequired, ...Object.keys(specific[data.jenis_surat] || {}), "agama", "status_perkawinan", "pendidikan", "pekerjaan"];
   for (const field of required) {
     const missing = { ...data };
     delete missing[field];
@@ -120,18 +127,16 @@ for (const data of payloads) {
   assert.ok(!stored.includes(data.nama), "Do not persist identity");
 }
 for (const jenis_surat of ["SKU", "KTP_KK", "INVALID"]) await rejected({ ...valid, jenis_surat }, "jenis_surat", "Jenis surat ini tidak dapat diajukan secara online.");
+// Izin keramaian dilayani di Balai Desa: demo menolak dengan pesan yang sama dengan API (422).
+for (const data of [{ ...valid, jenis_surat: "KERAMAIAN" }, { ...valid, jenis_surat: "KERAMAIAN", ...specific.KERAMAIAN }])
+  await rejected(data, "jenis_surat", "Izin Keramaian dilayani langsung di Balai Desa.");
 for (const [field, options] of Object.entries({ dusun: dusunOptions, agama: agamaOptions, kewarganegaraan: kewarganegaraanOptions, status_perkawinan: statusPerkawinanOptions, pendidikan: pendidikanOptions, jenis_kelamin: ["Laki-laki", "Perempuan"] })) {
   for (const value of options) assert.equal(submissionSchema.safeParse({ ...valid, [field]: value }).success, true, `${field}: ${value}`);
   await rejected({ ...valid, [field]: "INVALID" }, field);
 }
 assert.equal(submissionSchema.safeParse({ ...valid, kewarganegaraan: undefined }).success, true, "API defaults citizenship to WNI");
-const event = payloads.find((data) => data.jenis_surat === "KERAMAIAN");
-for (const field of ["agama", "status_perkawinan", "pendidikan", "pekerjaan"]) {
-  assert.equal(submissionSchema.safeParse({ ...event, [field]: valid[field] }).success, true, "Event accepts optional personal data");
-  await rejected({ ...event, [field]: field === "pekerjaan" ? "x" : "INVALID" }, field);
-}
 for (const data of payloads) {
-  for (const [field, max] of Object.entries({ nama: 200, tempat_lahir: 200, alamat: 200, keperluan: 200, ...(data.jenis_surat !== "KERAMAIAN" && { pekerjaan: 60 }), ...Object.fromEntries(Object.keys(specific[data.jenis_surat] || {}).filter((field) => !field.startsWith("tanggal_")).map((field) => [field, field === "isi_keterangan" ? 500 : field === "barang_hilang" ? 200 : 120])) })) {
+  for (const [field, max] of Object.entries({ nama: 200, tempat_lahir: 200, alamat: 200, keperluan: 200, pekerjaan: 60, ...Object.fromEntries(Object.keys(specific[data.jenis_surat] || {}).filter((field) => !field.startsWith("tanggal_")).map((field) => [field, field === "isi_keterangan" ? 500 : field === "barang_hilang" ? 200 : 120])) })) {
     assert.equal(submissionSchema.safeParse({ ...data, [field]: "x".repeat(max) }).success, true, `${field}: max`);
     await rejected({ ...data, [field]: "x" }, field);
     await rejected({ ...data, [field]: "x".repeat(max + 1) }, field);
@@ -144,17 +149,7 @@ for (const telepon of ["012345678", "01234567890123", "+6212345678", "+621234567
 for (const tanggal_lahir of ["2000-02-31", "2001-02-29", "2026-04-31", "1899-12-31", addDays(today, 1), "invalid", "2026-1-01", "2000-02-29T00:00:00Z"])
   await rejected({ ...valid, tanggal_lahir }, "tanggal_lahir");
 for (const tanggal_lahir of ["1900-01-01", "2000-02-29", today]) assert.equal(submissionSchema.safeParse({ ...valid, tanggal_lahir }).success, true);
-for (let days = 0; days < 7; days++) assert.equal(submissionSchema.safeParse({ ...event, tanggal_selesai: addDays(today, days) }).success, true, "1..7 inclusive event days");
-await rejected({ ...event, tanggal_selesai: addDays(today, 7) }, "tanggal_selesai", "Izin keramaian paling lama 7 hari.");
-await rejected({ ...event, tanggal_mulai: addDays(today, -1) }, "tanggal_mulai", "Tanggal mulai tidak boleh sebelum hari ini.");
-await rejected({ ...event, tanggal_selesai: addDays(today, -1) }, "tanggal_selesai", "Tanggal selesai tidak boleh sebelum tanggal mulai.");
-for (const date of ["2026-02-29", "2028-02-30", "2026-04-31", "not a date", "2026-1-01"]) {
-  await rejected({ ...event, tanggal_mulai: date }, "tanggal_mulai");
-  await rejected({ ...event, tanggal_selesai: date }, "tanggal_selesai");
-}
-for (const [tanggal_mulai, tanggal_selesai] of [["2096-02-29", "2096-03-06"], ["2099-12-29", "2100-01-04"]])
-  assert.equal(submissionSchema.safeParse({ ...event, tanggal_mulai, tanggal_selesai }).success, true, "Leap/year rollover within seven days");
-// UTC still December 31; birth/event cutoffs must already use January 1 in Jakarta.
+// UTC still December 31; birth date cutoff must already use January 1 in Jakarta.
 const RealDate = Date;
 globalThis.Date = class extends RealDate {
   constructor(...args) { super(...(args.length ? args : ["2026-12-31T17:00:00Z"])); }
@@ -162,8 +157,6 @@ globalThis.Date = class extends RealDate {
 try {
   assert.equal(submissionSchema.safeParse({ ...valid, tanggal_lahir: "2027-01-01" }).success, true);
   await rejected({ ...valid, tanggal_lahir: "2027-01-02" }, "tanggal_lahir", "Tanggal lahir tidak boleh melewati hari ini.");
-  assert.equal(submissionSchema.safeParse({ ...event, tanggal_mulai: "2027-01-01", tanggal_selesai: "2027-01-07" }).success, true);
-  await rejected({ ...event, tanggal_mulai: "2026-12-31", tanggal_selesai: "2027-01-01" }, "tanggal_mulai", "Tanggal mulai tidak boleh sebelum hari ini.");
 } finally { globalThis.Date = RealDate; }
 const legacyReceipt = { success: true, request_id: "REQ-2026-PRIVACY", status: "SUBMITTED" };
 stored = JSON.stringify([{ ...legacyReceipt, ...valid, lampiran: ["KTP"], files: attachments }]);
@@ -219,7 +212,7 @@ for (const url of [undefined, "", "https://forms.gle/", "http://forms.gle/Abc", 
 process.env.NEXT_PUBLIC_DEMO_MODE = "false";
 modules.delete("services/pelayanan.ts");
 const { pelayananService: apiService, SubmissionValidationError: ApiSubmissionValidationError } = await source("services/pelayanan.ts");
-let apiReceipt = { success: true, request_id: "REQ-2026-APITEST", status: "SUBMITTED", jenis_surat: "SKTM", requires_neighborhood_approval: true, lookup_secret: "test-only", lampiran: Object.keys(attachments), letter_available: false, letter_available_until: null };
+let apiReceipt = { success: true, request_id: "REQ-2026-APITEST", status: "SUBMITTED", jenis_surat: "SKTM", requires_neighborhood_approval: true, lookup_secret: "test-only", lampiran: Object.keys(attachments), letter_available: false, letter_available_until: null, valid_until: null };
 let outcome = { status: 201 };
 const xhrs = [];
 let xhrCount = 0;
@@ -354,9 +347,10 @@ apiReceipt = { ...apiReceipt, lampiran: [] };
 delete apiReceipt.requires_neighborhood_approval;
 await assert.rejects(apiService.submit(valid, attachments), /requires_neighborhood_approval/);
 await assert.rejects(apiService.getStatus(apiReceipt.request_id, "test-only"), /requires_neighborhood_approval/);
-apiReceipt = { ...apiReceipt, requires_neighborhood_approval: false, letter_available: true, letter_available_until: "2026-12-19T13:00:00+07:00" };
+apiReceipt = { ...apiReceipt, requires_neighborhood_approval: false, letter_available: true, letter_available_until: "2026-12-19T13:00:00+07:00", valid_until: "2026-12-19T13:00:00+07:00" };
 assert.equal((await apiService.getStatus(apiReceipt.request_id, "test-only")).letter_available, true);
 assert.equal((await apiService.getStatus(apiReceipt.request_id, "test-only")).letter_available_until, apiReceipt.letter_available_until);
+assert.equal((await apiService.getStatus(apiReceipt.request_id, "test-only")).valid_until, apiReceipt.valid_until);
 const pdfBytes = new Blob(["%PDF-1.4 fictional signed scan"], { type: "application/pdf" });
 let downloadOutcome = 200;
 globalThis.fetch = async (url, options) => {
@@ -398,4 +392,4 @@ console.log("PASS: optional email precheck/120-character limit/consent, masking,
 execFileSync(process.execPath, ["scripts/test-attachments.mjs"], { stdio: "inherit" });
 execFileSync(process.execPath, ["scripts/test-public-news.mjs"], { stdio: "inherit" });
 execFileSync(process.execPath, ["scripts/test-public-businesses.mjs"], { stdio: "inherit" });
-console.log("PASS: citizen POST/blob downloads, body-only secret, first/repeat demo PDF, availability/deadline parsing, 404/410/429/500 errors; demo/API isolation, three required attachments, native XHR multipart fields/files, revision subsets with body-only secret and unchanged NEED_REVISION, demo revision blocked, upload progress, structured 422, timeout/network/413 errors, validated attachment receipts, six final payloads, per-type required/prohibited fields, enums and text limits, retired types rejected, valid calendar dates and Jakarta midnight, 1..7 inclusive event days, storage privacy/legacy sanitization without files, server workflow metadata, removed autofill, complaint URL, public news, public UMKM.");
+console.log("PASS: citizen POST/blob downloads, body-only secret, first/repeat demo PDF, availability/deadline parsing, 404/410/429/500 errors; demo/API isolation, three required attachments, native XHR multipart fields/files, revision subsets with body-only secret and unchanged NEED_REVISION, demo revision blocked, upload progress, structured 422, timeout/network/413 errors, validated attachment receipts, five online payloads, crowd permit office-only (no form, 422 message), per-type required/prohibited fields, enums and text limits, retired types rejected, valid calendar dates and Jakarta midnight, storage privacy/legacy sanitization without files, server workflow metadata, removed autofill, complaint URL, public news, public UMKM.");

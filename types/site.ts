@@ -17,7 +17,7 @@ export type SiteProfileDetails = {
   stats: { value: string; label: string; detail?: string }[];
   location: string;
   boundaries: { direction: string; place: string }[];
-  institutions: { name: string; description: string }[];
+  institutions: { name: string; description: string; logoPath?: string }[];
   source: string;
 };
 export type SiteProfile = SiteTextSection & { profileDetails?: SiteProfileDetails };
@@ -55,10 +55,10 @@ export type SiteSectionData = {
 export type SiteSectionInput = Omit<SiteSectionData, "videos"> & { videos: SiteVideosInput };
 export type EditableSiteSectionKey = "profile" | "contact" | "history" | "transparency" | "structure" | "videos";
 export type SiteSectionResponse<K extends SiteSectionKey = EditableSiteSectionKey> = {
-  [P in K]: { key: P; data: SiteSectionData[P]; updated_at: string } & (P extends "transparency" ? { document_urls: Record<string, string> } : P extends "structure" ? { image_url: string | null } : unknown);
+  [P in K]: { key: P; data: SiteSectionData[P]; updated_at: string } & (P extends "transparency" ? { document_urls: Record<string, string> } : P extends "structure" ? { image_url: string | null } : P extends "profile" ? { institution_image_urls: Record<string, string> } : unknown);
 }[K];
 export type SiteSectionUpdate<K extends EditableSiteSectionKey> = { data: SiteSectionInput[K] };
-/** Hanya structure: JPG/PNG/WebP ≤ 5 MB. PUT chartImagePath menerbitkan gambar. */
+/** Gambar profil/lembaga atau struktur: JPG/PNG/WebP. PUT path terkait menerbitkannya. */
 export type SiteSectionImageResponse = { path: string; url: string };
 /** Hanya transparency: PDF ≤ 10 MB. Simpan `path` ke budgets[].documentPath lalu PUT. */
 export type SiteSectionDocumentResponse = { path: string; url: string };

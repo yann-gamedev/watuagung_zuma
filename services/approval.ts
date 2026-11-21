@@ -29,7 +29,7 @@ const previewSchema = z.object({
 const decisionSchema = z.object({
   success: z.literal(true),
   request_id: z.string().min(1),
-  status: z.enum(["APPROVED", "REJECTED"]),
+  status: z.enum(["READY_FOR_PICKUP", "REJECTED"]),
   letter_number: z.string().nullable(),
   message: z.string(),
 });

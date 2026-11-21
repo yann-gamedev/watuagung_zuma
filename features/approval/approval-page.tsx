@@ -128,7 +128,7 @@ export function ApprovalPage() {
   }
   if (phase === "error") return <div className="center-card"><p className="error-box" role="alert">{error}</p><PanelLink /></div>;
   if (phase === "done" && result) {
-    const approved = result.status === "APPROVED";
+    const approved = result.status === "READY_FOR_PICKUP";
     return (
       <div className={`center-card ${styles.result}`} role="status">
         <h2 ref={resultHeading} tabIndex={-1}>{approved ? "Permohonan disetujui" : "Permohonan ditolak"}</h2>

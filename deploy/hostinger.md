@@ -234,6 +234,34 @@ Email status ke pemohon dikirim lewat SMTP Hostinger dari kotak surat domain sen
 
 ## I. Deploy rutin
 
+### Rilis QR V2 (21 November 2026)
+
+Instruksi berikut untuk operator manusia; perubahan dokumentasi tidak menghubungi atau mengubah server.
+
+1. Ikuti maintenance, jeda seluruh penulis/cron, dan backup terverifikasi pada langkah deploy rutin di bawah. Jangan mengganti `APP_KEY`.
+2. Edit **`backend/.env` yang benar-benar dipakai server**, bukan hanya `.env.production.example` di repo. Nilai lama eksplisit `LETTER_DOWNLOAD_DAYS=30` tetap mengalahkan bawaan baru sampai diubah:
+
+   ```dotenv
+   LETTER_DOWNLOAD_DAYS=7
+   LETTER_VALIDITY_DAYS=7
+   ```
+
+3. Dengan kode V2 terpasang dan penulis tetap dijeda, segarkan konfigurasi agar migration/runtime membaca env baru, lalu jalankan migration dan bangun ulang cache (skrip deploy rutin juga menjalankan migration/cache):
+
+   ```bash
+   cd ~/watuagung/backend
+   /opt/alt/php83/usr/bin/php artisan config:clear
+   /opt/alt/php83/usr/bin/php artisan migrate --force
+   /opt/alt/php83/usr/bin/php artisan config:cache
+   ```
+
+   Gunakan biner PHP produksi sesuai § C. Jangan membuka layanan/cron sebelum seluruh langkah deploy dan pemeriksaan selesai.
+4. Migrasi mengisi `valid_until = ready_at + 7 hari` hanya untuk surat lama dengan `ready_at` nonnull; sumber lama `generated`/`uploaded` dipertahankan. `APPROVED` lama tidak otomatis dirilis dan PDF lama tidak dibuat ulang. Masa unduh baru 7 hari dihitung dari `ready_at` asli: jendela lama 30 hari dapat langsung tertutup saat deploy, bukan mendapat 7 hari baru. Beri tahu petugas sebelum rilis.
+5. Pastikan persetujuan panel **dan** email langsung menghasilkan `READY_FOR_PICKUP`, PDF sistem terenkripsi, satu riwayat **Disetujui dan dirilis**, dan satu E1 status akhir. Upload bukan pemicu E1 lagi; `ApplicationTransition` memiliki transisi panel/email. Ganti PDF staff/admin hanya `READY_FOR_PICKUP`/`COMPLETED` selama masa berlaku, tanpa reset status/tenggat atau E1.
+6. `letters:expire-downloads` tetap menutup masa unduh, **tidak menghapus PDF pada hari ke-7**. Retensi tetap melindungi PDF kedua sumber selama unduhan masih hidup. Verifikasi publik menampilkan nama lengkap melalui bearer QR, `no-store` dan throttle; `revoked` mengalahkan `expired`, kedaluwarsa hanya `now > valid_until`. QR bukan TTE tersertifikasi; keputusan desa menghapus alur wajib tanda tangan basah/scan, bukan menambahkan sertifikat TTE.
+
+V2 mencakup backend/PDF dan kompatibilitas minimal validator respons. Pembaruan teks/layar/panel/privasi V3 terpisah; jangan menganggap deploy backend sudah memperbarui seluruh UI.
+
 Sebelum tiap rilis (deploy in-place, **bukan atomik**):
 
 1. Jadwalkan di luar jam layanan, tinjau migration dan uji pada salinan database target. Pastikan rilis tidak mengganti `APP_KEY`.

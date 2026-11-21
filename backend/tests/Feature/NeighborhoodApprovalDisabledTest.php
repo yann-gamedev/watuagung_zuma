@@ -81,7 +81,7 @@ class NeighborhoodApprovalDisabledTest extends TestCase
         $this->patchJson($url.'/status', ['status' => 'RW_APPROVED'])->assertUnprocessable();
         foreach ([
             [$staff, 'VERIFIED'], [$admin, 'PROCESSING'], [$staff, 'WAITING_APPROVAL'],
-            [$head, 'APPROVED'], [$admin, 'READY_FOR_PICKUP'], [$staff, 'COMPLETED'],
+            [$head, 'APPROVED'], [$staff, 'COMPLETED'],
         ] as [$user, $status]) {
             $from = $application->fresh()->status;
             if ($status === 'APPROVED') {
@@ -91,11 +91,10 @@ class NeighborhoodApprovalDisabledTest extends TestCase
                 }
             }
             $this->actAs($user);
-            // READY_FOR_PICKUP hanya lewat unggah scan surat.
-            ($status === 'READY_FOR_PICKUP' ? $this->uploadScan($application->request_id) : $this->patchJson($url.'/status', ['status' => $status]))
-                ->assertOk()->assertJsonPath('status', $status);
+            $final = $status === 'APPROVED' ? 'READY_FOR_PICKUP' : $status;
+            $this->patchJson($url.'/status', ['status' => $status])->assertOk()->assertJsonPath('status', $final);
             $this->assertDatabaseHas('application_events', [
-                'application_id' => $application->id, 'user_id' => $user->id, 'from_status' => $from, 'to_status' => $status,
+                'application_id' => $application->id, 'user_id' => $user->id, 'from_status' => $from, 'to_status' => $final,
             ]);
         }
         $this->assertDatabaseHas('letter_numbers', ['application_id' => $application->id, 'status' => 'issued']);

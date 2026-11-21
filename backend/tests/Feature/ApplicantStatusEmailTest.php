@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\LetterPayloads;
 use Tests\TestCase;
@@ -35,6 +36,7 @@ class ApplicantStatusEmailTest extends TestCase
         $this->withoutMiddleware(ThrottleRequests::class);
         config(['app.site_url' => 'https://desa.example.test']);
         Mail::fake();
+        Storage::fake('local');
         $this->staff = User::factory()->create(['role' => 'staff', 'name' => 'Petugas Fiktif']);
         $this->head = User::factory()->create(['role' => 'village_head', 'name' => 'Kepala Desa Fiktif']);
     }
@@ -82,13 +84,12 @@ class ApplicantStatusEmailTest extends TestCase
             "Status permohonan $id: Diverifikasi",
             "Status permohonan $id: Diproses",
             "Status permohonan $id: Menunggu persetujuan",
-            "Status permohonan $id: Disetujui",
             "Status permohonan $id: Siap diunduh",
             "Status permohonan $id: Selesai",
         ], $this->sentSubjects());
         Mail::assertSent(ApplicantStatusMail::class, fn (ApplicantStatusMail $mail) => $mail->hasTo(self::EMAIL));
         Mail::assertSent(ApplicantStatusMail::class, fn (ApplicantStatusMail $mail) => $mail->statusLabel === 'Siap diunduh'
-            && str_contains($mail->statusLine, 'sampai '.now()->addDays(30)->timezone('Asia/Jakarta')->day.' '));
+            && str_contains($mail->statusLine, 'sampai '.now()->addDays(7)->timezone('Asia/Jakarta')->day.' '));
     }
 
     public function test_expire_downloads_command_emails_the_applicant(): void
@@ -97,7 +98,7 @@ class ApplicantStatusEmailTest extends TestCase
         $this->toApproved($application);
         Sanctum::actingAs($this->staff, $this->staff->abilities());
         $this->uploadScan($application->request_id)->assertOk();
-        DB::table('letters')->where('application_id', $application->id)->update(['ready_at' => now()->subDays(31)]);
+        DB::table('letters')->where('application_id', $application->id)->update(['ready_at' => now()->subDays(8)]);
 
         $this->artisan('letters:expire-downloads')->assertSuccessful();
 
