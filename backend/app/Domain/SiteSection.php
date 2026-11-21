@@ -15,7 +15,7 @@ enum SiteSection: string
 
     public function allowsImages(): bool
     {
-        return $this === self::Structure;
+        return in_array($this, [self::Profile, self::Structure], true);
     }
 
     public function allowsDocuments(): bool

@@ -21,6 +21,7 @@ final class SiteSectionRules
     public const DOCUMENT_PATH = '/\Asite\/documents\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.pdf\z/';
 
     public const STRUCTURE_IMAGE_PATH = '/\Asite\/structure\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:webp|jpg)\z/';
+    public const PROFILE_IMAGE_PATH = '/\Asite\/profile\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:webp|jpg)\z/';
 
     public const VIDEO_SLOTS = ['profile', 'tutorial'];
 
@@ -53,9 +54,12 @@ final class SiteSectionRules
                 'payload.data.profileDetails.boundaries.*' => ['required', 'array:direction,place'],
                 'payload.data.profileDetails.boundaries.*.place' => $text(1000),
                 'payload.data.profileDetails.institutions' => ['present', 'array', 'list', 'max:20'],
-                'payload.data.profileDetails.institutions.*' => ['required', 'array:name,description'],
+                'payload.data.profileDetails.institutions.*' => ['required', 'array:name,description,logoPath'],
                 'payload.data.profileDetails.institutions.*.name' => $text(160),
                 'payload.data.profileDetails.institutions.*.description' => $text(2000),
+                'payload.data.profileDetails.institutions.*.logoPath' => ['sometimes', 'bail', 'required', 'string', 'regex:'.self::PROFILE_IMAGE_PATH, function ($attribute, $value, $fail) {
+                    if (! Storage::disk('public')->exists($value)) $fail('Logo belum diunggah.');
+                }],
                 'payload.data.profileDetails.source' => $text(1000),
             ];
             foreach (['Utara', 'Timur', 'Selatan', 'Barat'] as $index => $direction) {

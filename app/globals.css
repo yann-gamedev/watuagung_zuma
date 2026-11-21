@@ -1958,33 +1958,33 @@ p {
   background: var(--sage); color: var(--ink); font-size: 14px; line-height: 1.4;
 }
 .profile-chip-wrap { min-width: 0; max-width: 100%; }
-.profile-institutions .profile-chips { gap: 7px 8px; }
-.profile-institutions .profile-chip-button { padding: 8px 12px; }
-.profile-chip-button {
-  justify-content: flex-start; text-align: left; cursor: pointer;
-  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+.profile-institution-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.profile-institution-row {
+  min-width: 0; padding: 0 2px; border-bottom: 1px solid var(--line);
 }
-.profile-chip-button:hover, .profile-chip-button[aria-expanded="true"] {
-  border-color: var(--forest); background: var(--forest); color: var(--white);
+.profile-institution-row:first-child .profile-institution-row-main { padding-top: 10px; }
+.profile-institution-row:last-child { border-bottom: 0; }
+.profile-institution-row:last-child .profile-institution-row-main { padding-bottom: 2px; }
+.profile-institution-row-main { display: flex; min-width: 0; align-items: center; gap: 14px; padding: 12px 0; }
+.profile-institution-icon {
+  display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center;
+  color: var(--forest);
 }
-.profile-chip-button:hover { transform: translateY(-1px); }
-.profile-chip-button:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
-.profile-institution-tooltip {
-  position: fixed; z-index: 1000; display: flex; flex-direction: column; gap: 6px;
-  box-sizing: border-box; max-width: calc(100vw - 24px); padding: 14px;
-  border: 1px solid var(--line); border-radius: 12px;
-  background: var(--sage); color: var(--ink);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 14%, transparent);
-  opacity: 0; visibility: hidden; pointer-events: none; transform: scale(.97);
-  transition: opacity 150ms ease, transform 150ms ease, visibility 0s linear 150ms;
-  transform-origin: top center;
+.profile-institution-logo { width: 36px; height: 36px; flex: 0 0 36px; object-fit: contain; }
+.profile-institution-name { flex: 1; min-width: 0; color: var(--forest); font-size: 15px; font-weight: 700; line-height: 1.4; }
+.profile-institution-toggle {
+  display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center;
+  border: 0; border-radius: 50%; background: transparent; color: var(--forest); cursor: pointer;
+  transition: background-color 160ms ease;
 }
-.profile-institution-tooltip[data-side="above"] { transform-origin: bottom center; }
-.profile-institution-tooltip.is-open { opacity: 1; visibility: visible; pointer-events: auto; transform: scale(1); animation: profile-tooltip-enter 140ms ease both; }
-.profile-institution-tooltip.is-open { transition-delay: 0s; }
-.profile-institution-tooltip strong { color: var(--forest); font-size: 14px; font-weight: 700; line-height: 1.4; }
-.profile-institution-tooltip span { color: var(--ink); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
-@keyframes profile-tooltip-enter { from { opacity: 0; transform: scale(.97) translateY(3px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+.profile-institution-toggle:hover { background: color-mix(in srgb, var(--forest) 9%, white); }
+.profile-institution-toggle:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+.profile-institution-toggle svg { transition: transform 220ms ease; }
+.profile-institution-row.is-expanded .profile-institution-toggle svg { transform: rotate(180deg); }
+.profile-institution-description-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 220ms ease; }
+.profile-institution-row.is-expanded .profile-institution-description-wrap { grid-template-rows: 1fr; }
+.profile-institution-description { min-height: 0; overflow: hidden; margin: 0; padding: 0 0 0 38px; color: var(--ink); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.profile-institution-row.is-expanded .profile-institution-description { padding-bottom: 14px; }
 .profile-themes svg { width: 17px; height: 17px; color: var(--forest); }
 .profile-region-location { margin: 8px 0 24px; }
 .profile-region-location h3 { color: var(--muted); }
@@ -2009,6 +2009,7 @@ p {
 .profile-source { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.5; }
 .profile-region-source { font-size: 13px; }
 .profile-card:focus-within { outline: 3px solid var(--forest); outline-offset: 3px; }
+.profile-institutions:focus-within { outline: none; }
 @keyframes profile-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @supports (animation-timeline: view()) {
   .profile-card { animation-timeline: view(); animation-range: entry 0% entry 28%; }

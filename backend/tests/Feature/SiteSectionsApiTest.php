@@ -196,6 +196,28 @@ class SiteSectionsApiTest extends TestCase
         $this->assertSame($before, SiteSection::find('profile')->getRawOriginal());
     }
 
+    public function test_profile_institution_logo_upload_public_url_and_cleanup(): void
+    {
+        Storage::fake('public', ['url' => 'https://desa.example/media']);
+        $this->act('admin');
+        $uploaded = $this->post('/api/v1/staff/site/profile/image', ['file' => $this->image()], ['Accept' => 'application/json'])
+            ->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+        $path = $uploaded->json('path');
+        $this->assertMatchesRegularExpression(SiteSectionRules::PROFILE_IMAGE_PATH, $path);
+        $this->assertSame('https://desa.example/media/'.$path, $uploaded->json('url'));
+
+        $data = $this->profile();
+        $data['profileDetails']['institutions'][0]['logoPath'] = $path;
+        $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertOk()->assertJsonPath('data', $data);
+        $public = $this->getJson('/api/v1/site/profile')->assertOk();
+        $this->assertSame([$path => 'https://desa.example/media/'.$path], $public->json('institution_image_urls'));
+        Storage::disk('public')->assertExists($path);
+
+        unset($data['profileDetails']['institutions'][0]['logoPath']);
+        $this->putJson('/api/v1/staff/site/profile', ['data' => $data])->assertOk();
+        Storage::disk('public')->assertMissing($path);
+    }
+
     public function test_structure_validation_bounds_unknown_fields_controls_and_paths(): void
     {
         Storage::fake('public');
@@ -514,7 +536,9 @@ class SiteSectionsApiTest extends TestCase
                 ->assertHeader('Cache-Control', 'no-store, private')->json('data');
             $this->assertSame(trim($data[array_key_first($data)]), $saved[array_key_first($data)]);
             $response = $this->getJson('/api/v1/site/'.$key)->assertOk()->assertHeader('Cache-Control', 'max-age=60, public');
-            $this->assertSame(['key', 'data', 'updated_at'], array_keys($response->json()));
+            $this->assertSame($key === 'profile'
+                ? ['key', 'data', 'updated_at', 'institution_image_urls']
+                : ['key', 'data', 'updated_at'], array_keys($response->json()));
             $this->assertSame($saved, $this->getJson('/api/v1/staff/site/'.$key)->assertOk()->json('data'));
             $this->assertSame($staff->id, SiteSection::find($key)->updated_by);
         }
@@ -741,13 +765,13 @@ class SiteSectionsApiTest extends TestCase
         $this->assertDatabaseCount('site_sections', 0);
     }
 
-    public function test_images_disabled_except_structure_without_storing_originals(): void
+    public function test_images_enabled_only_for_profile_and_structure_without_storing_originals(): void
     {
         Storage::fake('public');
         $this->act();
         foreach (SectionKey::cases() as $key) {
-            $this->assertSame($key === SectionKey::Structure, $key->allowsImages());
-            if ($key === SectionKey::Structure) continue;
+            $this->assertSame(in_array($key, [SectionKey::Profile, SectionKey::Structure], true), $key->allowsImages());
+            if ($key->allowsImages()) continue;
             $this->post('/api/v1/staff/site/'.$key->value.'/image', ['file' => UploadedFile::fake()->create('fiktif.jpg', 10, 'image/jpeg')], ['Accept' => 'application/json'])
                 ->assertUnprocessable()->assertJsonValidationErrors('file')->assertHeader('Cache-Control', 'no-store, private');
         }

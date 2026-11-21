@@ -20,7 +20,10 @@ export const profileDetailsSchema = z.object({
   location: text(1000),
   boundaries: z.array(z.object({ direction: z.enum(["Utara", "Timur", "Selatan", "Barat"]), place: text(1000) }).strict()).length(4)
     .refine((items) => items.every((item, i) => item.direction === ["Utara", "Timur", "Selatan", "Barat"][i]), "Urutan batas harus Utara, Timur, Selatan, Barat."),
-  institutions: rows(z.object({ name: text(160), description: text(2000) }).strict(), 20),
+  institutions: rows(z.object({
+    name: text(160), description: text(2000),
+    logoPath: z.string().regex(/^site\/profile\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:webp|jpg)$/, "Unggah ulang logo lembaga." ).optional(),
+  }).strict(), 20),
   source: text(1000),
 }).strict();
 const optional = (max: number) => z.string().max(max, `Maksimal ${max} karakter.`).regex(/^[^\p{Cc}]*$/u, noControls);
@@ -87,7 +90,7 @@ export const siteSchemas = {
 export const siteInputSchemas = { ...siteSchemas, videos: videosInputSchema };
 export type TextSiteKey = "profile" | "history";
 /** documentUrls hanya diisi server untuk transparency: { [documentPath]: URL publik }. */
-export type SiteEnvelope<K extends EditableSiteSectionKey> = { data: SiteSectionData[K]; updated_at: string; documentUrls: Record<string, string>; imageUrl?: string | null };
+export type SiteEnvelope<K extends EditableSiteSectionKey> = { data: SiteSectionData[K]; updated_at: string; documentUrls: Record<string, string>; imageUrl?: string | null; institutionImageUrls?: Record<string, string> };
 const httpUrl = z.string().refine((value) => /^https?:\/\//.test(value) && URL.canParse(value));
 
 export function parseSiteEnvelope<K extends EditableSiteSectionKey>(key: K, value: unknown): SiteEnvelope<K> {
@@ -95,10 +98,11 @@ export function parseSiteEnvelope<K extends EditableSiteSectionKey>(key: K, valu
     key: z.literal(key), data: siteSchemas[key], updated_at: z.string().datetime({ offset: true }),
     ...(key === "transparency" ? { document_urls: z.record(httpUrl) } : {}),
     ...(key === "structure" ? { image_url: httpUrl.nullable() } : {}),
+    ...(key === "profile" ? { institution_image_urls: z.record(httpUrl) } : {}),
   }).strict().safeParse(value);
   if (!result.success) throw new Error("Format bagian situs tidak valid. Data belum diubah.");
-  const { data, updated_at, document_urls, image_url } = result.data as { data: SiteSectionData[K]; updated_at: string; document_urls?: Record<string, string>; image_url?: string | null };
-  return { data, updated_at, documentUrls: document_urls ?? {}, ...(key === "structure" ? { imageUrl: image_url } : {}) };
+  const { data, updated_at, document_urls, image_url, institution_image_urls } = result.data as { data: SiteSectionData[K]; updated_at: string; document_urls?: Record<string, string>; image_url?: string | null; institution_image_urls?: Record<string, string> };
+  return { data, updated_at, documentUrls: document_urls ?? {}, ...(key === "structure" ? { imageUrl: image_url } : {}), ...(key === "profile" ? { institutionImageUrls: institution_image_urls ?? {} } : {}) };
 }
 export function parseSiteSection<K extends EditableSiteSectionKey>(key: K, value: unknown): SiteSectionData[K] {
   return parseSiteEnvelope(key, value).data;
@@ -140,6 +144,15 @@ export async function uploadStructureImage(request: AdminRequest, file: File): P
   const result = z.object({ path: chartPath, url: httpUrl }).strict()
     .safeParse(await request<unknown>("/staff/site/structure/image", { method: "POST", body }));
   if (!result.success) throw new Error("Respons unggah tidak valid. Coba lagi.");
+  return result.data;
+}
+const institutionLogoPath = z.string().regex(/^site\/profile\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:webp|jpg)$/);
+export async function uploadInstitutionLogo(request: AdminRequest, file: File): Promise<SiteSectionImageResponse> {
+  const body = new FormData();
+  body.append("file", file);
+  const result = z.object({ path: institutionLogoPath, url: httpUrl }).strict()
+    .safeParse(await request<unknown>("/staff/site/profile/image", { method: "POST", body }));
+  if (!result.success) throw new Error("Respons unggah logo tidak valid. Coba lagi.");
   return result.data;
 }
 /** 422 (bukan PDF / > 10 MB) dilempar sebagai AdminValidationError dengan field `file`. */

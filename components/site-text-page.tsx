@@ -6,7 +6,7 @@ import { PageHeading } from "@/components/site";
 import { ProfileLinks } from "@/components/profile-links";
 import { ProfileInstitutionChips } from "@/components/profile-institution-chips";
 import { SiteVideo } from "@/components/site-video";
-import { getSiteSection } from "@/services/site";
+import { getSiteEnvelope } from "@/services/site";
 import type { SiteProfile } from "@/types/site";
 
 type ParsedLeader = {
@@ -225,11 +225,15 @@ export function SiteTextPage({ sectionKey, initialPage }: {
   initialPage: SiteProfile & { title: string; eyebrow: string };
 }) {
   const [data, setData] = useState<SiteProfile | null>(null);
+  const [institutionImageUrls, setInstitutionImageUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let active = true;
-    getSiteSection(sectionKey).then((result) => {
-      if (active && result) setData(result);
+    getSiteEnvelope(sectionKey).then((result) => {
+      if (active && result) {
+        setData(result.data);
+        setInstitutionImageUrls(result.institutionImageUrls ?? {});
+      }
     });
     return () => { active = false; };
   }, [sectionKey]);
@@ -288,7 +292,10 @@ export function SiteTextPage({ sectionKey, initialPage }: {
             </article>
             <article className="content-card profile-card profile-institutions">
               <h2><Landmark aria-hidden="true" />{page.blocks[2]?.title ?? initialPage.blocks[2]?.title}</h2>
-              <ProfileInstitutionChips key={JSON.stringify(details.institutions)} items={details.institutions} />
+              <ProfileInstitutionChips key={JSON.stringify(details.institutions)} items={details.institutions.map((institution) => ({
+                ...institution,
+                logoUrl: institution.logoPath ? institutionImageUrls[institution.logoPath] : undefined,
+              }))} />
               <small className="profile-source">{details.source}</small>
             </article>
             {page.blocks.slice(3).map((block, index) => (
