@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { postCategories } from "@/types/posts";
+import { postCategories, socialPlatforms, type SocialLinkColumn, type SocialPlatform, type StaffPostInput } from "@/types/posts";
+import { isSocialLink, socialPlatformInfo } from "@/lib/social-links";
 
 export const categoryLabels = {
   kegiatan_desa: "Kegiatan desa", pemerintahan: "Pemerintahan", pembangunan: "Pembangunan",
@@ -16,7 +17,18 @@ export const postSchema = z.object({
   category_label: z.string(), summary: z.string(), status: z.enum(["draft", "published"]),
   published_at: z.string().datetime({ offset: true }).nullable(), updated_at: z.string().datetime({ offset: true }), cover_url: mediaUrl,
 });
-export const postDetailSchema = postSchema.extend({ body: z.string(), images: z.array(postImageSchema).default([]), created_at: z.string().datetime({ offset: true }) });
+const socialColumns = Object.fromEntries(socialPlatforms.map((platform) => [`${platform}_url`, z.string().nullable().default(null)])) as Record<SocialLinkColumn, z.ZodDefault<z.ZodNullable<z.ZodString>>>;
+export const postDetailSchema = postSchema.extend({
+  body: z.string(), images: z.array(postImageSchema).default([]), created_at: z.string().datetime({ offset: true }),
+  show_copyright: z.boolean().default(false), ...socialColumns,
+});
+/** Nilai formulir: tautan kosong = "" (dikirim lalu disimpan server sebagai null). */
+export type PostFormValue = Required<Pick<StaffPostInput, "title" | "category" | "summary" | "body" | "status" | "show_copyright">> & Record<SocialLinkColumn, string>;
+function socialLinkInput(platform: SocialPlatform) {
+  const { label, hosts } = socialPlatformInfo[platform];
+  return z.string().trim().max(500, `Tautan ${label} maksimal 500 karakter.`)
+    .refine((value) => value === "" || isSocialLink(platform, value), `Tautan ${label} harus diawali https:// dan mengarah ke ${hosts[0]}.`);
+}
 export const postsPageSchema = z.object({
   data: z.array(postSchema), current_page: z.number().int().positive(), last_page: z.number().int().positive(), total: z.number().int().nonnegative(),
 });
@@ -26,6 +38,11 @@ export const postInputSchema = z.object({
   summary: z.string().trim().min(1, "Ringkasan wajib diisi.").max(300, "Ringkasan maksimal 300 karakter."),
   body: z.string().trim().min(1, "Isi wajib diisi.").max(20000, "Isi maksimal 20.000 karakter."),
   status: z.enum(["draft", "published"]),
+  show_copyright: z.boolean(),
+  instagram_url: socialLinkInput("instagram"),
+  tiktok_url: socialLinkInput("tiktok"),
+  youtube_url: socialLinkInput("youtube"),
+  facebook_url: socialLinkInput("facebook"),
 });
 export function postDate(value: string | null) {
   return value ? new Date(value).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }) : "Belum terbit";

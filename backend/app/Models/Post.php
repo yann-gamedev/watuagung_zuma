@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Domain\PostCategory;
+use App\Domain\SocialPlatform;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -13,10 +14,23 @@ class Post extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['slug', 'title', 'category', 'summary', 'body', 'status', 'published_at', 'created_by', 'updated_by'];
+    protected $fillable = ['slug', 'title', 'category', 'summary', 'body', 'status', 'published_at', 'created_by', 'updated_by',
+        'show_copyright', 'instagram_url', 'tiktok_url', 'youtube_url', 'facebook_url'];
+
+    protected $attributes = ['show_copyright' => false];
 
     protected function casts(): array {
-        return ['category' => PostCategory::class, 'published_at' => 'datetime'];
+        return ['category' => PostCategory::class, 'published_at' => 'datetime', 'show_copyright' => 'boolean'];
+    }
+
+    /** Tautan yang terisi saja, urut tetap Instagram, TikTok, YouTube, Facebook. @return array<string, string> */
+    public function socialLinks(): array {
+        $links = [];
+        foreach (SocialPlatform::cases() as $platform) {
+            $url = $this->{$platform->column()};
+            if (is_string($url) && $url !== '') $links[$platform->value] = $url;
+        }
+        return $links;
     }
 
     public function scopePublished(Builder $query): void {

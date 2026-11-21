@@ -10,6 +10,10 @@ export const postCategories = [
 ] as const;
 export type PostCategory = (typeof postCategories)[number];
 export type PostStatus = "draft" | "published";
+/** Tautan unggahan berita yang sama di media sosial (opsional per berita). Server membatasi https + host resmi. */
+export const socialPlatforms = ["instagram", "tiktok", "youtube", "facebook"] as const;
+export type SocialPlatform = (typeof socialPlatforms)[number];
+export type SocialLinkColumn = `${SocialPlatform}_url`;
 
 /** Item GET /posts. `body` hanya di detail; teks biasa, render sebagai teks (bukan HTML). */
 export interface PublicPost {
@@ -33,6 +37,10 @@ export interface StaffPostImage extends PublicPostImage {
 export interface PublicPostDetail extends PublicPost {
   body: string;
   images: PublicPostImage[];
+  /** true: tampilkan "© {tahun terbit} KIM Desa Watuagung" di akhir berita. */
+  show_copyright: boolean;
+  /** Hanya platform yang terisi; `{}` bila tidak ada. */
+  social_links: Partial<Record<SocialPlatform, string>>;
 }
 export interface PublicPostsPage {
   data: PublicPost[];
@@ -48,10 +56,11 @@ export interface StaffPost extends Omit<PublicPost, "published_at"> {
   published_at: string | null;
   updated_at: string;
 }
-export interface StaffPostDetail extends StaffPost {
+export interface StaffPostDetail extends StaffPost, Record<SocialLinkColumn, string | null> {
   body: string;
   images: StaffPostImage[];
   created_at: string;
+  show_copyright: boolean;
 }
 export interface StaffPostsPage {
   data: StaffPost[];
@@ -84,4 +93,11 @@ export interface StaffPostInput {
   summary: string;
   body: string;
   status: PostStatus;
+  /** Opsional; bawaan false. */
+  show_copyright?: boolean;
+  /** Opsional; null atau "" mengosongkan. https dan host resmi platform, maks. 500 karakter (lainnya 422). */
+  instagram_url?: string | null;
+  tiktok_url?: string | null;
+  youtube_url?: string | null;
+  facebook_url?: string | null;
 }
