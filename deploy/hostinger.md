@@ -310,7 +310,7 @@ Di server: `php artisan app:preflight --production` → **0 GAGAL** (§ Pemeriks
 
 ```bash
 bash deploy/smoke-test.sh example.id
-# Mode S (§ N): tambahkan --admin panel.example.id, dan --admin-dir <folder> bila docroot bersarang.
+# Mode S (§ N): tambahkan --admin admin.example.id, dan --admin-dir <folder> bila docroot bersarang.
 # Mode P bersarang: --admin-dir <folder> saja.
 curl -sI https://example.id/ | grep -Ei 'strict-transport|content-security|x-frame|cache-control'
 for p in /persetujuan/ /verifikasi-email/ /berhenti-email/; do   # E4: harus no-referrer (token di URL)
@@ -367,7 +367,7 @@ Domain awal `desawatuagung.com` (dipilih di onboarding hPanel 12 November 2026) 
    | Kunci | Nilai baru |
    |---|---|
    | `APP_URL` | `https://<domain-baru>` |
-   | `FRONTEND_ORIGINS` | `https://<domain-baru>` (ditambah `,https://panel.<domain-baru>` bila panel di subdomain, § N) |
+   | `FRONTEND_ORIGINS` | `https://<domain-baru>` (ditambah `,https://admin.<domain-baru>` bila panel di subdomain, § N) |
    | `LETTER_VERIFY_URL` | `https://<domain-baru>/verifikasi/` |
    | `SITE_URL` | `https://<domain-baru>` |
 
@@ -378,7 +378,7 @@ Domain awal `desawatuagung.com` (dipilih di onboarding hPanel 12 November 2026) 
 
 ## N. Panel di subdomain
 
-Panel petugas disajikan dari `https://panel.desawatuagung.com/admin/` memakai arsip `out/` yang sama; API tetap di domain utama. Rencana dan keputusan D1–D7: [docs/PROMPTS-ADMIN-SUBDOMAIN.md](../docs/PROMPTS-ADMIN-SUBDOMAIN.md), [docs/deploy-plan.md](../docs/deploy-plan.md) § Panel di subdomain. Origin terpisah membatasi pembacaan token sesi panel oleh skrip di situs publik; ini bukan penyembunyian dan tidak menggantikan kata sandi kuat, throttle login, atau CSP.
+Panel petugas disajikan dari `https://admin.desawatuagung.com/admin/` (docroot `public_html/panel-admin`, dibuat 21 November 2026) memakai arsip `out/` yang sama; API tetap di domain utama. Rencana dan keputusan D1–D7: [docs/PROMPTS-ADMIN-SUBDOMAIN.md](../docs/PROMPTS-ADMIN-SUBDOMAIN.md), [docs/deploy-plan.md](../docs/deploy-plan.md) § Panel di subdomain. Origin terpisah membatasi pembacaan token sesi panel oleh skrip di situs publik; ini bukan penyembunyian dan tidak menggantikan kata sandi kuat, throttle login, atau CSP.
 
 ### Mode skrip
 
@@ -386,7 +386,7 @@ Panel petugas disajikan dari `https://panel.desawatuagung.com/admin/` memakai ar
 |---|---|---|---|
 | L (lama) | kosong | kosong | Persis seperti sebelumnya: satu docroot, `.htaccess` utama tanpa blok `admin-subdomain`. **Menghapus** folder lain di `public_html`, termasuk docroot subdomain bersarang. |
 | P (lindungi, tahap 1) | docroot subdomain | kosong | Docroot subdomain tidak disentuh dan dikecualikan dari `rsync --delete` utama; bila bersarang, `public_html/<folder>/` ditolak (403) dari host utama. `/admin/` utama tetap disajikan, tanpa redirect. |
-| S (subdomain, tahap 2) | docroot subdomain | `https://panel.<domain>` | Subdomain diisi arsip + `admin.htaccess`; `/admin` domain utama dialihkan 302 (query ikut) dan folder `admin/` utama dihapus. |
+| S (subdomain, tahap 2) | docroot subdomain | `https://admin.<domain>` | Subdomain diisi arsip + `admin.htaccess`; `/admin` domain utama dialihkan 302 (query ikut) dan folder `admin/` utama dihapus. |
 
 `ADMIN_ORIGIN` tanpa `ADMIN_PUBLIC_HTML` → GAGAL. Validasi sebelum maintenance: `ADMIN_PUBLIC_HTML` ada (`realpath -e`), bukan `PUBLIC_HTML`, tidak berisi `PUBLIC_HTML`, tidak di dalam/berisi repo; bila di dalam `public_html` harus **anak langsung** dengan nama yang tidak bentrok dengan isi arsip (`admin`, `_next`, `berita`, `umkm`, `pelayanan`, `storage`, `api`, dll.); symlink di `public_html` yang menunjuk docroot sejajar ditolak. `ADMIN_ORIGIN` huruf kecil `https://<sub>.<domain>` tanpa path/port; setelah konfigurasi dibaca, wajib subdomain langsung host `APP_URL` **dan** tercantum di `FRONTEND_ORIGINS` (gagal = layanan tetap maintenance). Mode S mewajibkan `admin/index.html` di arsip, atau di docroot subdomain bila tanpa `--frontend`.
 
@@ -394,15 +394,15 @@ Docroot bersarang membuat `.htaccess` utama ikut dibaca untuk subdomain. `admin.
 
 ### Langkah (manusia)
 
-1. **Tahap 1, saat subdomain dibuat.** hPanel → Domains → Subdomains: buat `panel`, catat docroot (sering `public_html/panel`; folder sejajar lebih aman bila hPanel mengizinkan). Pasang SSL untuk `panel.<domain>`; cek `nslookup panel.<domain>`. **Mulai saat ini setiap deploy memakai mode P** (`ADMIN_PUBLIC_HTML=<docroot>`), atau docroot bersarang terhapus.
-2. **`backend/.env`:** `FRONTEND_ORIGINS=https://<domain>,https://panel.<domain>`; `SITE_URL` tetap domain utama. `php artisan config:clear` lalu `php artisan app:preflight --production` → 0 GAGAL.
-3. **Build di laptop** dengan `NEXT_PUBLIC_SITE_URL=https://<domain>` dan `NEXT_PUBLIC_ADMIN_URL=https://panel.<domain>` selain env § G langkah 7 (tautan lintas origin, sesi A1).
+1. **Tahap 1, saat subdomain dibuat.** hPanel → Domains → Subdomains: buat `admin` dengan **folder kustom** `panel-admin`. **Jangan pakai folder bawaan `public_html/admin`**: itu folder panel situs utama, deploy mode S akan menghapusnya, dan subdomain tidak bisa memuat `/_next/`. Skrip menolak nama itu. Pasang SSL untuk `admin.<domain>`; cek `nslookup admin.<domain>`. **Mulai saat ini setiap deploy memakai mode P** (`ADMIN_PUBLIC_HTML=<docroot>`), atau docroot bersarang terhapus.
+2. **`backend/.env`:** `FRONTEND_ORIGINS=https://<domain>,https://admin.<domain>`; `SITE_URL` tetap domain utama. `php artisan config:clear` lalu `php artisan app:preflight --production` → 0 GAGAL.
+3. **Build di laptop** dengan `NEXT_PUBLIC_SITE_URL=https://<domain>` dan `NEXT_PUBLIC_ADMIN_URL=https://admin.<domain>` selain env § G langkah 7 (tautan lintas origin, sesi A1).
 4. **Tahap 2, deploy mode S** (prosedur § I, termasuk maintenance, backup, dan penulis dijeda):
 
    ```bash
    cd ~/watuagung
    APP_DIR=$HOME/watuagung PUBLIC_HTML=$HOME/domains/example.id/public_html \
-   ADMIN_PUBLIC_HTML=$HOME/domains/example.id/public_html/panel ADMIN_ORIGIN=https://panel.example.id \
+   ADMIN_PUBLIC_HTML=$HOME/domains/example.id/public_html/panel-admin ADMIN_ORIGIN=https://admin.example.id \
    PHP_BIN=/opt/alt/php83/usr/bin/php COMPOSER_BIN=$HOME/bin/composer-cli \
    DEPLOY_BACKUP_CONFIRMED=1 DEPLOY_WRITERS_PAUSED=1 \
    bash deploy/hostinger-deploy.sh <tag> --frontend ~/watuagung-web.tar.gz

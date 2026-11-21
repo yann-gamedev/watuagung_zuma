@@ -31,8 +31,8 @@ Rencana: `docs/PROMPTS-ADMIN-SUBDOMAIN.md`; pelaksanaan deploy: `deploy/hostinge
 
 | # | Keputusan | Pilihan | Status |
 |---|---|---|---|
-| D1 | Nama subdomain | `panel.desawatuagung.com` | Ditetapkan prompt A2 |
-| D2 | Bentuk build | Satu build `out/` untuk dua docroot; panel di `https://panel.<domain>/admin/`, akar subdomain → `/admin/` | Ditetapkan prompt A2 |
+| D1 | Nama subdomain | `admin.desawatuagung.com`, docroot `public_html/panel-admin` | Diganti pengguna 21 November 2026 (rencana awal `panel.`). Dibuat di hPanel 21 November; docroot bawaan `public_html/admin` bentrok dengan panel situs utama, jadi subdomain dibuat ulang dengan folder `panel-admin`. SSL aktif |
+| D2 | Bentuk build | Satu build `out/` untuk dua docroot; panel di `https://admin.<domain>/admin/`, akar subdomain → `/admin/` | Ditetapkan prompt A2 |
 | D3 | Basic Auth subdomain | **Ditunda**; bagian Basic Auth di `deploy/hostinger/admin.htaccess` dikomentari. hPanel Password Protect akan ditimpa deploy, jadi aktivasi lewat template repo | Ditetapkan prompt A2 |
 | D4 | CSP subdomain | Report-Only dulu, ditegakkan setelah ±1 minggu tanpa pelanggaran (A4) | Ditetapkan prompt A2 |
 | D5 | `/persetujuan/`, `/verifikasi-email/` | Tetap di domain utama | Rekomendasi rencana; prompt A2 tidak membahas, implementasi deploy tidak memindahkannya. **Konfirmasi Tech Lead** |
