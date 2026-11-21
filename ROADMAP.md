@@ -18,6 +18,7 @@
 | M5 — CMS | API berita, sampul, panel C3 dan halaman publik C4 sudah di-commit | CORS DELETE, konten lain dan keputusan produksi K2/K4 |
 | M6 — Lampiran persyaratan | Dihidupkan kembali 16 Nov 2026: API wajib 3 dokumen terenkripsi; 17 Nov akses petugas teraudit, ganti saat NEED_REVISION, purge 30 hari | Layar warga L3, tampilan petugas L4, `post_max_size` 20M dan cron `attachments:purge` di Hostinger |
 | M7 — PDF/QR | Template sementara selesai; S1 (enam jenis surat final, nomor `470/{urut}/424.314.2.02/{tahun}`) selesai di backend 8 Nov 2026 | S2 template resmi (S3 formulir warga dan S4 panel petugas selesai 8 Nov 2026); uji browser Laravel dan pindai QR; TTE di luar lingkup |
+| Email notifikasi (E1–E4) | E1 (#92), E2 (#93), E3 (#94/#95) di main; E4 layar persetujuan + pengaturan di branch `feat/email-head-approval-ui` (21 Nov 2026) | Deploy, cek header no-referrer di Hostinger, aktivasi SMTP + cron antrean |
 | M8 — Produksi | Belum siap operasional | Infrastruktur, privasi/retensi, prosedur bantuan, verifikasi keamanan |
 
 Sumber: kode/route API, file yang terlacak Git, `docs/progres-2026-10-21.md`, `docs/progres-2026-10-22.md`, dan verifikasi sesi perbaikan layout (`603b267`, `2f788bf`). Status ini menggambarkan branch kerja lokal, bukan bukti semua perubahan telah digabung ke `main` atau di-deploy.
@@ -223,10 +224,14 @@ Enam jenis surat tetap: DOMISILI, SKTM, BELUM_MENIKAH, KERAMAIAN, KEHILANGAN, UM
 - [x] O1 — API unggah scan otomatis Siap diunduh, POST unduh warga 30 hari, unduhan pertama Selesai, unduh ulang dan audit; lihat `docs/integrasi.md`.
 - [x] O2 — Layar unduh warga, bantuan HubungiPetugas, panel scan/tenggat/riwayat, istilah scan, privasi dan demo; lint, tsc, build, build:demo, test:demo, 472 tes backend dan E2E Laravel SQLite terisolasi + 390px/1440px lulus (20 November 2026). Verifikasi sesi dicatat di `docs/progres-2026-11-19-online-letter-ui.md`.
 
-### Email pemohon E1–E2 — 20 November 2026
+### Email notifikasi E1–E4 — 20 November 2026
 
-- [x] E1 — Infrastruktur antrean dan notifikasi setiap perubahan status, email terenkripsi/consent/retensi dan POST unsubscribe bertanda tangan (`b757017`); rancangan `docs/PROMPTS-EMAIL.md`.
+Rancangan dan prompt: `docs/PROMPTS-EMAIL.md` (menggantikan R11). Pengirim `notifikasi@desawatuagung.com` lewat SMTP Hostinger; antrean database diproses cron tiap menit.
+
+- [x] E1 — API email pemohon: kolom email terenkripsi + persetujuan, event `ApplicationStatusChanged` di keempat jalur perubahan status, listener antrean, Mailable minimal, berhenti berlangganan bertanda tangan, retensi, panduan Hostinger. Rancangan di PR #91, implementasi PR #92.
 - [x] E2 — Formulir email opsional/persetujuan, ringkasan, sukses tersamar/spam, `/berhenti-email/` POST setelah konfirmasi, privasi, demo tanpa kirim/simpan email. Zod pemeriksaan awal; Laravel RFC penentu akhir sesuai keputusan pengguna. Lint, tsc, build, build:demo, test:demo serta Chromium 390px/1440px lulus; Laravel log mailer 76 email seluruh jalur status dan suite E1 13 tes lulus. Batas: browser memakai API mock, Laravel diverifikasi terpisah dalam proses; bukan SMTP/deploy. Lihat `docs/progres-2026-11-20-email-form.md`.
+- [x] E3 — API email kepala desa: email notifikasi terverifikasi, PIN 6 digit, tautan sekali pakai 72 jam (hash saja), preview/draft/decide POST, kunci 5 PIN salah, `ApplicationTransition` bersama panel, riwayat `via: email`. Branch `feat/email-head-approval` (bergantung PR #92).
+- [x] E4 — `/persetujuan/` (token dihapus dari URL, PIN, dialog konfirmasi, 410 → panel), `/verifikasi-email/`, Akun → Notifikasi email (email + PIN), riwayat "melalui email", header no-referrer; E2E Laravel terisolasi 390px/1440px lulus. Branch `feat/email-head-approval-ui`.
 
 ## M8 — Kesiapan produksi
 
