@@ -39,7 +39,7 @@ const detailSchema = z.object({
   kewarganegaraan: z.enum(kewarganegaraanOptions).nullable().optional(), pendidikan: z.enum(pendidikanOptions).nullable().optional(),
   pekerjaan: z.string().nullable().optional(),
   letter_numbers: z.array(z.object({ number: z.string(), status: z.enum(["issued", "void"]), void_reason: z.string().nullable(), issued_at: z.string() })).optional(),
-  letter: z.object({ approved_at: z.string(), source: z.enum(["generated", "uploaded"]).nullable(), sha256: z.string().nullable(), file_updated_at: z.string().nullable(), file_purged_at: z.string().nullable(), ready_at: z.string().nullable().optional(), download_until: z.string().nullable().optional(), download_count: z.number().int().nonnegative(), last_downloaded_at: z.string().nullable() }).nullable().optional(),
+  letter: z.object({ approved_at: z.string(), source: z.enum(["system", "generated", "uploaded"]).nullable(), sha256: z.string().nullable(), file_updated_at: z.string().nullable(), file_purged_at: z.string().nullable(), ready_at: z.string().nullable().optional(), download_until: z.string().nullable().optional(), valid_until: z.string().nullable(), download_count: z.number().int().nonnegative(), last_downloaded_at: z.string().nullable() }).nullable().optional(),
   attachments: z.array(z.object({ id: z.number().int().positive(), kind: z.enum(attachmentKinds), label: z.string(),
     stored_mime: z.enum(["image/webp", "image/jpeg", "application/pdf"]), size_bytes: z.number().int().nonnegative(), uploaded_at: z.string(), purged: z.boolean() })).optional(),
   history: z.array(z.object({ action: z.enum(["ACCESS_CODE_RESET", "STATEMENT_EDITED", "ATTACHMENTS_UPDATED"]).nullable(), from_status: z.enum(statuses).nullable(), to_status: z.enum(statuses),
@@ -404,7 +404,7 @@ function DetailContent({ id }: { id: string }) {
             <section className={styles.card}><h2>Riwayat status</h2>
               {detail.history.length ? <ol className={styles.timeline}>{detail.history.map((event, index) => <li key={`${event.created_at}-${index}`}>
                 <h3>{event.action === "ACCESS_CODE_RESET" ? "Kode akses dibuat ulang" : event.action === "STATEMENT_EDITED" ? "Isi keterangan disunting" : event.action === "ATTACHMENTS_UPDATED" ? "Lampiran diganti pemohon" : <>{event.from_status ? `${statusLabels[event.from_status]} → ` : ""}{statusLabels[event.to_status]}</>}</h3>
-                <p>{event.staff_name ?? "Pengajuan warga / sistem"}{event.via === "email" ? ` · ${event.to_status === "APPROVED" ? "disetujui" : event.to_status === "REJECTED" ? "ditolak" : "diputuskan"} melalui email` : ""}</p>
+                <p>{event.staff_name ?? "Pengajuan warga / sistem"}{event.via === "email" ? ` · ${["APPROVED", "READY_FOR_PICKUP"].includes(event.to_status) ? "disetujui" : event.to_status === "REJECTED" ? "ditolak" : "diputuskan"} melalui email` : ""}</p>
                 <time dateTime={event.created_at}>{dateTime(event.created_at)}</time>
                 {event.note && <p className={styles.multiline}>{event.note}</p>}
               </li>)}</ol> : <p>Belum ada riwayat status.</p>}

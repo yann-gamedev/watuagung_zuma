@@ -155,7 +155,7 @@ export const pelayananService = {
   async getStatus(id: string, secret?: string): Promise<StatusReceipt> {
     if (apiBase) {
       if (!secret) throw new Error('Masukkan kode akses pengajuan.');
-      return receiptSchema.extend({ requires_neighborhood_approval: z.boolean(), jenis_surat: z.enum(serviceCodes), lampiran: attachmentListSchema.optional(), catatan: z.string().nullable().optional(), letter_number: z.string().nullable().optional(), letter_available: z.boolean(), letter_available_until: z.string().datetime({ offset: true }).nullable() }).parse(await apiRequest('/applications/status', { method: 'POST', body: JSON.stringify({ request_id: id, lookup_secret: secret }) }));
+      return receiptSchema.extend({ requires_neighborhood_approval: z.boolean(), jenis_surat: z.enum(serviceCodes), lampiran: attachmentListSchema.optional(), catatan: z.string().nullable().optional(), letter_number: z.string().nullable().optional(), letter_available: z.boolean(), letter_available_until: z.string().datetime({ offset: true }).nullable(), valid_until: z.string().datetime({ offset: true }).nullable() }).parse(await apiRequest('/applications/status', { method: 'POST', body: JSON.stringify({ request_id: id, lookup_secret: secret }) }));
     }
     await new Promise((resolve) => setTimeout(resolve, 650));
     const record = demoRecords().find((item) => item.request_id === id);

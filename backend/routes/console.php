@@ -71,7 +71,7 @@ Artisan::command('applications:purge {--dry-run}', function () {
     // Surat yang masih dalam masa unduh warga tidak dianonimkan atau dihapus sebelum masa itu habis.
     $query = Application::query()->whereIn('status', ['COMPLETED', 'REJECTED'])->whereNull('purged_at')->where('updated_at', '<', $cutoff)
         ->whereNotExists(fn ($sub) => $sub->select(DB::raw(1))->from('letters')->whereColumn('letters.application_id', 'applications.id')
-            ->where('letters.source', 'uploaded')->where('letters.ready_at', '>=', now()->subDays(Letter::downloadDays())));
+            ->whereIn('letters.source', ['system', 'uploaded'])->where('letters.ready_at', '>=', now()->subDays(Letter::downloadDays())));
     foreach ($query->lazyById(200) as $application) {
         $letter = Letter::find($application);
         $attachments = DB::table('application_attachments')->where('application_id', $application->id)->whereNull('purged_at')->count();
@@ -150,7 +150,7 @@ Artisan::command('letters:expire-downloads {--dry-run}', function () {
     $count = 0;
     $query = Application::query()->where('status', 'READY_FOR_PICKUP')
         ->whereExists(fn ($sub) => $sub->select(DB::raw(1))->from('letters')->whereColumn('letters.application_id', 'applications.id')
-            ->where('letters.source', 'uploaded')->where('letters.ready_at', '<', $cutoff));
+            ->whereIn('letters.source', ['system', 'uploaded'])->where('letters.ready_at', '<', $cutoff));
     foreach ($query->select(['id', 'request_id', 'status'])->lazyById(200) as $application) {
         $this->line($application->request_id);
         if ($dry) { $count++; continue; }

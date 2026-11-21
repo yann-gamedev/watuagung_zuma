@@ -69,8 +69,9 @@ await assert.rejects(approvalService.preview(token), (error) => error instanceof
 
 // Keputusan.
 calls.length = 0;
-reply = json(200, { success: true, request_id: "REQ-2026-FIKTIF", status: "APPROVED", letter_number: "470/1/424.314.2.02/2026", message: "Permohonan disetujui." });
+reply = json(200, { success: true, request_id: "REQ-2026-FIKTIF", status: "READY_FOR_PICKUP", letter_number: "470/1/424.314.2.02/2026", message: "Permohonan disetujui." });
 const decided = await approvalService.decide({ token, pin: "482915", decision: "approve" });
+assert.equal(decided.status, "READY_FOR_PICKUP");
 assert.equal(decided.letter_number, "470/1/424.314.2.02/2026");
 assert.deepEqual(JSON.parse(calls[0].options.body), { token, pin: "482915", decision: "approve" });
 

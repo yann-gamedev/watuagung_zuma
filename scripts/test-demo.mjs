@@ -212,7 +212,7 @@ for (const url of [undefined, "", "https://forms.gle/", "http://forms.gle/Abc", 
 process.env.NEXT_PUBLIC_DEMO_MODE = "false";
 modules.delete("services/pelayanan.ts");
 const { pelayananService: apiService, SubmissionValidationError: ApiSubmissionValidationError } = await source("services/pelayanan.ts");
-let apiReceipt = { success: true, request_id: "REQ-2026-APITEST", status: "SUBMITTED", jenis_surat: "SKTM", requires_neighborhood_approval: true, lookup_secret: "test-only", lampiran: Object.keys(attachments), letter_available: false, letter_available_until: null };
+let apiReceipt = { success: true, request_id: "REQ-2026-APITEST", status: "SUBMITTED", jenis_surat: "SKTM", requires_neighborhood_approval: true, lookup_secret: "test-only", lampiran: Object.keys(attachments), letter_available: false, letter_available_until: null, valid_until: null };
 let outcome = { status: 201 };
 const xhrs = [];
 let xhrCount = 0;
@@ -347,9 +347,10 @@ apiReceipt = { ...apiReceipt, lampiran: [] };
 delete apiReceipt.requires_neighborhood_approval;
 await assert.rejects(apiService.submit(valid, attachments), /requires_neighborhood_approval/);
 await assert.rejects(apiService.getStatus(apiReceipt.request_id, "test-only"), /requires_neighborhood_approval/);
-apiReceipt = { ...apiReceipt, requires_neighborhood_approval: false, letter_available: true, letter_available_until: "2026-12-19T13:00:00+07:00" };
+apiReceipt = { ...apiReceipt, requires_neighborhood_approval: false, letter_available: true, letter_available_until: "2026-12-19T13:00:00+07:00", valid_until: "2026-12-19T13:00:00+07:00" };
 assert.equal((await apiService.getStatus(apiReceipt.request_id, "test-only")).letter_available, true);
 assert.equal((await apiService.getStatus(apiReceipt.request_id, "test-only")).letter_available_until, apiReceipt.letter_available_until);
+assert.equal((await apiService.getStatus(apiReceipt.request_id, "test-only")).valid_until, apiReceipt.valid_until);
 const pdfBytes = new Blob(["%PDF-1.4 fictional signed scan"], { type: "application/pdf" });
 let downloadOutcome = 200;
 globalThis.fetch = async (url, options) => {

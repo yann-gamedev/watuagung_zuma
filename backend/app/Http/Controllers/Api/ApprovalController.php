@@ -81,8 +81,11 @@ class ApprovalController extends Controller
         ]);
         $to = $data['decision'] === 'approve' ? 'APPROVED' : 'REJECTED';
 
+        $written = [];
+        $root = DB::transactionLevel() === 0;
+        // ponytail: one attempt; retry the request after failure. Restore retries only with commit-failure callback cleanup.
         try {
-            $outcome = DB::transaction(function () use ($data, $to) {
+            $outcome = DB::transaction(function () use ($data, $to, &$written) {
                 // Baris tautan dikunci: dua klik bersamaan tidak bisa memakai tautan dua kali atau melewati batas PIN.
                 $context = ApprovalLinks::resolve($data['token'], lock: true);
                 if (! $context) return ['gone'];
@@ -95,7 +98,7 @@ class ApprovalController extends Controller
 
                     return $locked ? ['locked', $head->id, $application->request_id] : ['wrong', ApprovalLinks::MAX_PIN_ATTEMPTS - $attempts];
                 }
-                $result = ApplicationTransition::apply($application, $to, $head, $data['note'] ?? null, via: 'email');
+                $result = ApplicationTransition::apply($application, $to, $head, $data['note'] ?? null, via: 'email', written: $written);
                 DB::table('approval_links')->where('id', $link->id)->update(['used_at' => now()]);
                 $this->audit($head->id, $to === 'APPROVED' ? 'application.approved_via_email' : 'application.rejected_via_email', $application->id);
 
@@ -104,6 +107,8 @@ class ApprovalController extends Controller
         } catch (TransitionRejected $e) {
             // Aturan alur menolak (mis. akun kehilangan wewenang): tautan tidak terpakai, status tidak berubah.
             return $this->json($e->body(), $e->status);
+        } finally {
+            if ($root) Letter::discardUnreferenced($written);
         }
 
         return match ($outcome[0]) {
@@ -118,8 +123,8 @@ class ApprovalController extends Controller
                 'success' => true,
                 'request_id' => $outcome[1]->request_id,
                 'status' => $outcome[1]->status,
-                'letter_number' => $outcome[1]->status === 'APPROVED' ? ApprovalLinks::letterNumber($outcome[1]) : null,
-                'message' => $outcome[1]->status === 'APPROVED' ? 'Permohonan disetujui.' : 'Permohonan ditolak.',
+                'letter_number' => $outcome[1]->status === 'READY_FOR_PICKUP' ? ApprovalLinks::letterNumber($outcome[1]) : null,
+                'message' => $outcome[1]->status === 'READY_FOR_PICKUP' ? 'Permohonan disetujui.' : 'Permohonan ditolak.',
             ]),
         };
     }

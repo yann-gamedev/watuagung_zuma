@@ -11,7 +11,7 @@ import type { LetterVerification } from "@/types/pelayanan";
 
 const schema = z.object({
   number: z.string().nullable(), jenis_surat: z.enum(serviceCodes),
-  issued_at: z.string(), nama: z.string(), status: z.enum(["valid", "revoked"]),
+  issued_at: z.string(), nama: z.string(), valid_until: z.string().nullable(), status: z.enum(["valid", "expired", "revoked"]),
 });
 
 /** Membaca ?kode= di browser (static export); kode tidak dikirim ke tempat lain selain API verifikasi. */
@@ -41,7 +41,7 @@ export function LetterVerifier() {
           <div className={"status-exception status-" + (result.status === "valid" ? "APPROVED" : "REJECTED")}>
             <div className="status-exception-heading">
               {result.status === "valid" ? <CircleCheck size={24} aria-hidden="true" /> : <CircleX size={24} aria-hidden="true" />}
-              <h2 id="verify-heading">{result.status === "valid" ? "Surat sah tercatat di Desa Watuagung" : "Surat ini sudah dibatalkan"}</h2>
+              <h2 id="verify-heading">{result.status === "valid" ? "Surat sah tercatat di Desa Watuagung" : result.status === "expired" ? "Masa berlaku surat sudah habis" : "Surat ini sudah dibatalkan"}</h2>
             </div>
           </div>
           <dl className="status-next-step">

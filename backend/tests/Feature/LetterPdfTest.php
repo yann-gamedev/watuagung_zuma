@@ -161,7 +161,10 @@ class LetterPdfTest extends TestCase
         $this->assertSame($head->id, $letter->approved_by);
         $this->assertSame(now()->format('Y-m-d H:i:s'), $letter->approved_at);
         $this->assertMatchesRegularExpression('/\A[A-Za-z0-9]{32}\z/', $letter->verification_code);
-        $this->assertSame('generated', $letter->source);
+        $this->assertSame('system', $letter->source);
+        $this->assertSame('READY_FOR_PICKUP', $application->status);
+        $this->assertSame($letter->approved_at, $letter->ready_at);
+        $this->assertSame(now()->addDays(7)->format('Y-m-d H:i:s'), $letter->valid_until);
         Storage::disk('local')->assertExists($letter->path);
         $this->assertStringNotContainsString('%PDF', Storage::disk('local')->get($letter->path), 'stored encrypted');
 
@@ -171,6 +174,58 @@ class LetterPdfTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'letter.downloaded', 'subject_id' => $application->id]);
         // Unduhan berikutnya memakai file yang sama.
         $this->assertSame($pdf, $this->pdf($application)->getContent());
+    }
+
+    public function test_panel_release_event_failure_rolls_back_and_removes_new_file(): void
+    {
+        $application = $this->application(['status' => 'WAITING_APPROVAL']);
+        $this->act('village_head');
+        $this->failInsertsInto('application_events');
+        $this->change($application, 'APPROVED')->assertServerError();
+        $this->restoreInsertsInto('application_events');
+        $this->assertSame('WAITING_APPROVAL', $application->fresh()->status);
+        $this->assertDatabaseCount('letters', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles('letters'));
+    }
+
+    public function test_render_error_aborts_release_without_partial_letter(): void
+    {
+        $application = $this->application(['status' => 'WAITING_APPROVAL']);
+        $this->act('village_head');
+        \Barryvdh\DomPDF\Facade\Pdf::shouldReceive('loadView')->once()->andThrow(new \RuntimeException('Render fiktif gagal'));
+        $this->change($application, 'APPROVED')->assertServerError();
+        $this->assertSame('WAITING_APPROVAL', $application->fresh()->status);
+        $this->assertDatabaseCount('letters', 0);
+        $this->assertDatabaseCount('application_events', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles('letters'));
+    }
+
+    public function test_storage_error_aborts_release_and_cleans_partial_write(): void
+    {
+        $application = $this->application(['status' => 'WAITING_APPROVAL']);
+        $this->act('village_head');
+        $disk = Storage::disk('local');
+        $mock = \Mockery::mock($disk)->makePartial();
+        $mock->shouldReceive('put')->once()->andReturnUsing(function ($path, $contents) use ($disk) {
+            $disk->put($path, $contents);
+            return false;
+        });
+        Storage::shouldReceive('disk')->with('local')->andReturn($mock);
+        $this->change($application, 'APPROVED')->assertServerError();
+        $this->assertSame('WAITING_APPROVAL', $application->fresh()->status);
+        $this->assertDatabaseCount('letters', 0);
+        $this->assertSame([], $disk->allFiles('letters'));
+    }
+
+    public function test_approval_note_is_kept_in_single_release_event(): void
+    {
+        $application = $this->application(['status' => 'WAITING_APPROVAL']);
+        $this->act('village_head');
+        $this->change($application, 'APPROVED', 'Catatan fiktif')->assertOk()->assertJsonPath('status', 'READY_FOR_PICKUP');
+        $event = DB::table('application_events')->sole();
+        $this->assertSame('WAITING_APPROVAL', $event->from_status);
+        $this->assertSame('READY_FOR_PICKUP', $event->to_status);
+        $this->assertSame('Disetujui dan dirilis: Catatan fiktif', Crypt::decryptString($event->note));
     }
 
     public function test_final_pdf_is_regenerated_on_download_if_missing(): void
@@ -206,7 +261,7 @@ class LetterPdfTest extends TestCase
         $this->postJson('/api/v1/staff/applications/'.$application->request_id.'/letter.pdf')->assertUnprocessable()->assertJsonValidationErrors('file');
         // Belum disetujui Kepala Desa.
         $this->upload($this->application(['status' => 'WAITING_APPROVAL']), $this->fakePdf())->assertUnprocessable();
-        $this->assertSame('generated', DB::table('letters')->value('source'));
+        $this->assertSame('system', DB::table('letters')->value('source'));
     }
 
     public function test_qr_png_for_office(): void
@@ -224,12 +279,12 @@ class LetterPdfTest extends TestCase
         $application = $this->approved('SKTM');
         $this->act();
         $this->getJson('/api/v1/staff/applications/'.$application->request_id)->assertOk()
-            ->assertJsonPath('letter.source', 'generated')->assertJsonMissingPath('letter.verification_code')->assertJsonMissingPath('letter.path');
+            ->assertJsonPath('letter.source', 'system')->assertJsonMissingPath('letter.verification_code')->assertJsonMissingPath('letter.path');
         $this->act('rt_head');
         $this->getJson('/api/v1/staff/applications/'.$application->request_id)->assertOk()->assertJsonMissingPath('letter');
     }
 
-    public function test_public_verification_shows_only_masked_metadata(): void
+    public function test_public_verification_shows_full_name_and_validity_without_private_fields(): void
     {
         $application = $this->approved();
         $code = DB::table('letters')->value('verification_code');
@@ -238,10 +293,11 @@ class LetterPdfTest extends TestCase
             'number' => DB::table('letter_numbers')->value('number'),
             'jenis_surat' => 'SKU',
             'issued_at' => now()->parse(DB::table('letters')->value('approved_at'))->toISOString(),
-            'nama' => 'S*** W********',
+            'nama' => 'Siti Wulandari',
+            'valid_until' => now()->parse(DB::table('letters')->value('valid_until'))->toISOString(),
             'status' => 'valid',
         ]);
-        foreach (['Siti', '0000000000000001', '0000000000000002', 'Jalan Fiktif', '08000000000', $application->request_id, 'Usaha Fiktif'] as $secret) {
+        foreach (['0000000000000001', '0000000000000002', 'Jalan Fiktif', '08000000000', $application->request_id, 'Usaha Fiktif'] as $secret) {
             $this->assertStringNotContainsString($secret, $response->getContent());
         }
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
@@ -254,6 +310,32 @@ class LetterPdfTest extends TestCase
         $this->approved();
         DB::table('letter_numbers')->update(['status' => 'void', 'void_reason' => Crypt::encryptString('Contoh pembatalan')]);
         $this->getJson('/api/v1/verify/'.DB::table('letters')->value('verification_code'))->assertOk()->assertJsonPath('status', 'revoked');
+    }
+
+    public function test_verification_expiry_boundary_and_revocation_precedence(): void
+    {
+        $application = $this->approved();
+        $letter = DB::table('letters')->sole();
+        $until = now()->parse($letter->valid_until);
+        $this->travelTo($until);
+        $this->getJson('/api/v1/verify/'.$letter->verification_code)->assertOk()->assertJsonPath('status', 'valid');
+        $this->travelTo($until->copy()->addSecond());
+        $this->getJson('/api/v1/verify/'.$letter->verification_code)->assertOk()->assertJsonPath('status', 'expired')
+            ->assertJsonPath('nama', $application->nama)->assertJsonPath('valid_until', $until->toISOString());
+        DB::table('letter_numbers')->update(['status' => 'void']);
+        $this->getJson('/api/v1/verify/'.$letter->verification_code)->assertOk()->assertJsonPath('status', 'revoked');
+    }
+
+    public function test_validity_days_are_configurable_without_changing_download_days(): void
+    {
+        config(['letters.validity_days' => 3]);
+        $this->approved();
+        $letter = DB::table('letters')->sole();
+        $this->assertSame(now()->parse($letter->ready_at)->addDays(3)->format('Y-m-d H:i:s'), $letter->valid_until);
+        $this->assertSame(now()->parse($letter->ready_at)->addDays(7)->toISOString(), Letter::downloadUntil($letter)->toISOString());
+        config(['letters.validity_days' => 0, 'letters.download_days' => 'bad']);
+        $this->assertSame(7, Letter::validityDays());
+        $this->assertSame(7, Letter::downloadDays());
     }
 
     public function test_verification_is_rate_limited(): void
@@ -338,10 +420,12 @@ class LetterPdfTest extends TestCase
         foreach ([LetterType::from($type)->title(), '470/1/424.314.2.02/2026',
             'PEMERINTAH KABUPATEN PASURUAN', 'KECAMATAN PRIGEN', 'KEPALA DESA WATUAGUNG',
             'Yang bertanda tangan di bawah ini Kepala Desa Watuagung Kecamatan Prigen Kabupaten Pasuruan, menerangkan dengan sebenarnya bahwa :',
-            'Watuagung, 01 Oktober 2026', 'KEPALA DESA FIKTIF', 'QR bukan tanda tangan elektronik.',
+            'Watuagung, 01 Oktober 2026', 'KEPALA DESA FIKTIF',
+            'Masa surat efektif berlaku 7 hari sejak surat dirilis oleh Pelayanan Desa Watuagung',
+            '08 Oktober 2026', 'Scan QR untuk memeriksa keaslian surat di desawatuagung.com.',
             'Tempat Fiktif, 01-01-2000', 'Dusun Talang RT : 001 RW : 002', 'Indonesia',
         ] as $expected) $this->assertStringContainsString($expected, $text);
-        foreach (['pengantar Ketua RT', 'Format sementara', 'Teks asli warga fiktif jangan dicetak.', 'DRAF'] as $absent) {
+        foreach (['pengantar Ketua RT', 'Format sementara', 'Teks asli warga fiktif jangan dicetak.', 'DRAF', 'QR bukan tanda tangan elektronik', 'Pindai'] as $absent) {
             $this->assertStringNotContainsString($absent, $text);
         }
         $this->assertCount(1, $parsed['pages']);
@@ -402,19 +486,22 @@ class LetterPdfTest extends TestCase
         $this->assertStringContainsString('DRAF', $parsed['text']);
     }
 
-    public function test_layout_escapes_text_embeds_logo_and_places_qr_after_signatures(): void
+    public function test_layout_escapes_text_embeds_logo_and_places_qr_between_title_and_head_name(): void
     {
         $application = $this->application(self::letterPayload('KEHILANGAN', ['barang_hilang' => '<b>Barang fiktif</b>']));
         $html = view(Letter::view(LetterType::Kehilangan), [
             'a' => $application, 'title' => LetterType::Kehilangan->title(), 'draft' => false,
             'number' => null, 'date' => now()->locale('id'), 'qr' => 'qr-fiktif',
+            'validUntil' => now()->addDays(7)->locale('id'), 'validityDays' => 7,
             'desa' => array_replace(config('letters.desa'), ['kepala_desa' => 'KEPALA FIKTIF']),
         ])->render();
         $this->assertStringContainsString('data:image/jpeg;base64,'.base64_encode(file_get_contents(resource_path('letters/logo-kabupaten-pasuruan.jpg'))), $html);
         $this->assertStringContainsString('<strong>&lt;b&gt;Barang fiktif&lt;/b&gt;</strong>', $html);
         $this->assertStringContainsString('<strong><u>Warga Fiktif</u></strong>', $html);
         $this->assertStringContainsString('<strong><u>KEPALA FIKTIF</u></strong>', $html);
-        $this->assertGreaterThan(strpos($html, '<strong><u>KEPALA FIKTIF'), strpos($html, 'data:image/png;base64,qr-fiktif'));
+        $qrPosition = strpos($html, 'data:image/png;base64,qr-fiktif');
+        $this->assertGreaterThan(strpos($html, 'Kepala Desa Watuagung</p>'), $qrPosition);
+        $this->assertLessThan(strpos($html, '<strong><u>KEPALA FIKTIF'), $qrPosition);
     }
 
     public function test_legacy_types_with_missing_new_fields_still_render(): void
