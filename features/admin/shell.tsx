@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUpRight, KeyRound, LogOut, Menu } from "lucide-react";
 import { apiBase } from "@/services/pelayanan";
+import { isAbsoluteHref, siteHref } from "@/lib/urls";
 import { AdminSidebar, adminPageTitle, canAccessAdminPath } from "@/components/admin-sidebar";
 import { normalizePath } from "@/components/site-header";
 import { AdminLoginForm } from "./login-form";
@@ -14,6 +15,8 @@ import shellStyles from "./shell.module.css";
 
 const roleLabels = { staff: "Petugas", village_head: "Kepala Desa", admin: "Admin", kim: "KIM (Media Informasi)", rt_head: "Ketua RT", rw_head: "Ketua RW" } as const;
 const MOBILE_QUERY = "(max-width: 900px)";
+// Absolut (tab baru) hanya bila panel di subdomain; lihat lib/urls.ts.
+const websiteHref = siteHref("/");
 
 function focusables(container: HTMLElement | null) {
   if (!container) return [];
@@ -171,7 +174,9 @@ function AdminFrame({ children }: { children: React.ReactNode }) {
           <div className="admin-topbar-user">
             <p><strong>{user?.name}</strong><span>{user?.role === "rt_head" ? `Ketua RT ${user.rt ?? "—"} / RW ${user.rw ?? "—"}` : user?.role === "rw_head" ? `Ketua RW ${user.rw ?? "—"}` : user ? roleLabels[user.role] : ""}</span></p>
             <div className="admin-actions">
-              <Link href="/" className="btn btn-secondary">Lihat website <ArrowUpRight size={22} aria-hidden="true" /></Link>
+              {isAbsoluteHref(websiteHref)
+                ? <a href={websiteHref} className="btn btn-secondary" target="_blank" rel="noopener noreferrer">Lihat website <ArrowUpRight size={22} aria-hidden="true" /><span className="sr-only"> (dibuka di tab baru)</span></a>
+                : <Link href={websiteHref} className="btn btn-secondary">Lihat website <ArrowUpRight size={22} aria-hidden="true" /></Link>}
               <details className={shellStyles.accountMenu}>
                 <summary className="btn btn-secondary"><KeyRound size={22} aria-hidden="true" /> Akun</summary>
                 <div className={shellStyles.accountPanel}>

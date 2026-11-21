@@ -396,7 +396,7 @@ Docroot bersarang membuat `.htaccess` utama ikut dibaca untuk subdomain. `admin.
 
 1. **Tahap 1, saat subdomain dibuat.** hPanel → Domains → Subdomains: buat `admin` dengan **folder kustom** `panel-admin`. **Jangan pakai folder bawaan `public_html/admin`**: itu folder panel situs utama, deploy mode S akan menghapusnya, dan subdomain tidak bisa memuat `/_next/`. Skrip menolak nama itu. Pasang SSL untuk `admin.<domain>`; cek `nslookup admin.<domain>`. **Mulai saat ini setiap deploy memakai mode P** (`ADMIN_PUBLIC_HTML=<docroot>`), atau docroot bersarang terhapus.
 2. **`backend/.env`:** `FRONTEND_ORIGINS=https://<domain>,https://admin.<domain>`; `SITE_URL` tetap domain utama. `php artisan config:clear` lalu `php artisan app:preflight --production` → 0 GAGAL.
-3. **Build di laptop** dengan `NEXT_PUBLIC_SITE_URL=https://<domain>` dan `NEXT_PUBLIC_ADMIN_URL=https://admin.<domain>` selain env § G langkah 7 (tautan lintas origin, sesi A1).
+3. **Build di laptop untuk mode S** dengan `NEXT_PUBLIC_SITE_URL=https://<domain>` dan `NEXT_PUBLIC_ADMIN_URL=https://admin.<domain>` selain env § G langkah 7 (tautan lintas origin, README § Frontend). Build untuk mode L/P **tanpa** `NEXT_PUBLIC_ADMIN_URL`: tombol "Masuk ke panel admin" akan menunjuk subdomain yang belum berisi panel.
 4. **Tahap 2, deploy mode S** (prosedur § I, termasuk maintenance, backup, dan penulis dijeda):
 
    ```bash

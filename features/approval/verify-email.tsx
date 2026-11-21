@@ -2,9 +2,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { isDemo } from "@/services/pelayanan";
+import { adminHref, isAbsoluteHref } from "@/lib/urls";
 import { ApprovalError, approvalService } from "@/services/approval";
 
 const REQUIRED = ["user", "email", "expires", "signature"] as const;
+
+// Panel bisa di subdomain (NEXT_PUBLIC_ADMIN_URL); lintas origin memakai <a> biasa di tab yang sama.
+const settingsHref = adminHref("/admin/notifikasi/");
 
 /**
  * Konfirmasi email notifikasi akun (tautan bertanda tangan 24 jam dari E3). Tidak perlu login.
@@ -54,7 +58,9 @@ export function VerifyNotificationEmail() {
           : <button className="btn my-5 mr-3" type="button" disabled={busy} onClick={() => void verify()}>{busy ? "Memproses…" : "Konfirmasi email"}</button>}
         {error && <p className="error-box" role="alert">{error}</p>}
       </>}
-      <Link href="/admin/notifikasi/" className="btn btn-secondary mt-5">Buka pengaturan notifikasi</Link>
+      {isAbsoluteHref(settingsHref)
+        ? <a href={settingsHref} className="btn btn-secondary mt-5">Buka pengaturan notifikasi</a>
+        : <Link href={settingsHref} className="btn btn-secondary mt-5">Buka pengaturan notifikasi</Link>}
     </div>
   );
 }

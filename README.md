@@ -88,6 +88,15 @@ Buka http://127.0.0.1:3000. Restart dev server setelah mengubah environment. Ori
 
 Tanpa URL API, formulir publik memakai simulasi browser dan panel petugas tidak aktif. `npm run start` saat ini juga menjalankan **dev server**, bukan server produksi.
 
+Panel di subdomain (opsional, `deploy/hostinger.md` § N) memakai dua env build, keduanya origin tanpa garis miring akhir (https; http hanya localhost/127.0.0.1):
+
+| Env | Contoh produksi | Dipakai untuk |
+|---|---|---|
+| `NEXT_PUBLIC_SITE_URL` | `https://desawatuagung.com` | canonical/sitemap (SEO) dan tautan panel → situs |
+| `NEXT_PUBLIC_ADMIN_URL` | `https://admin.desawatuagung.com` | tautan situs → panel ("Masuk ke panel admin", pengaturan notifikasi) |
+
+Tautan panel → situs ("Lihat website", "Lihat di website") hanya absolut dan membuka tab baru bila **kedua** env terisi; dengan `NEXT_PUBLIC_SITE_URL` saja (SEO) tautan tetap relatif. Isi `NEXT_PUBLIC_ADMIN_URL` **hanya untuk build yang di-deploy dengan mode S** (panel sudah disajikan subdomain); pada mode L/P biarkan kosong, karena tautan ke subdomain yang belum berisi panel akan rusak. Nilai tidak valid diabaikan dengan peringatan saat build. Dev lokal dan demo Vercel membiarkannya kosong.
+
 ### 3. Akun dan alur uji
 
 **Sudah pernah membuat akun? Jangan buat ulang dulu.** Akun disimpan di database Laravel, bukan di frontend atau GitHub. Gunakan username (bukan nama tampilan/email) dan database yang sama seperti saat akun dibuat. Akun lokal tidak otomatis ada di komputer lain, database tes, atau demo Vercel.

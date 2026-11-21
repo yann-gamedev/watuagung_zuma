@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { businessCategoryLabels, businessHref } from "@/services/businesses";
 import { businessCategories, businessHamlets, type BusinessStatus } from "@/types/business";
 import { prepareImageForUpload } from "@/lib/image-compress";
+import { siteHref } from "@/lib/urls";
 import { can, useAdminSession } from "./session";
 import { AdminUnauthorizedError, AdminValidationError } from "./api";
 import { businessInputSchema, parseBusiness, type BusinessForm } from "./business-data";
@@ -116,7 +117,7 @@ export function BusinessEditor({ id }: { id?: number }) {
   return <div className={styles.editor}>
     <Link className="btn btn-secondary" href="/admin/umkm/">Kembali ke daftar UMKM</Link>
     <div ref={messageBox} tabIndex={-1}>{error && <p className="error-box" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}</div>
-    <div className={styles.actions}><NewsStatus status={item?.status ?? "draft"} />{dirty && <span>Perubahan belum disimpan</span>}{item?.status === "published" && <a className="btn btn-secondary" href={businessHref(item.slug)} target="_blank" rel="noopener noreferrer">Lihat di website<span className="sr-only"> (dibuka di tab baru)</span></a>}</div>
+    <div className={styles.actions}><NewsStatus status={item?.status ?? "draft"} />{dirty && <span>Perubahan belum disimpan</span>}{item?.status === "published" && <a className="btn btn-secondary" href={siteHref(businessHref(item.slug))} target="_blank" rel="noopener noreferrer">Lihat di website<span className="sr-only"> (dibuka di tab baru)</span></a>}</div>
     <p>Jangan masukkan NIK, nomor KK, atau alamat rumah pemilik.</p>
     <form onSubmit={(event) => { event.preventDefault(); void save(item?.status ?? "draft"); }}>
       <fieldset className={styles.fields} disabled={busy}>
