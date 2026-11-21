@@ -269,12 +269,15 @@ try {
   const noCoverArticle = renderToStaticMarkup(createElement(NewsArticle, { title, summary: "Ringkasan", body: "Isi uji" }));
   assert.match(noCoverArticle, /class="news-cover news-art art-0 article-image-frame" aria-hidden="true"/);
   assert.doesNotMatch(noCoverArticle, /<img\b|placeholder|\[FOTO/i);
-  assert.doesNotMatch(noCoverArticle, /KIM Desa Watuagung|Lihat juga di/);
+  assert.doesNotMatch(noCoverArticle, /KIM Desa Watuagung|Lihat di |article-social-links/);
   const extrasArticle = renderToStaticMarkup(createElement(NewsArticle, { title, summary: "Ringkasan", body: "Isi uji", copyrightYear: 2026,
     socialLinks: [{ platform: "youtube", label: "YouTube", url: "https://youtu.be/FIKTIF" }] }));
   assert.match(extrasArticle, /<p class="article-copyright">© 2026 KIM Desa Watuagung<\/p>/);
-  assert.match(extrasArticle, /<a class="btn btn-secondary" href="https:\/\/youtu.be\/FIKTIF" target="_blank" rel="noopener noreferrer">/);
-  assert.match(extrasArticle, /YouTube<span class="sr-only"> \(dibuka di tab baru\)<\/span>/);
+  // Sama dengan tombol Chat WhatsApp UMKM: tombol utama .btn .umkm-chat, tanpa judul tambahan.
+  assert.match(extrasArticle, /<nav class="article-social-links" aria-label="Berita ini di media sosial">/);
+  assert.match(extrasArticle, /<a class="btn umkm-chat" href="https:\/\/youtu.be\/FIKTIF" target="_blank" rel="noopener noreferrer">/);
+  assert.match(extrasArticle, /Lihat di YouTube<span class="sr-only"> \(dibuka di tab baru\)<\/span>/);
+  assert.doesNotMatch(extrasArticle, /<h2|btn-secondary/);
   console.log("PASS: public news demo/API isolation, sample flags, Zod validation, safe covers, pagination, encoded slugs, no-store, HTTP/network errors, 404, 20s timeout cleanup, escaped article paragraphs, sample notice, native lazy covers and decorative patterns.");
 } finally {
   Object.assign(globalThis, savedGlobals);

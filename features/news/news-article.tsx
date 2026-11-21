@@ -35,14 +35,12 @@ export function NewsArticle({ title, summary, body, coverUrl = null, sample = fa
       {inline.slice(paragraphs.length).map((image, index) => <InlineImage key={`extra-${index}`} image={image} index={paragraphs.length + index} />)}
     </div>
     {copyrightYear !== null && <p className="article-copyright">© {copyrightYear} KIM Desa Watuagung</p>}
-    {socialLinks.length > 0 && <section className="article-social" aria-labelledby="article-social-title">
-      <h2 id="article-social-title">Lihat juga di</h2>
-      <div className="article-social-links">
-        {socialLinks.map((link) => <a key={link.platform} className="btn btn-secondary" href={link.url} target="_blank" rel="noopener noreferrer">
-          <ExternalLink size={20} aria-hidden="true" />{link.label}<span className="sr-only"> (dibuka di tab baru)</span>
-        </a>)}
-      </div>
-    </section>}
+    {/* Gaya sama dengan tombol "Chat WhatsApp" di detail UMKM: tombol utama berikon, tanpa judul tambahan. */}
+    {socialLinks.length > 0 && <nav className="article-social-links" aria-label="Berita ini di media sosial">
+      {socialLinks.map((link) => <a key={link.platform} className="btn umkm-chat" href={link.url} target="_blank" rel="noopener noreferrer">
+        <ExternalLink size={22} aria-hidden="true" />Lihat di {link.label}<span className="sr-only"> (dibuka di tab baru)</span>
+      </a>)}
+    </nav>}
     {sample && <div className="article-endnote">Informasi dalam artikel contoh ini perlu dikonfirmasi melalui kanal resmi desa.</div>}
     {children}
   </article>;

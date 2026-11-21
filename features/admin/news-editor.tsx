@@ -244,7 +244,7 @@ export function NewsEditor({ id }: { id?: number }) {
         <span id="post-copyright-help">Opsional. Bila dicentang, berita ini menampilkan &quot;© {"{tahun terbit}"} KIM Desa Watuagung&quot; di bawah isi berita.</span>
         <div className={styles.field}>
           <h3 className={styles.subhead}>Media sosial (opsional)</h3>
-          <p id="post-social-help">Tempel tautan unggahan berita yang sama di media sosial desa. Kosongkan bila tidak ada; hanya tautan yang diisi yang tampil sebagai tombol &quot;Lihat juga di&quot; di halaman berita.</p>
+          <p id="post-social-help">Tempel tautan unggahan berita yang sama di media sosial desa. Kosongkan bila tidak ada; hanya tautan yang diisi yang tampil sebagai tombol &quot;Lihat di Instagram/TikTok/YouTube/Facebook&quot; di halaman berita, seperti tombol Chat WhatsApp pada UMKM.</p>
           {socialPlatforms.map((platform) => {
             const column = `${platform}_url` as const;
             const { label, example } = socialPlatformInfo[platform];

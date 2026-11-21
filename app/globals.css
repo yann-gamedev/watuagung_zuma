@@ -4669,21 +4669,15 @@ td {
   color: var(--muted);
   font-size: 15px;
 }
-.article-social {
-  margin-top: 24px;
-}
-.article-social h2 {
-  font-size: 17px;
-  line-height: 1.4;
-}
+/* Tombol sosmed berita memakai .btn .umkm-chat (sama dengan Chat WhatsApp UMKM); di sini hanya susunannya. */
 .article-social-links {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 12px;
+  margin-top: 24px;
 }
-.article-social-links .btn {
-  gap: 8px;
+.article-social-links .umkm-chat {
+  margin-top: 0;
 }
 @media (max-width: 900px) {
   .page-heading-editorial {
