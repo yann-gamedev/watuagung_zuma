@@ -89,7 +89,8 @@ class ApplicantStatusEmailTest extends TestCase
         ], $this->sentSubjects());
         Mail::assertSent(ApplicantStatusMail::class, fn (ApplicantStatusMail $mail) => $mail->hasTo(self::EMAIL));
         Mail::assertSent(ApplicantStatusMail::class, fn (ApplicantStatusMail $mail) => $mail->statusLabel === 'Siap diunduh'
-            && str_contains($mail->statusLine, 'sampai '.now()->addDays(7)->timezone('Asia/Jakarta')->day.' '));
+            && str_contains($mail->statusLine, 'disetujui Kepala Desa dan bisa diunduh serta dicetak')
+            && str_contains($mail->statusLine, 'Berlaku sampai '.now()->addDays(7)->timezone('Asia/Jakarta')->day.' '));
     }
 
     public function test_expire_downloads_command_emails_the_applicant(): void

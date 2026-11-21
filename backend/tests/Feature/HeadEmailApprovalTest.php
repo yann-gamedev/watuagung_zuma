@@ -105,6 +105,8 @@ class HeadEmailApprovalTest extends TestCase
             $this->assertStringNotContainsString($forbidden, $html);
         }
         $this->assertStringContainsString('Warga Fiktif', $html);
+        $this->assertStringContainsString('surat ber-QR langsung dirilis', $html);
+        $this->assertStringNotContainsString('tanda tangan basah', $html);
 
         // Hanya hash yang tersimpan.
         $link = DB::table('approval_links')->sole();

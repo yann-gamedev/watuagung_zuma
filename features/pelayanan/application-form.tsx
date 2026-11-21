@@ -223,7 +223,7 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
       <aside className="form-aside">
         <h3>Alur pengajuan</h3>
         <ol><li>Lengkapi formulir, unggah Scan KTP, Scan Kartu Keluarga, dan Scan Surat Pengantar RT/RW, lalu periksa ringkasan.</li><li>Simpan nomor pengajuan dan kode akses rahasia.</li><li>Pantau proses verifikasi petugas dan persetujuan Kepala Desa.</li><li>Unduh surat melalui Cek Status Surat.</li></ol>
-        <p>Setelah status Disetujui, cek lagi dalam 1–2 hari kerja. Scan surat bertanda tangan basah dan stempel tersedia untuk diunduh selama 30 hari sejak unggahan terakhir.</p>
+        <p>Setelah Kepala Desa menyetujui, surat ber-QR langsung bisa diunduh dan dicetak sendiri. Surat berlaku 7 hari sejak dirilis.</p>
       </aside>
     </div>
   );

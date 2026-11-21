@@ -56,7 +56,8 @@ function dateOnly(value: string | null | undefined) {
 }
 const draftStatuses: Status[] = ["PROCESSING", "WAITING_APPROVAL"];
 const finalStatuses: Status[] = ["APPROVED", "READY_FOR_PICKUP", "COMPLETED"];
-const uploadStatuses: Status[] = ["APPROVED", "READY_FOR_PICKUP"];
+/** Tampilan saja; server (ApplicationStatus::LETTER_UPLOAD_STATUSES + masa berlaku) tetap memutuskan. */
+const uploadStatuses: Status[] = ["READY_FOR_PICKUP", "COMPLETED"];
 
 /** Draf/surat final/QR: diambil dengan token di header lalu dibuka dari blob, bukan dari URL ber-token. */
 function LetterFiles({ detail, role, blocked, dirty, onUpload }: { detail: StaffApplicationDetail; role: string; blocked: boolean; dirty: boolean; onUpload: (file: File) => Promise<void> }) {
@@ -91,48 +92,45 @@ function LetterFiles({ detail, role, blocked, dirty, onUpload }: { detail: Staff
     if (busy || blocked) return;
     setBusy(true); setError(""); setNotice("");
     try {
-      if (file.size > 5 * 1024 * 1024) throw new Error("Ukuran scan surat maksimal 5 MB.");
-      if (await file.slice(0, 5).text() !== "%PDF-") throw new Error("Scan surat harus berupa berkas PDF.");
+      if (file.size > 5 * 1024 * 1024) throw new Error("Ukuran PDF pengganti maksimal 5 MB.");
+      if (await file.slice(0, 5).text() !== "%PDF-") throw new Error("Berkas pengganti harus berupa PDF.");
       await onUpload(file);
-      setNotice("Scan tersimpan. Status, masa unduh, dan riwayat telah dimuat ulang.");
+      setNotice("PDF pengganti tersimpan. Status dan masa berlaku tidak berubah.");
     } catch (e) {
       if (!(e instanceof AdminUnauthorizedError)) setError(e instanceof Error ? e.message : "Gagal mengunggah surat.");
     } finally { setBusy(false); if (fileRef.current) fileRef.current.value = ""; }
   }
-  return <section className={styles.card}><h2>Surat bertanda tangan</h2>
-    <ol className="list-decimal pl-6">
-      <li>Cetak draf. Setelah disetujui Kepala Desa, cetak PDF kantor ber-QR untuk ditandatangani.</li>
-      <li>Tanda tangan Kepala Desa. Pastikan surat ditandatangani basah dan distempel.</li>
-      <li>Unggah scan PDF, maksimal 5 MB. Unggahan otomatis mengubah status menjadi Siap diunduh.</li>
-    </ol>
-    {draft ? <p>Draf bertanda DRAF hanya untuk pemeriksaan kantor, bukan untuk warga. PDF kantor ber-QR tersedia setelah persetujuan.</p> : letter && <>
-      <p>Disetujui Kepala Desa <time dateTime={letter.approved_at}>{dateTime(letter.approved_at)}</time>.{" "}
-        {letter.source === "uploaded" ? "Berkas: scan surat yang diunggah petugas." : "Berkas: PDF otomatis untuk dicetak kantor; belum tersedia untuk warga."}</p>
-      {letter.sha256 && <p className={styles.identity}>SHA-256: {letter.sha256}</p>}
+  const released = final && letter.ready_at ? letter : null;
+  const validityOver = !!letter?.valid_until && Date.parse(letter.valid_until) < checkedAt;
+  return <section className={styles.card}><h2>{released ? <>Surat dirilis {dateTime(released.ready_at!)} WIB{released.valid_until && <>, berlaku s.d. {dateTime(released.valid_until)} WIB</>}</> : "Surat"}</h2>
+    {draft ? <p>Draf bertanda DRAF hanya untuk pemeriksaan kantor, bukan untuk warga. Setelah Kepala Desa menyetujui, surat ber-QR langsung dirilis dan bisa diunduh pemohon selama masa berlaku.</p> : letter && <>
+      {released
+        ? <p>{validityOver ? "Masa berlaku surat sudah habis. Pemohon perlu mengajukan ulang bila masih memerlukan surat." : "Pemohon dapat mengunduh dan mencetak surat ini dari halaman cek status sampai batas berlaku."}</p>
+        : <p>Disetujui Kepala Desa <time dateTime={letter.approved_at}>{dateTime(letter.approved_at)}</time>. Surat lama ini belum dirilis untuk pemohon; hubungi admin bila pemohon memerlukannya.</p>}
       <dl className={styles.fields}>
-        <div><dt>Scan terakhir diunggah</dt><dd>{letter.ready_at ? <time dateTime={letter.ready_at}>{dateTime(letter.ready_at)}</time> : "Belum ada scan dengan masa unduh warga."}</dd></div>
-        <div><dt>Batas unduh warga (WIB)</dt><dd>{letter.download_until ? <time dateTime={letter.download_until}>{dateTime(letter.download_until)}</time> : "Belum tersedia dari server."}</dd></div>
         <div><dt>Jumlah unduhan warga</dt><dd>{letter.download_count}</dd></div>
         <div><dt>Unduhan warga terakhir</dt><dd>{letter.last_downloaded_at ? <time dateTime={letter.last_downloaded_at}>{dateTime(letter.last_downloaded_at)} WIB</time> : "Belum pernah diunduh."}</dd></div>
+        <div><dt>Berkas</dt><dd>{letter.source === "uploaded" ? "PDF pengganti dari petugas" : "PDF sistem ber-QR"}</dd></div>
       </dl>
-      {letter.download_until && !letter.file_purged_at && <p>{Date.parse(letter.download_until) < checkedAt ? "Masa unduh pemohon sudah berakhir." : <>Siap diunduh pemohon sampai <time dateTime={letter.download_until}>{dateTime(letter.download_until)} WIB</time>.</>}</p>}
+      {letter.sha256 && <p className={styles.identity}>SHA-256: {letter.sha256}</p>}
       {letter.file_purged_at && <p role="status">Berkas surat sudah dihapus sesuai masa simpan data.</p>}
     </>}
-    <p>QR hanya untuk memeriksa keaslian, bukan tanda tangan elektronik. Warga hanya dapat mengunduh scan bertanda tangan, bukan draf atau PDF otomatis.</p>
+    <p>QR hanya untuk memeriksa keaslian di website desa, bukan tanda tangan elektronik tersertifikasi.</p>
     {notice && <p className={styles.notice} role="status">{notice}</p>}
     {error && <p id="letter-upload-error" className="error-box" role="alert">{error}</p>}
     <div className={styles.buttons}>
       {draft && <button type="button" className="btn btn-secondary" disabled={busy || blocked} onClick={() => void open(`${base}/letter.pdf`, `draf-${detail.request_id}.pdf`, false)}>Cetak draf</button>}
       {draft && dirty && <p role="status">Simpan kalimat dan tunggu penyimpanan selesai sebelum memeriksa draf.</p>}
-      {final && !letter.file_purged_at && <button type="button" className="btn btn-secondary" disabled={busy || blocked} onClick={() => void open(`${base}/letter.pdf`, `surat-${detail.request_id}.pdf`, true)}>{letter.source === "uploaded" ? "Unduh scan bertanda tangan" : "Unduh PDF untuk cetak kantor"}</button>}
+      {final && !letter.file_purged_at && <button type="button" className="btn btn-secondary" disabled={busy || blocked} onClick={() => void open(`${base}/letter.pdf`, `surat-${detail.request_id}.pdf`, true)}>Unduh PDF surat</button>}
       {final && office && <button type="button" className="btn btn-secondary" disabled={busy || blocked} onClick={() => void open(`${base}/letter-qr.png`, `qr-${detail.request_id}.png`, true)}>Unduh QR verifikasi</button>}
     </div>
-    {final && office && uploadStatuses.includes(detail.status) && <>
-      <label htmlFor="letter-upload">{letter.source === "uploaded" ? "Ganti scan PDF bertanda tangan" : "Unggah scan PDF bertanda tangan"} (maks. 5 MB)</label>
-      <p id="letter-upload-help">Pastikan QR verifikasi ada pada surat sebelum dipindai. Scan menggantikan berkas sebelumnya. Unggah ulang memulai kembali masa unduh warga sesuai batas dari server. Server tetap memeriksa berkas dan izin.</p>
+    {released && office && uploadStatuses.includes(detail.status) && !validityOver && !released.file_purged_at && <details className="lookup-examples mt-4">
+      <summary>Ganti PDF (perbaikan manual)</summary>
+      <label htmlFor="letter-upload">Pilih PDF pengganti (maks. 5 MB)</label>
+      <p id="letter-upload-help">Hanya untuk memperbaiki berkas surat. PDF pengganti menggantikan berkas yang diunduh pemohon; status, nomor, QR, dan batas berlaku tidak berubah. Pastikan QR verifikasi tetap ada pada surat. Server tetap memeriksa berkas dan izin.</p>
       <input ref={fileRef} id="letter-upload" type="file" accept="application/pdf,.pdf" aria-describedby={`letter-upload-help${error ? " letter-upload-error" : ""}`} aria-invalid={!!error} disabled={busy || blocked}
         onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file); }} />
-    </>}
+    </details>}
     {busy && <p role="status">Memproses berkas...</p>}
   </section>;
 }
@@ -257,7 +255,7 @@ function DetailContent({ id }: { id: string }) {
       await refreshDetail();
     } catch (e) {
       if (e instanceof AdminUnauthorizedError) throw e;
-      if (uploaded) throw new Error("Scan tersimpan, tetapi detail gagal dimuat ulang. Gunakan Muat ulang detail sebelum tindakan berikutnya.");
+      if (uploaded) throw new Error("PDF pengganti tersimpan, tetapi detail gagal dimuat ulang. Gunakan Muat ulang detail sebelum tindakan berikutnya.");
       // Waktu tunggu habis belum membuktikan unggahan gagal; baca keadaan server sebelum mencoba lagi.
       try { await refreshDetail(); } catch { /* tindakan tetap terkunci sampai detail terbaru tersedia */ }
       throw e;

@@ -14,6 +14,11 @@ const schema = z.object({
   issued_at: z.string(), nama: z.string(), valid_until: z.string().nullable(), status: z.enum(["valid", "expired", "revoked"]),
 });
 
+/** Warna memakai kelas status yang ada: hijau (siap diunduh), kuning (perlu perbaikan), merah (ditolak). */
+const verdictClass = { valid: "READY_FOR_PICKUP", expired: "NEED_REVISION", revoked: "REJECTED" } as const;
+const verdictLabel = { valid: "SAH", expired: "KEDALUWARSA", revoked: "DIBATALKAN" } as const;
+const dateTime = (value: string) => new Date(value).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Jakarta" }) + " WIB";
+
 /** Membaca ?kode= di browser (static export); kode tidak dikirim ke tempat lain selain API verifikasi. */
 export function LetterVerifier() {
   const code = useSearchParams().get("kode") ?? "";
@@ -38,19 +43,24 @@ export function LetterVerifier() {
         : loading ? <div className="skeleton" role="status" aria-label="Memeriksa surat" />
         : error ? <div className="error-box" role="alert"><CircleAlert size={24} aria-hidden="true" /><span>{error}</span></div>
         : result && <section className="lookup-result" aria-labelledby="verify-heading">
-          <div className={"status-exception status-" + (result.status === "valid" ? "APPROVED" : "REJECTED")}>
+          <div className={"status-exception status-" + verdictClass[result.status]} role="status">
             <div className="status-exception-heading">
-              {result.status === "valid" ? <CircleCheck size={24} aria-hidden="true" /> : <CircleX size={24} aria-hidden="true" />}
-              <h2 id="verify-heading">{result.status === "valid" ? "Surat sah tercatat di Desa Watuagung" : result.status === "expired" ? "Masa berlaku surat sudah habis" : "Surat ini sudah dibatalkan"}</h2>
+              {result.status === "valid" ? <CircleCheck size={24} aria-hidden="true" /> : result.status === "expired" ? <CircleAlert size={24} aria-hidden="true" /> : <CircleX size={24} aria-hidden="true" />}
+              <h2 id="verify-heading">{verdictLabel[result.status]}</h2>
             </div>
+            <p>{result.status === "valid"
+              ? (result.valid_until ? <>Berlaku sampai <strong><time dateTime={result.valid_until}>{dateTime(result.valid_until)}</time></strong>.</> : "Surat tercatat di Desa Watuagung.")
+              : result.status === "expired"
+                ? (result.valid_until ? <>Kedaluwarsa sejak <strong><time dateTime={result.valid_until}>{dateTime(result.valid_until)}</time></strong>. Surat ini tidak berlaku lagi.</> : "Surat ini tidak berlaku lagi.")
+                : "Surat ini dibatalkan oleh Pemerintah Desa Watuagung dan tidak berlaku."}</p>
           </div>
           <dl className="status-next-step">
             <dt>Nomor surat</dt><dd className="receipt-value">{result.number ?? "Tidak bernomor (permohonan lama)"}</dd>
             <dt>Jenis surat</dt><dd>{services.find((s) => s.code === result.jenis_surat)?.title ?? result.jenis_surat}</dd>
-            <dt>Tanggal terbit</dt><dd><time dateTime={result.issued_at}>{new Date(result.issued_at).toLocaleDateString("id-ID", { dateStyle: "long" })}</time></dd>
-            <dt>Nama pemohon</dt><dd>{result.nama}</dd>
+            <dt>Nama lengkap</dt><dd>{result.nama}</dd>
+            <dt>Tanggal rilis</dt><dd><time dateTime={result.issued_at}>{dateTime(result.issued_at)}</time></dd>
           </dl>
-          <p>Cocokkan data di atas dengan surat yang Anda pegang. QR ini hanya alat cek keaslian, bukan tanda tangan elektronik; surat sah ditandatangani dan distempel Kepala Desa.</p>
+          <p className="mt-4"><strong>Cocokkan nama dan nomor dengan surat yang Anda terima.</strong> Bila berbeda, surat tersebut tidak sah. QR ini alat cek keaslian dari website resmi desa, bukan tanda tangan elektronik tersertifikasi.</p>
           <Link href="/kontak" className="text-link">Lihat Kontak Kantor</Link>
         </section>}
     </div>

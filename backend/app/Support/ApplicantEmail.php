@@ -25,7 +25,7 @@ final class ApplicantEmail
     }
 
     /** Satu kalimat langkah berikutnya; tanpa data pribadi. */
-    public static function statusLine(ApplicationStatus $status, ?Carbon $downloadUntil = null): string
+    public static function statusLine(ApplicationStatus $status, ?Carbon $validUntil = null): string
     {
         return match ($status) {
             ApplicationStatus::Submitted => 'Pengajuan Anda sudah diterima.',
@@ -35,9 +35,9 @@ final class ApplicantEmail
             ApplicationStatus::Processing => 'Surat Anda sedang disiapkan.',
             ApplicationStatus::WaitingApproval => 'Surat Anda menunggu persetujuan Kepala Desa.',
             ApplicationStatus::Approved => 'Surat Anda sudah disetujui Kepala Desa.',
-            ApplicationStatus::ReadyForPickup => $downloadUntil
-                ? 'Surat Anda sudah bisa diunduh di halaman cek status sampai '.self::indonesianDate($downloadUntil).'.'
-                : 'Surat Anda sudah bisa diunduh di halaman cek status.',
+            // Persetujuan langsung merilis surat (V2); tanggal = batas berlaku yang tercetak pada surat.
+            ApplicationStatus::ReadyForPickup => 'Surat Anda sudah disetujui Kepala Desa dan bisa diunduh serta dicetak sendiri di halaman cek status.'
+                .($validUntil ? ' Berlaku sampai '.self::indonesianDate($validUntil).'.' : ''),
             ApplicationStatus::Completed => 'Permohonan Anda sudah selesai.',
             ApplicationStatus::Rejected => 'Permohonan Anda ditolak. Baca catatan petugas dan hubungi kantor desa untuk penjelasan.',
             ApplicationStatus::NeedRevision => 'Permohonan Anda perlu diperbaiki. Baca catatan petugas, lalu hubungi kantor desa atau perbaiki lampiran di halaman cek status.',

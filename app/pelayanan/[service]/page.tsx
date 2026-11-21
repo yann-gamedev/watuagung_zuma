@@ -78,7 +78,7 @@ export default async function Page({
           </ul>
           <p className="service-estimate"><strong>Waktu pelayanan:</strong> {item.time}</p>
           <p className="service-example"><strong>Contoh keperluan:</strong> {item.example}</p>
-          <p className="service-example">Surat bertanda tangan basah dan stempel dapat diunduh melalui Cek Status Surat selama 30 hari sejak scan surat diunggah.</p>
+          <p className="service-example">Setelah Kepala Desa menyetujui, surat langsung bisa diunduh dan dicetak sendiri melalui Cek Status Surat. Berlaku 7 hari.</p>
           <p className="service-example">Persyaratan ini belum menjadi ketentuan resmi desa.</p>
           <HubungiPetugas />
         </aside>

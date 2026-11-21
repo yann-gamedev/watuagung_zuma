@@ -17,7 +17,7 @@ Portal informasi desa dan prototipe pelayanan administrasi: frontend Next.js dan
 - Lima peran panel: Ketua RT, Ketua RW, Petugas, Kepala Desa, dan Admin. RT/RW dibatasi wilayahnya.
 - Daftar/detail pengajuan, pencarian/filter, riwayat status, audit akses, serta antrean persetujuan.
 - Manajemen akun oleh Admin: tambah/ubah/nonaktifkan, reset kata sandi sementara, dan wajib ganti kata sandi. Sesi bertahan saat refresh melalui `sessionStorage` tab, dengan validasi server dan batas kedaluwarsa.
-- Penomoran otomatis, buku register, draf/final PDF, unggah scan surat bertanda tangan, dan verifikasi QR. **QR bukan TTE tersertifikasi.** Setelah scan diunggah, warga mengunduh melalui cek status dengan nomor pengajuan dan kode akses selama 30 hari.
+- Penomoran otomatis, buku register, draf/final PDF, dan verifikasi QR (Sah/Kedaluwarsa/Dibatalkan). **QR bukan TTE tersertifikasi.** Persetujuan Kepala Desa langsung merilis PDF ber-QR; warga mengunduh dan mencetak sendiri melalui cek status dengan nomor pengajuan dan kode akses selama 7 hari (masa berlaku surat). Petugas dapat mengganti PDF sebagai perbaikan manual selama masa berlaku.
 - Bantuan buat ulang kode akses melalui petugas/RT/RW setelah pemeriksaan identitas; bukan pemulihan mandiri melalui OTP.
 
 Domisili, SKTM, dan KTP/KK: **warga → RT → RW → petugas desa → Kepala Desa → petugas menyiapkan surat → diambil warga**. SKU langsung ke petugas desa tanpa RT/RW. Hanya Kepala Desa yang memutuskan persetujuan akhir.
@@ -155,4 +155,4 @@ Sebelum kembali ke mode API, hentikan server, hapus override sesi PowerShell den
 
 ## Batas prototipe
 
-Belum ada pengaduan warga, CMS, unggah **lampiran persyaratan warga**, atau OTP mandiri. Unggah surat final oleh petugas sudah ada dan merupakan fitur berbeda. Template resmi, konten desa, hosting/database produksi, backup, kebijakan privasi/retensi, serta uji keamanan dan operasional masih perlu dituntaskan sesuai [ROADMAP.md](ROADMAP.md). QR hanya membantu verifikasi; surat tetap memerlukan tanda tangan basah dan stempel sampai ada TTE tersertifikasi.
+Belum ada pengaduan warga, CMS, unggah **lampiran persyaratan warga**, atau OTP mandiri. Ganti PDF surat oleh petugas sudah ada dan merupakan fitur berbeda. Template resmi, konten desa, hosting/database produksi, backup, kebijakan privasi/retensi, serta uji keamanan dan operasional masih perlu dituntaskan sesuai [ROADMAP.md](ROADMAP.md). QR menunjuk catatan verifikasi website resmi desa dan bukan TTE tersertifikasi; penerima surat perlu memindai QR dan mencocokkan nama serta nomor.
