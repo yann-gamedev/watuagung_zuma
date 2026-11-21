@@ -1,10 +1,12 @@
 ﻿import type { Metadata } from "next";
 import { PageHeading, PublicShell } from "@/components/site";
 
-export const metadata: Metadata = {
+import { pageMeta } from "@/lib/seo";
+export const metadata: Metadata = pageMeta({
   title: "BUMDes Watuagung Bangkit",
   description: "BUMDes Watuagung Bangkit berstatus aktif dengan unit usaha peternakan sapi. Penguatan BUMDes direncanakan pada 2027 berdasarkan RKP Desa Watuagung 2027.",
-};
+  path: "/bumdes/",
+});
 
 export default function BumdesPage() {
   return (

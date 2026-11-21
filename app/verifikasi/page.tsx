@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { PublicShell, PageHeading } from "@/components/site";
 import { LetterVerifier } from "@/features/pelayanan/letter-verifier";
-export const metadata = { title: "Verifikasi Surat" };
+export const metadata = { title: "Verifikasi Surat", robots: { index: false, follow: false } };
 export default function Page() {
   return (
     <PublicShell>

@@ -9,9 +9,41 @@ import { OfficeContact } from "@/components/office-contact";
 import { PublicNews } from "@/features/news/public-news";
 import { SiteVideo } from "@/components/site-video";
 import { HomeBusinesses } from "@/features/umkm/public-businesses";
+import { contact } from "@/lib/data";
+import { pageMeta } from "@/lib/seo";
+import { siteOrigin } from "@/lib/urls";
+
+const description =
+  "Sistem informasi dan pelayanan digital Desa Watuagung, Kecamatan Prigen, Kabupaten Pasuruan. Ajukan surat, pantau status, dan baca berita desa.";
+export const metadata = pageMeta({
+  title: "Desa Watuagung | Informasi & Pelayanan Desa",
+  description,
+  path: "/",
+  absoluteTitle: true,
+});
+
+const origin = siteOrigin();
+const jsonLd = origin
+  ? {
+      "@context": "https://schema.org",
+      "@type": "GovernmentOrganization",
+      name: "Pemerintah Desa Watuagung",
+      url: origin,
+      logo: `${origin}/brand/logo-watuagung-128.png`,
+      address: contact.address,
+      sameAs: [],
+    }
+  : null;
+
 export default function Home() {
   return (
     <PublicShell>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+        />
+      )}
       <Hero />
       <TaskPanel />
       <ServiceList />

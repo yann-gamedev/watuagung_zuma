@@ -8,6 +8,19 @@ import { SiteTextPage } from "@/components/site-text-page";
 import { TransparencyPage } from "@/components/transparency-page";
 import { StructurePage } from "@/components/structure-page";
 import { ProfileLinks } from "@/components/profile-links";
+import { pageMeta } from "@/lib/seo";
+
+const descriptions: Record<string, string> = {
+  profil: "Profil Desa Watuagung, Kecamatan Prigen, Kabupaten Pasuruan: tiga dusun (Watuagung, Talang, Sekar), 10 RW, 31 RT, batas wilayah, dan lembaga desa yang aktif.",
+  sejarah: "Sejarah Desa Watuagung: asal-usul nama dari batu besar menyerupai gunung, tiga dusun Watuagung, Talang, dan Sekar, serta kepala desa dari masa ke masa.",
+  "visi-misi": "Visi dan misi Kepala Desa Watuagung: tata kelola pemerintahan desa yang bersih dan transparan, pengembangan ekonomi warga, serta tema pembangunan 2027.",
+  "struktur-pemerintahan": "Susunan Pemerintah Desa Watuagung: kepala desa, sekretariat, pelaksana teknis, kepala dusun, dan Badan Permusyawaratan Desa menurut RKP Desa Watuagung 2027.",
+  potensi: "Potensi Desa Watuagung: persawahan, tegalan, perkebunan, sumber mata air, usaha warga, serta seni dan budaya seperti ludruk dan bantengan menurut RKP Desa 2027.",
+  transparansi: "Transparansi Desa Watuagung: program prioritas 2027 bidang kesehatan, infrastruktur, pemberdayaan, dan sosial, serta status dokumen RKP Desa dan APBDes.",
+  kontak: "Alamat dan jam pelayanan Kantor Desa Watuagung, Kecamatan Prigen, Kabupaten Pasuruan, Jawa Timur. Hubungi petugas pelayanan desa untuk bantuan pengajuan surat.",
+  agenda: "Agenda Desa Watuagung, Kecamatan Prigen, Kabupaten Pasuruan. Ikuti kegiatan dan ambil bagian dalam kehidupan desa; agenda tampil setelah diterbitkan desa.",
+  pengumuman: "Pengumuman Desa Watuagung untuk warga: informasi pelayanan dan pemberitahuan desa dalam satu tempat, diterbitkan oleh Pemerintah Desa Watuagung, Pasuruan.",
+};
 
 export function generateStaticParams() {
   return Object.keys(pages).map((slug) => ({ slug }));
@@ -18,7 +31,9 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  return { title: pages[slug]?.title, description: pages[slug]?.intro };
+  const page = pages[slug];
+  if (!page) notFound();
+  return pageMeta({ title: page.title, description: descriptions[slug], path: `/${slug}/` });
 }
 export default async function Page({
   params,

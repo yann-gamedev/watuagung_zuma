@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { PublicShell, PageHeading } from "@/components/site";
 import { StatusChecker } from "@/features/pelayanan/status-checker";
-export const metadata = { title: "Cek Status Surat" };
+export const metadata = { title: "Cek Status Surat", robots: { index: false, follow: false } };
 export default function Page() {
   return (
     <PublicShell>
