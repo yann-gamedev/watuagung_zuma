@@ -88,6 +88,12 @@ if PHP_BIN="$php_path" bash "$root/deploy/smoke-test.sh" 'https://bad/path' > "$
     printf 'GAGAL domain tidak valid diterima\n' >&2
     exit 1
 fi
+# Skrip yang berjalan di server Hostinger tidak boleh memakai process substitution: shell SSH-nya tanpa /dev/fd.
+for script in smoke-test.sh hostinger-deploy.sh hostinger-sync.sh backup.sh; do
+    if grep -nE '<[[:space:]]*<\(|>\(' "$root/deploy/$script" | grep -v '^[0-9]*:[[:space:]]*#'; then
+        printf 'GAGAL %s memakai process substitution (butuh /dev/fd)\n' "$script" >&2; exit 1
+    fi
+done
 # --admin/--admin-dir (mode S): lulus dengan header benar, gagal untuk tiap fault panel/CORS.
 smoke_admin() { PATH="$tmp/bin:$PATH" PHP_BIN="$php_path" "$@" bash "$root/deploy/smoke-test.sh" desa.example.test --admin panel.desa.example.test --admin-dir panel > "$tmp/log" 2>&1; }
 smoke_admin env || { cat "$tmp/log"; exit 1; }
