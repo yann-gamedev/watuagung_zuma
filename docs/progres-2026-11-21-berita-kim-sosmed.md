@@ -1,4 +1,4 @@
-# Progres — hak cipta KIM dan tautan media sosial per berita (22 November 2026)
+# Progres — hak cipta KIM dan tautan media sosial per berita (21 November 2026)
 
 Branch: `feat/news-copyright-social-links`, dari `origin/main` @ `aa37436`. Permintaan pengguna: teks hak cipta KIM opsional per berita (dicentang = tampil) dan kolom media sosial opsional (TikTok, Instagram, YouTube, Facebook) seperti kolom WhatsApp UMKM.
 
@@ -12,6 +12,7 @@ Branch: `feat/news-copyright-social-links`, dari `origin/main` @ `aa37436`. Perm
 
 - **Backend**
   - Migration `2026_11_22_000000_add_copyright_and_social_links_to_posts` (+`down()`): `show_copyright` boolean bawaan false, `instagram_url`/`tiktok_url`/`youtube_url`/`facebook_url` string(500) nullable.
+    - Catatan koreksi: sesi ini dikerjakan 21 November 2026. Awalnya dokumen salah ditulis 22 November, sudah dibetulkan. Nama file migration tetap `2026_11_22_…` dengan sengaja: Laravel mencatat migration berdasarkan nama file, jadi mengganti nama migration yang mungkin sudah dijalankan (lokal/server) akan membuatnya dijalankan ulang dan gagal. Urutan tetap benar karena migration ini yang terbaru.
   - `App\Domain\SocialPlatform`: label, host resmi, validasi (https, tanpa user/password/port, host tepat).
   - `Post`: fillable/cast, `socialLinks()`.
   - `PostController`: validasi opsional per kolom (422 per kolom; `""`/null mengosongkan; PATCH tanpa kolom mempertahankan nilai). Detail petugas mengirim lima kolom. Detail publik menambah `show_copyright` dan `social_links` (hanya yang terisi, `{}` bila kosong). Daftar publik tidak berubah.
