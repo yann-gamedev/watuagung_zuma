@@ -3160,6 +3160,12 @@ p {
 .service-preparation ul {
   margin-top: 20px;
 }
+/* Layanan di kantor (Izin Keramaian): judul setara kartu persiapan, tanpa formulir. */
+.service-office-card h2 {
+  margin-bottom: 12px;
+  font-size: 26px;
+  font-weight: 800;
+}
 .service-preparation .service-estimate {
   margin-top: 24px;
   color: var(--leaf);

@@ -26,7 +26,10 @@ class LetterSubmission
         if (blank($input['kewarganegaraan'] ?? null)) $input['kewarganegaraan'] = 'WNI';
         $type = is_string($input['jenis_surat'] ?? null) ? LetterType::tryFrom($input['jenis_surat']) : null;
 
-        return Validator::make($input, self::rules($type, $input), self::messages(), self::attributes())->validate();
+        $messages = self::messages();
+        if ($type !== null && ! $type->isOffered()) $messages['jenis_surat.in'] = $type->notOfferedMessage();
+
+        return Validator::make($input, self::rules($type, $input), $messages, self::attributes())->validate();
     }
 
     /** @return array<string, list<mixed>> */

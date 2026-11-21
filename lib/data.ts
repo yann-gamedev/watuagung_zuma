@@ -30,9 +30,11 @@ export function getContactLinks(values = contact) {
   };
 }
 
+/** mode "online": formulir pengajuan; "office": warga datang ke Balai Desa, tanpa formulir. */
 export const services = [
   {
     slug: "domisili",
+    mode: "online",
     code: "DOMISILI",
     title: "Surat Keterangan Domisili",
     description: "Keterangan tempat tinggal sesuai alamat pemohon.",
@@ -43,6 +45,7 @@ export const services = [
   },
   {
     slug: "sktm",
+    mode: "online",
     code: "SKTM",
     title: "Surat Keterangan Tidak Mampu",
     description: "Keterangan untuk keperluan bantuan pendidikan atau bantuan lainnya.",
@@ -53,6 +56,7 @@ export const services = [
   },
   {
     slug: "belum-menikah",
+    mode: "online",
     code: "BELUM_MENIKAH",
     title: "Surat Keterangan Belum Menikah",
     description: "Keterangan bahwa pemohon belum pernah menikah di KUA manapun.",
@@ -63,16 +67,19 @@ export const services = [
   },
   {
     slug: "keramaian",
+    // Dilayani langsung di Balai Desa (tanpa formulir online); backend menolak POST dengan 422.
+    mode: "office",
     code: "KERAMAIAN",
     title: "Surat Keterangan Izin Keramaian",
-    description: "Keterangan untuk permohonan izin acara dengan rincian tempat, tanggal, dan hiburan.",
+    description: "Keterangan untuk permohonan izin acara. Layanan ini diurus langsung di Balai Desa.",
     example: "Permohonan izin acara pernikahan.",
-    requirements: ["Scan KTP", "Scan Kartu Keluarga", "Scan Surat Pengantar RT/RW"],
+    requirements: ["KTP", "Kartu Keluarga", "Surat Pengantar RT/RW asli"],
     time: "Waktu pelayanan menunggu konfirmasi desa",
     icon: "UsersRound",
   },
   {
     slug: "kehilangan",
+    mode: "online",
     code: "KEHILANGAN",
     title: "Surat Keterangan Kehilangan",
     description: "Keterangan mengenai barang atau dokumen pemohon yang hilang.",
@@ -83,6 +90,7 @@ export const services = [
   },
   {
     slug: "umum",
+    mode: "online",
     code: "UMUM",
     title: "Surat Keterangan",
     description: "Keterangan tentang diri pemohon dengan isi dan tujuan penggunaan yang dijelaskan.",
