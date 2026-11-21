@@ -79,7 +79,9 @@ if [[ -n $archive ]]; then
     tar -xzf "$archive" -C "$staging"
     [[ -f $staging/index.html && -f $staging/pelayanan/index.html && -f $staging/404.html ]] \
         || fail 'Arsip harus berisi ISI out/ (index.html di akar arsip), bukan folder out/.'
-    if grep -rqE '127\.0\.0\.1|localhost:8000' "$staging/_next" 2>/dev/null; then
+    # URL localhost (NEXT_PUBLIC_API_URL dev), bukan nama host saja: validator origin (lib/urls.ts) di bundle
+    # memuat "127.0.0.1"/"localhost" sebagai pengecualian http lokal dan tidak boleh menggagalkan deploy.
+    if grep -rqE '://(127\.0\.0\.1|localhost|\[::1\])([:/"'\''`]|$)' "$staging/_next" 2>/dev/null; then
         fail 'Build frontend memuat API localhost; bangun ulang dengan konfigurasi produksi.'
     fi
     for name in .htaccess laravel.php storage .env; do
