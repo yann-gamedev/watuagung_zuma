@@ -21,6 +21,13 @@ const empty: PostFormValue = {
   show_copyright: false, instagram_url: "", tiktok_url: "", youtube_url: "", facebook_url: "",
 };
 const MAX_INLINE_IMAGES = 3;
+const PARAGRAPH_SPLIT = /\r?\n[\t ]*\r?\n/;
+/** Foto dipilih sebelum disimpan; diunggah berurutan setelah teks tersimpan (seperti foto sampul). */
+type PendingImage = { key: number; file: File; url: string; caption: string };
+/** Sama dengan NewsArticle: foto ke-n setelah paragraf ke-n; bila paragraf kurang, di akhir berita. */
+function placement(position: number, paragraphs: number) {
+  return position <= paragraphs ? `Tampil setelah paragraf ${position}` : "Tampil di akhir berita (paragraf belum cukup)";
+}
 // Penjagaan navigasi dipakai bersama editor bagian situs.
 function fields(post: StaffPostDetail): PostFormValue {
   return {
@@ -53,9 +60,9 @@ export function NewsEditor({ id }: { id?: number }) {
   const [file, setFile] = useState<File | null>(null);
   const [removeCover, setRemoveCover] = useState(false);
   const [localCover, setLocalCover] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [localImage, setLocalImage] = useState<string | null>(null);
-  const [newCaption, setNewCaption] = useState("");
+  const [pending, setPending] = useState<PendingImage[]>([]);
+  const pendingRef = useRef<PendingImage[]>([]);
+  const pendingKey = useRef(0);
   const [captions, setCaptions] = useState<Record<number, string>>({});
   const [preview, setPreview] = useState(false);
   // Tahun pratinjau hak cipta untuk berita yang belum terbit; dibaca sekali agar render tetap murni.
@@ -67,7 +74,7 @@ export function NewsEditor({ id }: { id?: number }) {
   const inFlight = useRef(false);
   const images = post?.images ?? [];
   const captionsDirty = images.some((image) => (captions[image.id] ?? "") !== (image.caption ?? ""));
-  const dirty = JSON.stringify(value) !== JSON.stringify(saved) || !!file || removeCover || !!imageFile || !!newCaption.trim() || captionsDirty;
+  const dirty = JSON.stringify(value) !== JSON.stringify(saved) || !!file || removeCover || pending.length > 0 || captionsDirty;
   useUnsavedChanges(dirty || busy);
 
   useEffect(() => {
@@ -83,9 +90,9 @@ export function NewsEditor({ id }: { id?: number }) {
   useEffect(() => {
     return () => { if (localCover) URL.revokeObjectURL(localCover); };
   }, [localCover]);
-  useEffect(() => {
-    return () => { if (localImage) URL.revokeObjectURL(localImage); };
-  }, [localImage]);
+  useEffect(() => { pendingRef.current = pending; }, [pending]);
+  // URL pratinjau foto antrean dilepas saat editor ditutup.
+  useEffect(() => () => { pendingRef.current.forEach((item) => URL.revokeObjectURL(item.url)); }, []);
   useEffect(() => { if (error || notice) message.current?.focus(); }, [error, notice]);
 
   function adopt(result: StaffPostDetail) {
@@ -114,31 +121,40 @@ export function NewsEditor({ id }: { id?: number }) {
         adopt(result);
       }
       setRemoveCover(false);
-      setNotice(result.status === "published" ? "Berita terbit berhasil disimpan." : "Draf berhasil disimpan.");
+      let uploaded = 0;
+      for (const item of pending) {
+        const data = new FormData();
+        data.append("file", await prepareImageForUpload(item.file));
+        if (item.caption.trim()) data.append("caption", item.caption.trim());
+        result = parsePost(await request<unknown>(`/staff/posts/${result.id}/images`, { method: "POST", body: data }));
+        adopt(result); uploaded++;
+        // Foto yang sudah terunggah keluar dari antrean; sisanya tetap bila unggahan berikutnya gagal.
+        URL.revokeObjectURL(item.url);
+        setPending((previous) => previous.filter((entry) => entry.key !== item.key));
+      }
+      setNotice((result.status === "published" ? "Berita terbit berhasil disimpan." : "Draf berhasil disimpan.") + (uploaded ? ` ${uploaded} foto tambahan terunggah.` : ""));
     } catch (cause) {
       if (!(cause instanceof AdminUnauthorizedError)) {
         setError(cause instanceof Error ? cause.message : "Berita gagal disimpan.");
-        if (textSaved) setNotice("Teks sudah tersimpan. Perubahan foto belum dikonfirmasi. Muat ulang untuk memeriksa foto di server, atau coba simpan lagi.");
+        if (textSaved) setNotice("Teks sudah tersimpan. Perubahan foto belum dikonfirmasi; foto yang belum terunggah masih ada di daftar. Coba simpan lagi, atau muat ulang untuk memeriksa foto di server.");
       }
     } finally { inFlight.current = false; setBusy(false); }
   }
-  async function uploadImage() {
-    if (!post || !imageFile || inFlight.current) return;
-    if (post.images.length >= MAX_INLINE_IMAGES) { setError("Maksimal 3 foto tambahan per berita."); return; }
-    const postId = post.id;
-    inFlight.current = true; setBusy(true); setError(""); setNotice("");
-    try {
-      const data = new FormData();
-      data.append("file", await prepareImageForUpload(imageFile));
-      if (newCaption.trim()) data.append("caption", newCaption.trim());
-      const result = parsePost(await request<unknown>(`/staff/posts/${postId}/images`, { method: "POST", body: data }));
-      adopt(result);
-      setImageFile(null); setNewCaption("");
-      if (imageInput.current) imageInput.current.value = "";
-      setNotice("Foto tambahan berhasil diunggah.");
-    } catch (cause) {
-      if (!(cause instanceof AdminUnauthorizedError)) setError(cause instanceof Error ? cause.message : "Foto tambahan gagal diunggah.");
-    } finally { inFlight.current = false; setBusy(false); }
+  function choosePhotos(list: FileList | null) {
+    const selected = [...(list ?? [])];
+    if (imageInput.current) imageInput.current.value = "";
+    if (!selected.length) return;
+    const room = MAX_INLINE_IMAGES - images.length - pending.length;
+    const accepted = selected.filter((photo) => ["image/jpeg", "image/png", "image/webp"].includes(photo.type));
+    const added = accepted.slice(0, Math.max(0, room));
+    const skipped = selected.length - added.length;
+    setNotice("");
+    setError(skipped ? (room <= 0 ? "Batas 3 foto tambahan sudah tercapai." : accepted.length < selected.length
+      ? `${selected.length - accepted.length} file bukan JPG, PNG, atau WebP dan tidak dipilih.` : `Maksimal 3 foto tambahan per berita; ${skipped} foto tidak dipilih.`) : "");
+    if (added.length) setPending((previous) => [...previous, ...added.map((photo) => ({ key: ++pendingKey.current, file: photo, url: URL.createObjectURL(photo), caption: "" }))]);
+  }
+  function removePending(key: number) {
+    setPending((previous) => previous.filter((item) => { if (item.key === key) URL.revokeObjectURL(item.url); return item.key !== key; }));
   }
   async function saveCaption(image: StaffPostImage) {
     if (!post || inFlight.current) return;
@@ -175,7 +191,7 @@ export function NewsEditor({ id }: { id?: number }) {
     try {
       await request(`/staff/posts/${post.id}`, { method: "DELETE" });
       // Disable dirty guard before full navigation after successful delete.
-      setValue(saved); setFile(null); setRemoveCover(false); setPost(null); setImageFile(null); setNewCaption(""); setCaptions({});
+      setValue(saved); setFile(null); setRemoveCover(false); setPost(null); pending.forEach((item) => URL.revokeObjectURL(item.url)); setPending([]); setCaptions({});
       setNotice("Berita dihapus.");
       dialog.current?.close();
     } catch (cause) {
@@ -189,22 +205,22 @@ export function NewsEditor({ id }: { id?: number }) {
   if (notice === "Berita dihapus.") return <div><p role="status">{notice}</p><Link className="btn" href="/admin/berita/">Kembali ke daftar berita</Link></div>;
   if (id && !post) return <div><p className="error-box" role="alert">{error}</p><button className="btn" onClick={() => { setLoading(true); setError(""); setAttempt((n) => n + 1); }}>Muat ulang</button><Link className="btn btn-secondary" href="/admin/berita/">Kembali ke daftar berita</Link></div>;
   const cover = file ? localCover : removeCover ? null : post?.cover_url;
+  const paragraphCount = value.body.split(PARAGRAPH_SPLIT).filter((paragraph) => paragraph.trim()).length;
   const previewImages = [
     ...images.map((image) => ({ url: image.url, caption: image.caption })),
-    ...(imageFile && localImage ? [{ url: localImage, caption: newCaption.trim() || null }] : []),
+    ...pending.map((item) => ({ url: item.url, caption: item.caption.trim() || null })),
   ].slice(0, MAX_INLINE_IMAGES);
   return <div className={styles.editor}>
     <Link className="btn btn-secondary" href="/admin/berita/">Kembali ke daftar berita</Link>
     <div ref={message} tabIndex={-1}>{error && <p className="error-box" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}</div>
-    <div className={styles.actions}><NewsStatus status={post?.status ?? "draft"} />{dirty && <span>Perubahan belum disimpan</span>}{post?.status === "published" && <a className="btn btn-secondary" href={`/berita/baca/?slug=${encodeURIComponent(post.slug)}`} target="_blank" rel="noopener noreferrer">Lihat di website</a>}</div>
-    {post?.status === "published" && <p>Tautan website disiapkan untuk halaman publik CMS (C4), yang belum tersedia.</p>}
+    <div className={styles.actions}><NewsStatus status={post?.status ?? "draft"} />{dirty && <span>Perubahan belum disimpan</span>}{post?.status === "published" && <a className="btn btn-secondary" href={`/berita/baca/?slug=${encodeURIComponent(post.slug)}`} target="_blank" rel="noopener noreferrer">Lihat di website<span className="sr-only"> (dibuka di tab baru)</span></a>}</div>
     <form onSubmit={(event) => { event.preventDefault(); void save(post?.status ?? "draft"); }}>
       <fieldset className={styles.fields} disabled={busy}>
         <legend className="sr-only">Isi berita</legend>
         <div className={styles.field}><label htmlFor="post-title">Judul</label><input id="post-title" required maxLength={160} value={value.title} onChange={(e) => setValue({ ...value, title: e.target.value })} /></div>
         <div className={styles.field}><label htmlFor="post-category">Kategori</label><select id="post-category" value={value.category} onChange={(e) => setValue({ ...value, category: e.target.value as PostFormValue["category"] })}>{Object.entries(categoryLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></div>
         <div className={styles.field}><label htmlFor="post-summary">Ringkasan</label><textarea id="post-summary" required rows={3} maxLength={300} aria-describedby="summary-count" value={value.summary} onChange={(e) => setValue({ ...value, summary: e.target.value })} /><span id="summary-count">{value.summary.length}/300 karakter</span></div>
-        <div className={styles.field}><label htmlFor="post-body">Isi</label><span id="body-help">Pisahkan paragraf dengan baris kosong. Foto tambahan disisipkan otomatis setelah paragraf pertama, kedua, dan ketiga.</span><textarea id="post-body" required rows={14} maxLength={20000} aria-describedby="body-help" value={value.body} onChange={(e) => setValue({ ...value, body: e.target.value })} /></div>
+        <div className={styles.field}><label htmlFor="post-body">Isi</label><span id="body-help">Pisahkan paragraf dengan baris kosong. Foto di dalam berita disisipkan otomatis setelah paragraf pertama, kedua, dan ketiga.</span><textarea id="post-body" required rows={14} maxLength={20000} aria-describedby="body-help" value={value.body} onChange={(e) => setValue({ ...value, body: e.target.value })} /></div>
         <div className={styles.field}><label htmlFor="post-cover">Foto sampul {post?.cover_url || file ? "(ganti foto)" : "(opsional)"}</label><input ref={input} id="post-cover" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="cover-help" onChange={(e) => { const selected = e.target.files?.[0] ?? null; setFile(selected); setLocalCover(selected ? URL.createObjectURL(selected) : null); setRemoveCover(false); }} />
           <p id="cover-help">Format JPG, PNG, atau WebP; ukuran maksimal 10 MB. Foto besar otomatis diperkecil di browser, dan sisi terpanjang hasil akhir 2.000 piksel dengan rasio asli tanpa dipotong. Sampul dapat diakses publik, termasuk saat berita masih draf. Jangan unggah dokumen pribadi.</p>
           {cover && <Image className={styles.cover} src={cover} alt="Pratinjau foto sampul" width={800} height={500} unoptimized />}
@@ -212,11 +228,12 @@ export function NewsEditor({ id }: { id?: number }) {
           {removeCover && <p>Foto akan dihapus saat berita disimpan.</p>}
         </div>
         <div className={styles.field}>
-          <h3 className={styles.subhead}>Foto tambahan di dalam berita (opsional)</h3>
-          <p id="inline-images-help">Maksimal 3 foto. Foto pertama tampil setelah paragraf pertama, foto kedua setelah paragraf kedua, dan foto ketiga setelah paragraf ketiga. Ukuran maksimal 10 MB; foto besar diperkecil otomatis dengan rasio asli tanpa dipotong.</p>
-          {images.length === 0 && <p>Belum ada foto tambahan.</p>}
+          <h3 className={styles.subhead}>Foto di dalam berita (opsional, maks. 3)</h3>
+          <p id="inline-images-help">Pilih 1–3 foto sekaligus. Foto pertama tampil setelah paragraf pertama, foto kedua setelah paragraf kedua, dan foto ketiga setelah paragraf ketiga. Foto terpilih diunggah saat Anda menekan Simpan draf atau Terbitkan. JPG, PNG, atau WebP, maksimal 10 MB per foto; foto besar diperkecil otomatis dengan rasio asli tanpa dipotong.</p>
+          {images.length + pending.length === 0 && <p>Belum ada foto di dalam berita.</p>}
           {images.map((image, index) => <div key={image.id} className={styles.inlineImage}>
             <img className={styles.inlinePhoto} src={image.url} alt={image.caption || `Foto tambahan ${index + 1}`} loading="lazy" />
+            <p className={styles.placement}>Foto {index + 1} · {placement(index + 1, paragraphCount)} · tersimpan</p>
             <div className={styles.field}>
               <label htmlFor={`post-image-caption-${image.id}`}>Keterangan foto {index + 1} (opsional)</label>
               <input id={`post-image-caption-${image.id}`} maxLength={200} value={captions[image.id] ?? ""} onChange={(e) => setCaptions({ ...captions, [image.id]: e.target.value })} aria-describedby="inline-caption-help" />
@@ -226,25 +243,31 @@ export function NewsEditor({ id }: { id?: number }) {
               <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void deleteImage(image)}>Hapus foto</button>
             </div>
           </div>)}
+          {pending.map((item, index) => {
+            const position = images.length + index + 1;
+            return <div key={item.key} className={styles.inlineImage}>
+              <img className={styles.inlinePhoto} src={item.url} alt={item.caption.trim() || `Pratinjau foto ${position}`} />
+              <p className={styles.placement}>Foto {position} · {placement(position, paragraphCount)} · belum diunggah</p>
+              <div className={styles.field}>
+                <label htmlFor={`post-pending-caption-${item.key}`}>Keterangan foto {position} (opsional)</label>
+                <input id={`post-pending-caption-${item.key}`} maxLength={200} value={item.caption} aria-describedby="inline-caption-help"
+                  onChange={(e) => { const caption = e.target.value; setPending((previous) => previous.map((entry) => entry.key === item.key ? { ...entry, caption } : entry)); }} />
+              </div>
+              <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => removePending(item.key)}>Batalkan foto ini</button>
+            </div>;
+          })}
           <span id="inline-caption-help">Keterangan membantu pembaca layar dan tampil di bawah foto. Kosongkan bila tidak perlu.</span>
-          {!post ? <p>Simpan teks berita dulu, lalu tambahkan foto.</p> : images.length >= MAX_INLINE_IMAGES ? <p>Batas 3 foto tambahan sudah tercapai.</p> : <div className={styles.inlineImage}>
-            <div className={styles.field}>
-              <label htmlFor="post-image">Tambah foto ke-{images.length + 1}</label>
-              <input ref={imageInput} id="post-image" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="inline-images-help" onChange={(e) => { const selected = e.target.files?.[0] ?? null; setImageFile(selected); setLocalImage(selected ? URL.createObjectURL(selected) : null); }} />
-              {localImage && <img className={styles.inlinePhoto} src={localImage} alt="Pratinjau foto tambahan" />}
-            </div>
-            <div className={styles.field}>
-              <label htmlFor="post-image-caption">Keterangan foto baru (opsional)</label>
-              <input id="post-image-caption" maxLength={200} value={newCaption} onChange={(e) => setNewCaption(e.target.value)} />
-            </div>
-            <button type="button" className="btn" disabled={busy || !imageFile} onClick={() => void uploadImage()}>Unggah foto</button>
+          {images.length + pending.length >= MAX_INLINE_IMAGES ? <p>Batas 3 foto di dalam berita sudah tercapai.</p> : <div className={styles.field}>
+            <label htmlFor="post-image">{images.length + pending.length === 0 ? "Pilih foto (bisa beberapa sekaligus)" : `Tambah foto (sisa ${MAX_INLINE_IMAGES - images.length - pending.length})`}</label>
+            <input ref={imageInput} id="post-image" type="file" multiple accept="image/jpeg,image/png,image/webp" aria-describedby="inline-images-help" onChange={(e) => choosePhotos(e.target.files)} />
           </div>}
+          {pending.length > 0 && <p role="status">{pending.length} foto akan diunggah saat berita disimpan.</p>}
         </div>
         <label className={styles.check}><input type="checkbox" checked={value.show_copyright} aria-describedby="post-copyright-help" onChange={(e) => setValue({ ...value, show_copyright: e.target.checked })} />Tampilkan © KIM Desa Watuagung di akhir berita</label>
         <span id="post-copyright-help">Opsional. Bila dicentang, berita ini menampilkan &quot;© {"{tahun terbit}"} KIM Desa Watuagung&quot; di bawah isi berita.</span>
         <div className={styles.field}>
           <h3 className={styles.subhead}>Media sosial (opsional)</h3>
-          <p id="post-social-help">Tempel tautan unggahan berita yang sama di media sosial desa. Kosongkan bila tidak ada; hanya tautan yang diisi yang tampil sebagai tombol &quot;Lihat juga di&quot; di halaman berita.</p>
+          <p id="post-social-help">Tempel tautan unggahan berita yang sama di media sosial desa. Kosongkan bila tidak ada; hanya tautan yang diisi yang tampil sebagai tombol &quot;Lihat di Instagram/TikTok/YouTube/Facebook&quot; di halaman berita, seperti tombol Chat WhatsApp pada UMKM.</p>
           {socialPlatforms.map((platform) => {
             const column = `${platform}_url` as const;
             const { label, example } = socialPlatformInfo[platform];

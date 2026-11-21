@@ -46,3 +46,45 @@ Branch: `feat/news-copyright-social-links`, dari `origin/main` @ `aa37436`. Perm
 - Rencana A (akun resmi desa di footer + tombol bagikan + Open Graph) belum dikerjakan.
 - Teks hak cipta tetap "KIM Desa Watuagung" untuk semua berita yang dicentang; bila perlu nama penulis/fotografer per berita, itu fitur terpisah.
 - Deploy: jalankan `php artisan migrate` di server.
+
+## Pembaruan: tombol sosmed bergaya Chat WhatsApp UMKM (branch `fix/news-social-buttons-umkm-style`)
+
+Permintaan pengguna setelah PR #104 di-merge: tampilan tautan sosmed di halaman berita disamakan dengan tombol WhatsApp pada detail UMKM.
+
+- `features/news/news-article.tsx`: judul "Lihat juga di" dan tombol sekunder diganti tombol utama `.btn .umkm-chat` per platform berlabel "Lihat di Instagram/TikTok/YouTube/Facebook". Ikon `ExternalLink` 22px tetap dipakai karena lucide-react 1.31 tidak punya ikon merek. Pembungkusnya `nav.article-social-links` dengan `aria-label`, tab baru, `noopener noreferrer`.
+- `app/globals.css`: aturan `.article-social` dan `h2` dihapus; `.article-social-links` tetap flex membungkus dengan celah 12px dan margin atas 24px.
+- Teks bantuan editor, `DESIGN.md`, `PRODUCT.md`, `docs/integrasi.md`, dan `scripts/test-public-news.mjs` disesuaikan.
+
+Verifikasi:
+- lint (0 error, 1 warning lama), tsc, build, build:demo, test:demo: lulus.
+- Uji browser (Laravel :8010 SQLite sementara, akun KIM fiktif, static export :3010) pada 390px dan 1440px: keempat tombol tampil berurutan. Gaya terhitungnya identik dengan tombol Chat WhatsApp UMKM: latar `rgb(47, 90, 39)`, teks putih, tinggi 53px, radius 10px, 17px/700. Tanpa scroll horizontal; screenshot diperiksa visual.
+- Tidak ada berkas yang diunggah ke storage; `out/` dibangun ulang dengan env bawaan.
+- Backend tidak diubah.
+
+## Pembaruan: teks usang di editor berita terbit
+
+Laporan pengguna: editor berita berstatus terbit masih menampilkan "Tautan website disiapkan untuk halaman publik CMS (C4), yang belum tersedia." Halaman publik `/berita/baca/?slug=…` sudah ada sejak C4, dan tombol "Lihat di website" ke alamat itu sudah tampil tepat di atas kalimat tersebut.
+
+- Kalimat usang dihapus dari `features/admin/news-editor.tsx`. Tombol "Lihat di website" ditambah keterangan pembaca layar "(dibuka di tab baru)". Tidak ada tes atau dokumen lain yang merujuk kalimat itu.
+- Verifikasi: lint (0 error, 1 warning lama), tsc, build, build:demo, test:demo lulus.
+- Tombol dan alamatnya sudah dipakai uji browser sebelumnya (skrip E2E membaca `href` tombol ini lalu membuka halaman publik). Setelah perubahan ini, uji browser ulang tidak dijalankan karena hanya menghapus satu paragraf.
+
+## Pembaruan: pilih 2–3 foto di dalam berita sekaligus
+
+Laporan pengguna: foto di dalam berita terasa hanya bisa diunggah satu. Uji browser (DB sementara, akun KIM fiktif) membuktikan kode lama sudah bisa menyimpan 3 foto. Namun editor membuatnya terkesan satu: bagian foto baru muncul setelah teks disimpan, satu file per pilihan, dan setiap foto perlu klik "Unggah foto". Keputusan pengguna: pilih 2–3 sekaligus; posisi tetap otomatis setelah paragraf 1/2/3.
+
+- `features/admin/news-editor.tsx`
+  - Input `#post-image` `multiple` tersedia sebelum berita disimpan.
+  - Pilihan masuk antrean dengan pratinjau, label posisi, keterangan, dan tombol "Batalkan foto ini". Total maksimal 3 termasuk foto tersimpan; kelebihan atau format lain ditolak dengan pesan.
+  - Antrean diunggah berurutan setelah teks dan sampul saat Simpan draf/Terbitkan/Simpan perubahan. Notifikasinya "… N foto tambahan terunggah." Bila gagal di tengah, foto yang belum terunggah tetap di antrean.
+  - Tombol "Unggah foto" terpisah dihapus. Foto tersimpan diberi label posisi yang sama.
+- `features/admin/news.module.css`: `.placement`. `DESIGN.md` dicatat.
+- Backend tidak berubah (`POST /staff/posts/{id}/images` per foto, maks. 3).
+
+Verifikasi:
+- lint (0 error, 1 warning lama), tsc, build, build:demo, test:demo: lulus.
+- Uji browser (Laravel :8010 SQLite sementara, static export :3010, Chrome headless):
+  - Pada 390px, pilih 4 foto sekaligus di berita baru yang belum disimpan: 3 diterima, muncul pesan "1 foto tidak dipilih", label paragraf 1–3, dan batas tercapai. Batalkan satu lalu pilih ulang, dan isi keterangan.
+  - Terbitkan: "Berita terbit berhasil disimpan. 3 foto tambahan terunggah." API detail berisi 3 foto dengan keterangan.
+  - Halaman publik pada 390/1440: urutan paragraf 1, foto, paragraf 2, foto, paragraf 3, foto, paragraf 4. Tanpa scroll horizontal; screenshot diperiksa visual.
+- Pembersihan: 11 berkas media fiktif di `backend/storage/app/public` (semua tercatat di DB sementara) dihapus. Storage publik dan privat kembali sama. `out/` dibangun ulang dengan env bawaan.
