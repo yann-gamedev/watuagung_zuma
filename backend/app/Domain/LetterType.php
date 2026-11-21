@@ -5,6 +5,7 @@ namespace App\Domain;
 /**
  * Jenis surat, judul resmi, dan isian khusus per jenis (docs/PROMPTS-SURAT.md).
  * SKU dan KTP_KK tetap ada untuk data lama, tetapi tidak dapat diajukan lagi.
+ * KERAMAIAN dilayani langsung di Balai Desa; enum dan template tetap untuk data lama.
  */
 enum LetterType: string
 {
@@ -43,7 +44,16 @@ enum LetterType: string
 
     public function isOffered(): bool
     {
-        return ! in_array($this, [self::Sku, self::KtpKk], true);
+        return ! in_array($this, [self::Sku, self::KtpKk, self::Keramaian], true);
+    }
+
+    /** Pesan 422 bila jenis ini dikirim sebagai pengajuan baru. */
+    public function notOfferedMessage(): string
+    {
+        return match ($this) {
+            self::Keramaian => 'Izin Keramaian dilayani langsung di Balai Desa.',
+            default => 'Jenis surat ini tidak dapat diajukan secara online.',
+        };
     }
 
     /** @return list<string> */

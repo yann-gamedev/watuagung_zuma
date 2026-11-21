@@ -20,8 +20,8 @@ export type Status = (typeof statuses)[number];
 /** Semua kode jenis surat yang dapat muncul di data (cermin `LetterType.php`). */
 export const serviceCodes = ["SKU", "DOMISILI", "SKTM", "KTP_KK", "BELUM_MENIKAH", "KERAMAIAN", "KEHILANGAN", "UMUM"] as const;
 export type ServiceCode = (typeof serviceCodes)[number];
-/** Jenis yang dapat diajukan; SKU dan KTP_KK hanya ada pada data lama (POST = 422). */
-export const offeredServiceCodes = ["DOMISILI", "SKTM", "BELUM_MENIKAH", "KERAMAIAN", "KEHILANGAN", "UMUM"] as const satisfies readonly ServiceCode[];
+/** Jenis yang dapat diajukan online; SKU dan KTP_KK hanya data lama, KERAMAIAN dilayani di Balai Desa (POST = 422). */
+export const offeredServiceCodes = ["DOMISILI", "SKTM", "BELUM_MENIKAH", "KEHILANGAN", "UMUM"] as const satisfies readonly ServiceCode[];
 export type OfferedServiceCode = (typeof offeredServiceCodes)[number];
 /** Pilihan baku pengajuan; validasi sebenarnya di `backend/app/Domain/LetterSubmission.php`. */
 export const dusunOptions = ["Watuagung", "Talang", "Sekar"] as const;

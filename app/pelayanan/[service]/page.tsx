@@ -3,6 +3,7 @@ import { services } from "@/lib/data";
 import { PageHeading, PublicShell } from "@/components/site";
 import { ApplicationForm } from "@/features/pelayanan/application-form";
 import { HubungiPetugas } from "@/components/hubungi-petugas";
+import { ContactAddress, ContactHours } from "@/components/office-contact";
 export function generateStaticParams() {
   return services.map((s) => ({ service: s.slug }));
 }
@@ -24,6 +25,40 @@ export default async function Page({
   const { service } = await params;
   const item = services.find((s) => s.slug === service);
   if (!item) notFound();
+  if (item.mode === "office") {
+    return (
+      <PublicShell>
+        <PageHeading
+          eyebrow="LAYANAN DI KANTOR"
+          title={item.title}
+          intro={item.description}
+          parent={{ label: "Pelayanan Desa", href: "/pelayanan" }}
+        />
+        <section className="section container service-page service-detail">
+          <aside className="service-preparation" aria-labelledby="office-documents-title">
+            <h2 id="office-documents-title">Dokumen yang dibawa</h2>
+            <p className="service-example">Menunggu konfirmasi desa</p>
+            <ul>
+              {item.requirements.map((requirement) => <li key={requirement}>{requirement}</li>)}
+            </ul>
+            <p className="service-example"><strong>Contoh keperluan:</strong> {item.example}</p>
+            <p className="service-example">Daftar dokumen ini belum menjadi ketentuan resmi desa. Tanyakan petugas bila ragu.</p>
+            <HubungiPetugas />
+          </aside>
+          <div className="content-card service-office-card" aria-labelledby="office-service-title">
+            <h2 id="office-service-title">Dilayani langsung di Balai Desa</h2>
+            <p className="mt-3">Izin Keramaian tidak diajukan melalui website. Silakan datang ke Balai Desa Watuagung dan bawa dokumen di samping.</p>
+            <dl className="mt-5">
+              <dt><strong>Alamat</strong></dt>
+              <dd><ContactAddress /></dd>
+              <dt className="mt-3"><strong>Jam pelayanan</strong></dt>
+              <dd><ContactHours /></dd>
+            </dl>
+          </div>
+        </section>
+      </PublicShell>
+    );
+  }
   return (
     <PublicShell>
       <PageHeading

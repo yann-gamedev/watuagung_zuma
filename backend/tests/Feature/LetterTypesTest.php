@@ -10,6 +10,7 @@ use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\LetterPayloads;
@@ -50,6 +51,17 @@ class LetterTypesTest extends TestCase
         return $application;
     }
 
+    /** Izin keramaian lama (sebelum dilayani di Balai Desa) dibuat langsung di database. */
+    private function legacyKeramaian(array $overrides = []): Application
+    {
+        $payload = self::letterPayload('KERAMAIAN', $overrides);
+
+        return Application::create($payload + [
+            'request_id' => 'REQ-2026-'.Str::upper((string) Str::ulid()),
+            'lookup_secret_hash' => hash('sha256', 'kode-fiktif'), 'status' => 'SUBMITTED',
+        ]);
+    }
+
     private function edit(Application $application, string $text = 'Orang tersebut bekerja di kota fiktif lain.')
     {
         return $this->patchJson('/api/v1/staff/applications/'.$application->request_id.'/isi-keterangan', ['isi_keterangan' => $text]);
@@ -69,7 +81,7 @@ class LetterTypesTest extends TestCase
 
     public function test_titles_and_offered_types_live_in_letter_type(): void
     {
-        $this->assertSame(['DOMISILI', 'SKTM', 'BELUM_MENIKAH', 'KERAMAIAN', 'KEHILANGAN', 'UMUM'], LetterType::offeredValues());
+        $this->assertSame(['DOMISILI', 'SKTM', 'BELUM_MENIKAH', 'KEHILANGAN', 'UMUM'], LetterType::offeredValues());
         $this->assertSame([
             'SKU' => 'SURAT KETERANGAN USAHA', 'DOMISILI' => 'SURAT KETERANGAN DOMISILI',
             'SKTM' => 'SURAT KETERANGAN TIDAK MAMPU', 'KTP_KK' => 'SURAT PENGANTAR KTP/KK',
@@ -90,6 +102,18 @@ class LetterTypesTest extends TestCase
         $this->assertDatabaseCount('applications', 0);
     }
 
+    public function test_keramaian_is_served_at_village_hall_not_online(): void
+    {
+        $this->assertFalse(LetterType::Keramaian->isOffered());
+        $this->assertSame([], LetterType::Keramaian->requiredAttachments());
+        $this->submit(self::letterPayload('KERAMAIAN'))->assertUnprocessable()
+            ->assertJsonValidationErrors(['jenis_surat' => 'Izin Keramaian dilayani langsung di Balai Desa.']);
+        $this->submit(['jenis_surat' => 'KERAMAIAN'])->assertUnprocessable()
+            ->assertJsonValidationErrors(['jenis_surat' => 'Izin Keramaian dilayani langsung di Balai Desa.']);
+        $this->assertDatabaseCount('applications', 0);
+        Storage::disk('local')->assertDirectoryEmpty('/');
+    }
+
     public static function requiredFields(): array
     {
         $personal = ['nama', 'nik', 'no_kk', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'dusun', 'alamat', 'rt', 'rw', 'telepon', 'keperluan'];
@@ -101,7 +125,6 @@ class LetterTypesTest extends TestCase
             'BELUM_MENIKAH' => ['BELUM_MENIKAH', $full],
             'KEHILANGAN' => ['KEHILANGAN', [...$full, 'barang_hilang']],
             'UMUM' => ['UMUM', [...$full, 'isi_keterangan']],
-            'KERAMAIAN' => ['KERAMAIAN', [...$personal, 'acara', 'tempat_acara', 'tanggal_mulai', 'tanggal_selesai', 'jenis_hiburan']],
         ];
     }
 
@@ -117,13 +140,6 @@ class LetterTypesTest extends TestCase
             $this->submit($payload)->assertUnprocessable()->assertJsonValidationErrors($field);
         }
         $this->assertDatabaseCount('applications', 0);
-    }
-
-    public function test_keramaian_does_not_require_but_still_validates_personal_choices(): void
-    {
-        $this->submit(self::letterPayload('KERAMAIAN', ['agama' => 'Agama fiktif']))->assertUnprocessable()->assertJsonValidationErrors('agama');
-        $this->submit(self::letterPayload('KERAMAIAN', ['pekerjaan' => 'Wiraswasta']))->assertCreated();
-        $this->assertNull(Application::firstOrFail()->agama);
     }
 
     public function test_choices_are_enums_and_citizenship_defaults_to_wni(): void
@@ -148,7 +164,7 @@ class LetterTypesTest extends TestCase
     {
         foreach ([
             ['DOMISILI', 'barang_hilang', 'Dompet'], ['KEHILANGAN', 'isi_keterangan', 'Isi lain'],
-            ['UMUM', 'acara', 'Hajatan'], ['SKTM', 'nama_usaha', 'Usaha fiktif'], ['KERAMAIAN', 'barang_hilang', 'KTP'],
+            ['UMUM', 'acara', 'Hajatan'], ['SKTM', 'nama_usaha', 'Usaha fiktif'],
         ] as [$type, $field, $value]) {
             $this->submit(self::letterPayload($type, [$field => $value]))->assertUnprocessable()
                 ->assertJsonValidationErrors([$field => 'tidak dipakai untuk jenis surat ini.']);
@@ -156,25 +172,6 @@ class LetterTypesTest extends TestCase
         // Isian kosong dari formulir lama tidak dianggap terisi.
         $this->submit(self::letterPayload('DOMISILI', ['barang_hilang' => '', 'nama_usaha' => null]))->assertCreated();
         $this->assertDatabaseCount('applications', 1);
-    }
-
-    public function test_keramaian_dates(): void
-    {
-        $this->travelTo(now()->setTimezone('Asia/Jakarta')->setDate(2026, 11, 8)->setTime(23, 30));
-        $dates = fn (string $start, string $end) => self::letterPayload('KERAMAIAN', ['tanggal_mulai' => $start, 'tanggal_selesai' => $end]);
-        $this->submit($dates('2026-11-07', '2026-11-08'))->assertUnprocessable()
-            ->assertJsonValidationErrors(['tanggal_mulai' => 'Tanggal mulai tidak boleh sebelum hari ini.']);
-        $this->submit($dates('2026-11-10', '2026-11-09'))->assertUnprocessable()
-            ->assertJsonValidationErrors(['tanggal_selesai' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.']);
-        $this->submit($dates('2026-11-10', '2026-11-17'))->assertUnprocessable()
-            ->assertJsonValidationErrors(['tanggal_selesai' => 'Izin keramaian paling lama 7 hari.']);
-        foreach (['2026-02-30', '10-11-2026', '2026-11-10T00:00'] as $invalid) {
-            $this->submit($dates($invalid, '2026-11-12'))->assertUnprocessable()->assertJsonValidationErrors('tanggal_mulai');
-        }
-        $this->submit($dates('2026-11-08', '2026-11-08'))->assertCreated();
-        $this->submit($dates('2026-11-10', '2026-11-16'))->assertCreated();
-        $this->assertSame([['2026-11-08', '2026-11-08'], ['2026-11-10', '2026-11-16']],
-            Application::orderBy('id')->get()->map(fn ($row) => [substr($row->tanggal_mulai, 0, 10), substr($row->tanggal_selesai, 0, 10)])->all());
     }
 
     public function test_religion_and_marital_status_are_encrypted_hidden_and_never_listed(): void
@@ -205,7 +202,7 @@ class LetterTypesTest extends TestCase
     public function test_staff_detail_returns_decrypted_new_fields_and_neighborhood_heads_see_less(): void
     {
         $payload = self::letterPayload('KERAMAIAN', ['agama' => 'Hindu', 'status_perkawinan' => 'Kawin', 'pendidikan' => 'Strata II', 'pekerjaan' => 'Petani/Pekebun']);
-        $id = $this->submit($payload)->assertCreated()->json('request_id');
+        $id = $this->legacyKeramaian($payload)->request_id;
         $this->act('staff');
         $detail = $this->getJson('/api/v1/staff/applications/'.$id)->assertOk()->json();
         foreach (['dusun', 'agama', 'kewarganegaraan', 'status_perkawinan', 'pendidikan', 'pekerjaan', 'acara', 'tempat_acara', 'tanggal_mulai', 'tanggal_selesai', 'jenis_hiburan'] as $field) {
@@ -303,7 +300,7 @@ class LetterTypesTest extends TestCase
     {
         config(['retention.application_days' => 30]);
         $this->submit(self::letterPayload('KEHILANGAN'))->assertCreated();
-        $this->submit(self::letterPayload('KERAMAIAN', ['agama' => 'Islam']))->assertCreated();
+        $this->legacyKeramaian(['agama' => 'Islam']);
         $this->submit(self::letterPayload('UMUM'))->assertCreated();
         DB::table('applications')->update(['status' => 'COMPLETED', 'updated_at' => now()->subDays(31)]);
         $this->artisan('applications:purge')->expectsOutputToContain('3 permohonan dianonimkan')->assertSuccessful();

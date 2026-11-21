@@ -227,15 +227,15 @@ Rancangan dan sumber pilihan: `docs/PROMPTS-SURAT.md`. Aturan ada di `backend/ap
 | `DOMISILI` | SURAT KETERANGAN DOMISILI | — |
 | `SKTM` | SURAT KETERANGAN TIDAK MAMPU | — (`keperluan` dicetak) |
 | `BELUM_MENIKAH` | SURAT KETERANGAN BELUM MENIKAH | — |
-| `KERAMAIAN` | SURAT KETERANGAN IZIN KERAMAIAN | `acara`, `tempat_acara`, `jenis_hiburan` (2–120), `tanggal_mulai`, `tanggal_selesai` |
 | `KEHILANGAN` | SURAT KETERANGAN KEHILANGAN | `barang_hilang` (2–200) |
 | `UMUM` | SURAT KETERANGAN | `isi_keterangan` (2–500) |
+| `KERAMAIAN` | SURAT KETERANGAN IZIN KERAMAIAN | **sejak 21 Nov 2026 dilayani langsung di Balai Desa**: POST baru 422 `Izin Keramaian dilayani langsung di Balai Desa.` Enum, template PDF, dan data lama (`acara`, `tempat_acara`, `jenis_hiburan`, `tanggal_mulai`, `tanggal_selesai`) tetap. |
 | `SKU`, `KTP_KK` | (data lama) | tidak dapat diajukan: 422 `Jenis surat ini tidak dapat diajukan secara online.` |
 
 - **Data diri, semua jenis:** `nama`, `nik`, `no_kk`, `tempat_lahir`, `tanggal_lahir`, `jenis_kelamin`, `dusun` (Watuagung/Talang/Sekar), `alamat`, `rt`, `rw`, `telepon`, `keperluan` (2–200), `kewarganegaraan` (WNI/WNA; kosong → WNI).
-- **Kecuali KERAMAIAN, juga wajib:** `agama` (Islam, Kristen, Katolik, Hindu, Buddha, Konghucu, Kepercayaan terhadap Tuhan YME), `status_perkawinan` (Belum Kawin, Kawin, Cerai Hidup, Cerai Mati), `pendidikan` (pilihan baku KK, lihat `pendidikanOptions`), `pekerjaan` (teks bebas 2–60). Untuk KERAMAIAN keempatnya opsional, tetapi nilai yang dikirim tetap divalidasi.
+- **Juga wajib (semua jenis yang ditawarkan):** `agama` (Islam, Kristen, Katolik, Hindu, Buddha, Konghucu, Kepercayaan terhadap Tuhan YME), `status_perkawinan` (Belum Kawin, Kawin, Cerai Hidup, Cerai Mati), `pendidikan` (pilihan baku KK, lihat `pendidikanOptions`), `pekerjaan` (teks bebas 2–60). Data KERAMAIAN lama boleh tanpa keempatnya (`requiresFullPersonalData()` false, dipakai template PDF).
 - **Pilihan bersifat persis** (huruf besar/kecil diperhatikan). Nilai di luar daftar → 422 `… tidak valid. Pilih salah satu pilihan yang tersedia.`
-- **Tanggal keramaian:** format `YYYY-MM-DD`; `tanggal_mulai` ≥ hari ini (zona waktu aplikasi, WIB); `tanggal_selesai` ≥ `tanggal_mulai`; rentang paling lama 7 hari kalender **termasuk** hari mulai dan selesai (mis. 10–16 boleh, 10–17 ditolak).
+- **Tanggal keramaian (aturan lama, tidak lagi dipakai pengajuan online):** format `YYYY-MM-DD`; `tanggal_mulai` ≥ hari ini (zona waktu aplikasi, WIB); `tanggal_selesai` ≥ `tanggal_mulai`; rentang paling lama 7 hari kalender **termasuk** hari mulai dan selesai (mis. 10–16 boleh, 10–17 ditolak).
 - **Isian milik jenis lain ditolak** (422 `… tidak dipakai untuk jenis surat ini.`), bukan diabaikan: tidak ada data yang tersimpan tanpa disadari dan kesalahan klien langsung terlihat. String kosong/null tetap diterima agar formulir lama tidak gagal.
 - **Penyimpanan:** kolom baru semuanya nullable (data lama tetap sah). `agama` dan `status_perkawinan` memakai cast `encrypted` dan masuk `$hidden` seperti NIK. Isian lain teks biasa. `tanggal_mulai`/`tanggal_selesai` dikirim `YYYY-MM-DD`. `isi_keterangan_awal` menyimpan teks asli warga (tidak pernah berubah) sebagai pembanding untuk petugas.
 - **Respons:** pengajuan dan cek status publik tidak berubah (tanpa data diri). Daftar petugas, ringkasan, dan buku register tidak memuat field baru. Detail petugas memuat `dusun`, isian khusus, `isi_keterangan`, `isi_keterangan_awal`, dan `can_edit_isi_keterangan` untuk semua peran pelayanan yang berwenang (bukan KIM); `agama`, `status_perkawinan`, `kewarganegaraan`, `pendidikan`, `pekerjaan` hanya untuk peran kantor (tidak untuk Ketua RT/RW), didekripsi. Akses detail tetap tercatat `application.viewed`.

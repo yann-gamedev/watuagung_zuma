@@ -155,12 +155,10 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
               <div className="fields">
                 {select("dusun", dusunOptions)}
                 {select("kewarganegaraan", kewarganegaraanOptions)}
-                {code !== "KERAMAIAN" && <>
-                  {select("agama", agamaOptions, sensitiveHint)}
-                  {select("status_perkawinan", statusPerkawinanOptions, sensitiveHint)}
-                  {select("pendidikan", pendidikanOptions)}
-                  <FormField name="pekerjaan" label="Pekerjaan" register={register} errors={errors} suggestions={jobs} hint="Pilih saran atau tulis pekerjaan Anda, maksimal 60 karakter." />
-                </>}
+                {select("agama", agamaOptions, sensitiveHint)}
+                {select("status_perkawinan", statusPerkawinanOptions, sensitiveHint)}
+                {select("pendidikan", pendidikanOptions)}
+                <FormField name="pekerjaan" label="Pekerjaan" register={register} errors={errors} suggestions={jobs} hint="Pilih saran atau tulis pekerjaan Anda, maksimal 60 karakter." />
               </div>
             </fieldset>
             <fieldset disabled={isSubmitting}>
@@ -172,19 +170,11 @@ export function ApplicationForm({ code }: { code: SubmissionValues["jenis_surat"
               </div>
             </fieldset>
             <fieldset disabled={isSubmitting}>
-              <legend>{code === "KERAMAIAN" ? "Rencana acara" : "Keperluan"}</legend>
+              <legend>Keperluan</legend>
               <div className="fields">
-                {code === "KERAMAIAN" && <>
-                  {field("acara", "Acara")}
-                  {field("tempat_acara", "Tempat acara")}
-                  {field("tanggal_mulai", "Tanggal mulai", "date")}
-                  {field("tanggal_selesai", "Tanggal selesai", "date")}
-                  <p className="form-help wide">Tanggal mulai paling awal hari ini. Izin keramaian paling lama 7 hari, termasuk tanggal mulai dan selesai.</p>
-                  {field("jenis_hiburan", "Jenis hiburan", "text", true)}
-                </>}
                 {code === "KEHILANGAN" && <FormField name="barang_hilang" label="Barang atau dokumen yang hilang" type="textarea" wide placeholder="Contoh: KTP" register={register} errors={errors} />}
                 {code === "UMUM" && <FormField name="isi_keterangan" label="Isi keterangan" type="textarea" wide placeholder="Contoh: Bekerja di Surabaya" hint="Petugas dapat menyesuaikan kalimat sebelum surat dibuat." register={register} errors={errors} />}
-                <FormField name="keperluan" label={code === "UMUM" ? "Tujuan penggunaan surat" : code === "KERAMAIAN" ? "Maksud permohonan" : "Keperluan surat"} type="textarea" wide
+                <FormField name="keperluan" label={code === "UMUM" ? "Tujuan penggunaan surat" : "Keperluan surat"} type="textarea" wide
                   placeholder={item ? `Contoh: ${item.example}` : undefined}
                   hint={["DOMISILI", "BELUM_MENIKAH"].includes(code) ? "Untuk catatan petugas, tidak dicetak di surat." : undefined} register={register} errors={errors} />
               </div>
