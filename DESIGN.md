@@ -153,6 +153,14 @@ Di bawah panel tampil jam **Hari kerja, 08.00–13.00 WIB** dan tautan kontak ka
 - Cek status menampilkan tombol utama Unduh surat (PDF) hanya bila server menyatakan `letter_available`; tenggat, catatan A4/QR, pesan kedaluwarsa, dan bantuan tetap terbaca. Unduh melalui POST/blob, bukan URL berkode akses.
 - Pesan Disetujui: surat sedang ditandatangani Kepala Desa, cek lagi 1–2 hari kerja. Siap diunduh: tenggat unduh. Selesai: surat sudah diunduh; kasus masa unduh berakhir ditampilkan terpisah.
 
+### Persetujuan lewat email dan notifikasi akun — 21 November 2026 (E4)
+
+- `/persetujuan/` dan `/verifikasi-email/` memakai `PublicShell` + `PageHeading` dan `center-card` seperti `/berhenti-email/`. Ringkasan dalam kotak `--cream` bergaris `--line` radius 14px; label `--muted` 16px, nilai 17px/700.
+- Pilihan Setuju/Tolak berupa dua kartu radio ≥ 56px (bertumpuk ≤ 480px); terpilih: Setuju `--sage`/`--leaf`, Tolak `--status-rejected-bg`/`--status-rejected-text`. PIN `type=password` + `inputmode=numeric`, lebar ±220px, huruf berjarak.
+- Konfirmasi memakai `<dialog>` native (pola dialog panel, radius 18px); tombol ≥ 52px, Batal mendapat fokus awal. Hasil memindahkan fokus ke judul.
+- Panel: menu **Akun** di bilah atas berisi "Ganti kata sandi" dan "Notifikasi email"; halaman memakai kartu putih radius 14px, pill status `--sage`/`--leaf` (Terverifikasi/Aktif) atau `--sand`/`--earth` (Belum…).
+- Riwayat detail permohonan menambahkan "· disetujui/ditolak melalui email" pada baris petugas. Tidak ada token warna baru.
+
 ### Badge "Segera hadir"
 
 Pill kecil berlatar `--sand`, teks `--earth` 14px berat 700. Wajib ada di setiap pintu masuk fitur yang belum tersedia.

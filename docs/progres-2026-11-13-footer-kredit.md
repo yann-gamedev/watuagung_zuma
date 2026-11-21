@@ -31,3 +31,11 @@ Logo ditampilkan 56px di atas kotak `--cream` (radius 12px) agar biru/oranye tet
 ## Revisi 2: baris teks kredit
 - Baris dipisah dengan `<br />` di markup (tidak bergantung CSS): nama kepanitiaan / "Bidang Pengabdian Masyarakat" / "BEM Fasilkom UPN "Veteran" Jawa Timur". "Jawa Timur" memakai `&nbsp;` agar tidak terpisah.
 - Lint, tsc, build lulus; screenshot 1440px (2 baris rapi) dan 390px (baris BEM membungkus, "Jawa Timur" utuh).
+
+## Deploy (13 November 2026)
+- PR #78 di-merge ke `main` (`c428ef8`); Vercel Production otomatis, status success.
+- Hostinger `desawatuagung.com`: build produksi di laptop dari `c428ef8` (`NEXT_PUBLIC_API_URL=https://desawatuagung.com/api/v1`, `DEMO_MODE=false`, `SHOW_SAMPLE_CONTENT=false`), arsip diunggah via scp (login kata sandi atas izin pengguna, lewat `SSH_ASKPASS` sementara yang sudah dihapus).
+- Server: backup `watuagung-20261113-031325.tar.gpg` sebelum deploy; `hostinger-deploy.sh main --frontend` selesai, server di `c428ef8`, smoke test server 33/33; arsip dihapus dari server.
+- Dari laptop: `bash deploy/smoke-test.sh desawatuagung.com` 33/33 lulus; beranda memuat "Dikembangkan oleh" dan "Kepanitiaan Fasilkom Zuma"; kedua logo `/brand/*-160.png` HTTP 200.
+- Belum: cek visual di browser pada situs live.
+- Pengguna: kata sandi SSH/hPanel kembali tertulis di chat; ganti dan pakai login kunci SSH.

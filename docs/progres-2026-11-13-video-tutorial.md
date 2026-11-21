@@ -22,3 +22,9 @@ Bagian video tutorial pengajuan surat (YouTube `A6kL8-C8OBU`, "Tutorial Pelayana
 - Produksi (mode API) membaca slot dari server; respons server `tutorial: null` menimpa cadangan. Setelah deploy, isi link + judul di `/admin/konten/video/` desawatuagung.com.
 - Catat posisi/varian rata tengah di `DESIGN.md` § Video YouTube bila disetujui.
 - Di-commit di branch `feat/ui-pelayanan-tutorial-video`; belum push/deploy.
+
+## Deploy (13 November 2026)
+- PR #79 di-merge ke `main` (`110320a`); Vercel Production otomatis.
+- Hostinger: build produksi dari `110320a` (API `desawatuagung.com`, tanpa localhost); backup `watuagung-20261113-034341.tar.gpg`; `hostinger-deploy.sh main --frontend` selesai, smoke test server 33/33; arsip dihapus dari server.
+- Dari laptop: smoke test 33/33; `/pelayanan/` memuat bagian video rata tengah. `GET /api/v1/site/videos` = 404 (belum pernah disimpan), sehingga situs memakai cadangan `lib/data.ts` dan video sudah tampil.
+- Catatan: begitu admin menyimpan halaman Video di panel, nilai server menggantikan cadangan; slot tutorial yang dikosongkan akan menyembunyikan video. Isi slot tutorial saat menyimpan.
